@@ -10,7 +10,7 @@
  */
 
 import crypto from 'crypto';
-import { db } from './db';
+import { getDb } from './db';
 import { Resend } from 'resend';
 
 // ---------------------------------------------------------------------------
@@ -76,7 +76,7 @@ function isAdminEmail(email: string): boolean {
  */
 export async function invalidatePriorTokens(artistId: string, _now?: Date): Promise<void> {
   const now = _now ?? new Date();
-  await db.magicLinkToken.updateMany({
+  await getDb().magicLinkToken.updateMany({
     where: {
       artistId,
       usedAt: null,
@@ -98,7 +98,7 @@ export async function invalidatePriorTokens(artistId: string, _now?: Date): Prom
  */
 export async function issueMagicLink(email: string, _now?: Date): Promise<void> {
   // Look up artist by email - silently return if not found
-  const artist = await db.artist.findUnique({ where: { email } });
+  const artist = await getDb().artist.findUnique({ where: { email } });
   if (!artist) return;
 
   const now = _now ?? new Date();
@@ -113,7 +113,7 @@ export async function issueMagicLink(email: string, _now?: Date): Promise<void> 
   // Store the MagicLinkToken record (expiresAt = now + 72 hours)
   const expiresAt = new Date(now.getTime() + 72 * 60 * 60 * 1000);
 
-  await db.magicLinkToken.create({
+  await getDb().magicLinkToken.create({
     data: {
       artistId: artist.id,
       tokenHash,
@@ -154,7 +154,7 @@ export async function verifyMagicLink(rawToken: string, _now?: Date): Promise<Se
   const tokenHash = sha256(rawToken);
 
   // Look up the MagicLinkToken by hash
-  const tokenRecord = await db.magicLinkToken.findUnique({
+  const tokenRecord = await getDb().magicLinkToken.findUnique({
     where: { tokenHash },
     include: { artist: true },
   });
@@ -173,7 +173,7 @@ export async function verifyMagicLink(rawToken: string, _now?: Date): Promise<Se
   }
 
   // Mark token as used
-  await db.magicLinkToken.update({
+  await getDb().magicLinkToken.update({
     where: { tokenHash },
     data: { usedAt: now },
   });
@@ -190,7 +190,7 @@ export async function verifyMagicLink(rawToken: string, _now?: Date): Promise<Se
   const sessionExpiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
   // Create Session record
-  await db.session.create({
+  await getDb().session.create({
     data: {
       artistId: artist.id,
       sessionTokenHash,

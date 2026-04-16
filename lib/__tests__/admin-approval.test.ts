@@ -66,45 +66,44 @@ const mockState = vi.hoisted(() => {
 // ---------------------------------------------------------------------------
 
 vi.mock('../db', () => {
-  return {
-    db: {
-      registrationRequest: {
-        findUnique: vi.fn(async () => mockState.mockRegistration),
-        update: vi.fn(async (args: { where: { id: string }; data: Record<string, unknown> }) => {
-          mockState.capturedRegistrationUpdate = args as typeof mockState.capturedRegistrationUpdate;
-          return { ...mockState.mockRegistration, ...args.data };
-        }),
-      },
-      artist: {
-        findUnique: vi.fn(async () => {
-          // Return null unless slug conflict is set
-          return mockState.mockSlugConflict ? { id: 'existing', slug: 'test-slug' } : null;
-        }),
-        create: vi.fn(async (args: { data: Record<string, unknown> }) => {
-          mockState.capturedArtistCreate = args.data as typeof mockState.capturedArtistCreate;
-          mockState.artistCreateCallCount += 1;
-          return { id: 'new-artist-id', ...args.data };
-        }),
-      },
-      speciality: {
-        findUnique: vi.fn(async () => ({ id: 'spec-id', name: 'Vocal', primaryColor: '#000', textColor: '#fff' })),
-      },
-      artistSpeciality: {
-        create: vi.fn(async () => ({})),
-      },
-      externalLink: {
-        createMany: vi.fn(async () => ({ count: 0 })),
-      },
-      magicLinkToken: {
-        updateMany: vi.fn(async () => ({ count: 0 })),
-        create: vi.fn(async (args: { data: Record<string, unknown> }) => {
-          mockState.capturedMagicLinkToken = args.data as typeof mockState.capturedMagicLinkToken;
-          return { id: 'token-id', ...args.data };
-        }),
-        findUnique: vi.fn(async () => null),
-      },
+  const mockClient = {
+    registrationRequest: {
+      findUnique: vi.fn(async () => mockState.mockRegistration),
+      update: vi.fn(async (args: { where: { id: string }; data: Record<string, unknown> }) => {
+        mockState.capturedRegistrationUpdate = args as typeof mockState.capturedRegistrationUpdate;
+        return { ...mockState.mockRegistration, ...args.data };
+      }),
+    },
+    artist: {
+      findUnique: vi.fn(async () => {
+        // Return null unless slug conflict is set
+        return mockState.mockSlugConflict ? { id: 'existing', slug: 'test-slug' } : null;
+      }),
+      create: vi.fn(async (args: { data: Record<string, unknown> }) => {
+        mockState.capturedArtistCreate = args.data as typeof mockState.capturedArtistCreate;
+        mockState.artistCreateCallCount += 1;
+        return { id: 'new-artist-id', ...args.data };
+      }),
+    },
+    speciality: {
+      findUnique: vi.fn(async () => ({ id: 'spec-id', name: 'Vocal', primaryColor: '#000', textColor: '#fff' })),
+    },
+    artistSpeciality: {
+      create: vi.fn(async () => ({})),
+    },
+    externalLink: {
+      createMany: vi.fn(async () => ({ count: 0 })),
+    },
+    magicLinkToken: {
+      updateMany: vi.fn(async () => ({ count: 0 })),
+      create: vi.fn(async (args: { data: Record<string, unknown> }) => {
+        mockState.capturedMagicLinkToken = args.data as typeof mockState.capturedMagicLinkToken;
+        return { id: 'token-id', ...args.data };
+      }),
+      findUnique: vi.fn(async () => null),
     },
   };
+  return { getDb: () => mockClient };
 });
 
 // ---------------------------------------------------------------------------

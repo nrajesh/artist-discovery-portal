@@ -5,7 +5,7 @@
  * Requirements: 2.3, 2.4
  */
 
-import { db } from './db';
+import { getDb } from './db';
 import { issueMagicLink } from './auth';
 
 // ---------------------------------------------------------------------------
@@ -47,12 +47,12 @@ export async function generateSlug(fullName: string): Promise<string> {
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
 
-  const existing = await db.artist.findUnique({ where: { slug: base } });
+  const existing = await getDb().artist.findUnique({ where: { slug: base } });
   if (!existing) return base;
 
   for (let i = 1; i <= 999; i++) {
     const candidate = `${base}-${i}`;
-    const conflict = await db.artist.findUnique({ where: { slug: candidate } });
+    const conflict = await getDb().artist.findUnique({ where: { slug: candidate } });
     if (!conflict) return candidate;
   }
 
@@ -71,7 +71,7 @@ export async function generateSlug(fullName: string): Promise<string> {
 export async function approveRegistration(
   registrationId: string,
 ): Promise<ApprovalResult | ApprovalError> {
-  const registration = await db.registrationRequest.findUnique({
+  const registration = await getDb().registrationRequest.findUnique({
     where: { id: registrationId },
     include: { specialities: true, links: true },
   });
@@ -83,7 +83,7 @@ export async function approveRegistration(
   const slug = await generateSlug(registration.fullName);
 
   // Create Artist
-  const artist = await db.artist.create({
+  const artist = await getDb().artist.create({
     data: {
       slug,
       fullName: registration.fullName,
@@ -100,9 +100,9 @@ export async function approveRegistration(
   // Create ArtistSpeciality records
   for (let i = 0; i < registration.specialities.length; i++) {
     const spec = registration.specialities[i];
-    const speciality = await db.speciality.findUnique({ where: { name: spec.specialityName } });
+    const speciality = await getDb().speciality.findUnique({ where: { name: spec.specialityName } });
     if (speciality) {
-      await db.artistSpeciality.create({
+      await getDb().artistSpeciality.create({
         data: {
           artistId: artist.id,
           specialityId: speciality.id,
@@ -114,7 +114,7 @@ export async function approveRegistration(
 
   // Create ExternalLink records
   if (registration.links.length > 0) {
-    await db.externalLink.createMany({
+    await getDb().externalLink.createMany({
       data: registration.links.map((link) => ({
         artistId: artist.id,
         linkType: link.linkType,
@@ -127,7 +127,7 @@ export async function approveRegistration(
   await issueMagicLink(registration.email);
 
   // Mark as approved
-  await db.registrationRequest.update({
+  await getDb().registrationRequest.update({
     where: { id: registrationId },
     data: { status: 'approved', reviewedAt: now },
   });
@@ -146,7 +146,7 @@ export async function approveRegistration(
 export async function rejectRegistration(
   registrationId: string,
 ): Promise<RejectionResult | RejectionError> {
-  const registration = await db.registrationRequest.findUnique({
+  const registration = await getDb().registrationRequest.findUnique({
     where: { id: registrationId },
   });
 
@@ -155,7 +155,7 @@ export async function rejectRegistration(
 
   const now = new Date();
 
-  await db.registrationRequest.update({
+  await getDb().registrationRequest.update({
     where: { id: registrationId },
     data: { status: 'rejected', reviewedAt: now },
   });

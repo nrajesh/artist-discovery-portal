@@ -2,7 +2,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { verifySession } from "@/lib/session-jwt";
 import { DUMMY_ARTISTS } from "@/lib/dummy-artists";
-import { db } from "@/lib/db";
+import { getDb } from "@/lib/db";
 import { PostHogIdentify } from "@/components/posthog-identify";
 import { DashboardViewTracker, EditProfileLink } from "@/components/dashboard-tracker";
 
@@ -29,7 +29,7 @@ export default async function ArtistDashboardPage({
   let province: string | null = null;
   if (ph_identify === "1" && session?.artistId) {
     try {
-      const artist = await db.artist.findUnique({
+      const artist = await getDb().artist.findUnique({
         where: { id: session.artistId },
         select: { province: true },
       });

@@ -54,28 +54,27 @@ const mockState = vi.hoisted(() => {
 // ---------------------------------------------------------------------------
 
 vi.mock('../db', () => {
-  return {
-    db: {
-      registrationRequest: {
-        create: vi.fn(async (args: { data: Record<string, unknown> }) => {
-          if (mockState.registrationCreateShouldThrow) {
-            throw new Error('DB write should not be called');
-          }
-          mockState.capturedRegistrationCreate = args.data as typeof mockState.capturedRegistrationCreate;
-          return { id: 'mock-reg-id', ...args.data };
-        }),
-      },
-      artist: {
-        findMany: vi.fn(async () => mockState.mockAdminArtists),
-      },
-      notification: {
-        createMany: vi.fn(async (args: { data: Array<Record<string, unknown>> }) => {
-          mockState.capturedNotificationCreateMany = args as typeof mockState.capturedNotificationCreateMany;
-          return { count: args.data.length };
-        }),
-      },
+  const mockClient = {
+    registrationRequest: {
+      create: vi.fn(async (args: { data: Record<string, unknown> }) => {
+        if (mockState.registrationCreateShouldThrow) {
+          throw new Error('DB write should not be called');
+        }
+        mockState.capturedRegistrationCreate = args.data as typeof mockState.capturedRegistrationCreate;
+        return { id: 'mock-reg-id', ...args.data };
+      }),
+    },
+    artist: {
+      findMany: vi.fn(async () => mockState.mockAdminArtists),
+    },
+    notification: {
+      createMany: vi.fn(async (args: { data: Array<Record<string, unknown>> }) => {
+        mockState.capturedNotificationCreateMany = args as typeof mockState.capturedNotificationCreateMany;
+        return { count: args.data.length };
+      }),
     },
   };
+  return { getDb: () => mockClient };
 });
 
 // ---------------------------------------------------------------------------
@@ -286,10 +285,10 @@ describe('Property 2: Registration data round-trip', () => {
 
         // Simulate what the handler persists (the DB create call)
         // We call the DB mock directly to verify the data mapping
-        const { db } = await import('../db');
+        const { getDb } = await import('../db');
 
         const registrationId = crypto.randomUUID();
-        await db.registrationRequest.create({
+        await getDb().registrationRequest.create({
           data: {
             id: registrationId,
             fullName: validated.fullName,
@@ -330,9 +329,9 @@ describe('Property 2: Registration data round-trip', () => {
       fc.asyncProperty(arbSpecialities, async (specialities) => {
         resetState();
 
-        const { db } = await import('../db');
+        const { getDb } = await import('../db');
 
-        await db.registrationRequest.create({
+        await getDb().registrationRequest.create({
           data: {
             id: crypto.randomUUID(),
             fullName: 'Test Artist',
@@ -387,13 +386,13 @@ describe('Property 3: Admin notification on registration', () => {
             id: `admin-${i}`,
           }));
 
-          const { db } = await import('../db');
+          const { getDb } = await import('../db');
 
           // Simulate the notification creation logic from the handler
           const registrationId = crypto.randomUUID();
 
           // Create the registration
-          await db.registrationRequest.create({
+          await getDb().registrationRequest.create({
             data: {
               id: registrationId,
               fullName: payload.fullName,
@@ -410,14 +409,14 @@ describe('Property 3: Admin notification on registration', () => {
           });
 
           // Fetch admin artists (mocked)
-          const adminArtists = await db.artist.findMany({
+          const adminArtists = await getDb().artist.findMany({
             where: { email: { in: ['admin@example.com'] } },
             select: { id: true },
           });
 
           // Create notifications for all admins
           if (adminArtists.length > 0) {
-            await db.notification.createMany({
+            await getDb().notification.createMany({
               data: adminArtists.map((admin) => ({
                 artistId: admin.id,
                 type: 'new_registration',
@@ -459,11 +458,11 @@ describe('Property 3: Admin notification on registration', () => {
         resetState();
         mockState.mockAdminArtists = []; // no admins
 
-        const { db } = await import('../db');
+        const { getDb } = await import('../db');
 
         const registrationId = crypto.randomUUID();
 
-        await db.registrationRequest.create({
+        await getDb().registrationRequest.create({
           data: {
             id: registrationId,
             fullName: payload.fullName,
@@ -479,14 +478,14 @@ describe('Property 3: Admin notification on registration', () => {
           },
         });
 
-        const adminArtists = await db.artist.findMany({
+        const adminArtists = await getDb().artist.findMany({
           where: { email: { in: [] } },
           select: { id: true },
         });
 
         // No admins → no notifications
         if (adminArtists.length > 0) {
-          await db.notification.createMany({
+          await getDb().notification.createMany({
             data: adminArtists.map((admin) => ({
               artistId: admin.id,
               type: 'new_registration',

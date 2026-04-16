@@ -52,38 +52,39 @@ const mockState = vi.hoisted(() => {
 // ---------------------------------------------------------------------------
 
 vi.mock('../db', () => {
-  return {
-    db: {
-      artist: {
-        findUnique: vi.fn(async () => mockState.mockArtist),
-      },
-      magicLinkToken: {
-        updateMany: vi.fn(async (args: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
-          mockState.capturedUpdateManyArgs = args;
-          // Simulate marking tokens as used
-          for (const token of mockState.mockExistingTokens) {
-            if (token.usedAt === null) {
-              token.usedAt = args.data.usedAt as Date;
-            }
-          }
-          return { count: mockState.mockExistingTokens.length };
-        }),
-        create: vi.fn(async (args: { data: Record<string, unknown> }) => {
-          const token = { id: 'new-token-id', ...args.data };
-          mockState.capturedTokenCreate = token as typeof mockState.capturedTokenCreate;
-          return token;
-        }),
-        findUnique: vi.fn(async () => mockState.mockTokenRecord),
-        update: vi.fn(async () => mockState.mockTokenRecord),
-      },
-      session: {
-        create: vi.fn(async (args: { data: Record<string, unknown> }) => {
-          const session = { id: 'new-session-id', ...args.data };
-          mockState.capturedSessionCreate = session as typeof mockState.capturedSessionCreate;
-          return session;
-        }),
-      },
+  const mockClient = {
+    artist: {
+      findUnique: vi.fn(async () => mockState.mockArtist),
     },
+    magicLinkToken: {
+      updateMany: vi.fn(async (args: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
+        mockState.capturedUpdateManyArgs = args;
+        // Simulate marking tokens as used
+        for (const token of mockState.mockExistingTokens) {
+          if (token.usedAt === null) {
+            token.usedAt = args.data.usedAt as Date;
+          }
+        }
+        return { count: mockState.mockExistingTokens.length };
+      }),
+      create: vi.fn(async (args: { data: Record<string, unknown> }) => {
+        const token = { id: 'new-token-id', ...args.data };
+        mockState.capturedTokenCreate = token as typeof mockState.capturedTokenCreate;
+        return token;
+      }),
+      findUnique: vi.fn(async () => mockState.mockTokenRecord),
+      update: vi.fn(async () => mockState.mockTokenRecord),
+    },
+    session: {
+      create: vi.fn(async (args: { data: Record<string, unknown> }) => {
+        const session = { id: 'new-session-id', ...args.data };
+        mockState.capturedSessionCreate = session as typeof mockState.capturedSessionCreate;
+        return session;
+      }),
+    },
+  };
+  return {
+    getDb: () => mockClient,
   };
 });
 

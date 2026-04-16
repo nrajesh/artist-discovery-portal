@@ -11,7 +11,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { getDb } from '@/lib/db';
 import { analyticsServer } from '@/lib/analytics-server';
 
 export async function POST(
@@ -21,7 +21,7 @@ export async function POST(
   const { id } = params;
 
   // 1. Fetch the RegistrationRequest
-  const registration = await db.registrationRequest.findUnique({
+  const registration = await getDb().registrationRequest.findUnique({
     where: { id },
   });
 
@@ -39,7 +39,7 @@ export async function POST(
   const now = new Date();
 
   // 2. Update status to "rejected"
-  await db.registrationRequest.update({
+  await getDb().registrationRequest.update({
     where: { id },
     data: {
       status: 'rejected',

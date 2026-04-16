@@ -1,49 +1,45 @@
 /**
- * Singleton PrismaClient configured with the @neondatabase/serverless adapter.
+ * Prisma + Neon on Cloudflare Workers (OpenNext).
  *
- * The Neon serverless adapter enables edge-compatible, pooled connections via
- * WebSockets - suitable for serverless and edge runtimes (e.g. Cloudflare Workers
- * with OpenNext).
+ * Do **not** create a global PrismaClient at module load: `process.env` is bound
+ * per request in the Worker. Use `getDb()` (React `cache`) so the URL is read
+ * inside the request and each invocation gets a fresh pool (Workers cannot
+ * safely share pooled connections across requests).
  *
- * Set DATABASE_URL to the Neon *pooled* connection string for serverless
- * functions. For migrations (prisma migrate dev / deploy) set DIRECT_DATABASE_URL
- * to the Neon *direct* (non-pooled) connection string.
+ * @see https://opennext.js.org/cloudflare/howtos/db
  */
 
-import { PrismaClient } from '@prisma/client';
-import { PrismaNeon } from '@prisma/adapter-neon';
-import { neonConfig, Pool } from '@neondatabase/serverless';
+import { cache } from "react";
+import { PrismaClient } from "@prisma/client";
+import { PrismaNeon } from "@prisma/adapter-neon";
+import { neonConfig, Pool } from "@neondatabase/serverless";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 
-// Enable WebSocket connections for the Neon serverless driver.
-// In Node.js environments (e.g. local dev / migrations) the ws package is used;
-// in edge runtimes the native WebSocket API is used automatically.
-if (typeof WebSocket === 'undefined') {
+if (typeof WebSocket === "undefined") {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    neonConfig.webSocketConstructor = require('ws');
+    neonConfig.webSocketConstructor = require("ws");
   } catch {
-    // ws not available in this environment - edge runtime uses native WebSocket
+    // Workers use native WebSocket
   }
 }
 
-function createPrismaClient(): PrismaClient {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    throw new Error('DATABASE_URL environment variable is not set.');
+function resolveDatabaseUrl(): string {
+  const fromProcess = process.env.DATABASE_URL;
+  if (fromProcess) return fromProcess;
+  try {
+    const { env } = getCloudflareContext();
+    const fromBinding = (env as Record<string, string | undefined>).DATABASE_URL;
+    if (fromBinding) return fromBinding;
+  } catch {
+    // Not in a Cloudflare request context (e.g. `next start` without OpenNext)
   }
+  throw new Error("DATABASE_URL environment variable is not set.");
+}
 
+export const getDb = cache((): PrismaClient => {
+  const connectionString = resolveDatabaseUrl();
   const pool = new Pool({ connectionString });
   const adapter = new PrismaNeon(pool);
-
   return new PrismaClient({ adapter } as ConstructorParameters<typeof PrismaClient>[0]);
-}
-
-// Reuse the client across hot-reloads in development to avoid exhausting
-// the connection pool.
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
-
-export const db: PrismaClient = globalForPrisma.prisma ?? createPrismaClient();
-
-if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prisma = db;
-}
+});

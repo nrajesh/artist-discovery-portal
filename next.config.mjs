@@ -4,6 +4,8 @@ import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 const nextConfig = {
   // Required by @opennextjs/cloudflare to produce the server bundle under .next/standalone
   output: "standalone",
+  // Prisma on Workers: keep generated client external so OpenNext can patch for workerd
+  serverExternalPackages: ["@prisma/client", ".prisma/client"],
   typescript: {
     // Type errors won't block builds during active development
     ignoreBuildErrors: true,

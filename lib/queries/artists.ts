@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { getDb } from "@/lib/db";
 import type { Speciality } from "@prisma/client";
 
 /** Listing card — matches prior dummy-artists usage in directory UI */
@@ -17,7 +17,7 @@ function specColor(s: Speciality) {
 }
 
 export async function listArtistsForDirectory(): Promise<ArtistListing[]> {
-  const rows = await db.artist.findMany({
+  const rows = await getDb().artist.findMany({
     where: { isSuspended: false },
     include: {
       specialities: {
@@ -74,7 +74,7 @@ export type ArtistProfileView = {
 };
 
 export async function getArtistBySlug(slug: string): Promise<ArtistProfileView | null> {
-  const artist = await db.artist.findFirst({
+  const artist = await getDb().artist.findFirst({
     where: { slug, isSuspended: false },
     include: {
       specialities: {
@@ -159,21 +159,21 @@ export async function getArtistBySlug(slug: string): Promise<ArtistProfileView |
 }
 
 export async function countActiveArtists(): Promise<number> {
-  return db.artist.count({ where: { isSuspended: false } });
+  return getDb().artist.count({ where: { isSuspended: false } });
 }
 
 export async function countOpenToCollabArtists(): Promise<number> {
-  return db.artist.count({ where: { isSuspended: false, openToCollab: true } });
+  return getDb().artist.count({ where: { isSuspended: false, openToCollab: true } });
 }
 
 export async function countActiveCollabs(): Promise<number> {
-  return db.collab.count({ where: { status: "active" } });
+  return getDb().collab.count({ where: { status: "active" } });
 }
 
 export type HomeCollabPreview = { slug: string; name: string; members: number; status: string };
 
 export async function listCollabsForHome(limit: number): Promise<HomeCollabPreview[]> {
-  const collabs = await db.collab.findMany({
+  const collabs = await getDb().collab.findMany({
     where: { status: "active" },
     include: { _count: { select: { members: true } } },
     orderBy: { createdAt: "desc" },
@@ -188,7 +188,7 @@ export async function listCollabsForHome(limit: number): Promise<HomeCollabPrevi
 }
 
 export async function getArtistListingBySlug(slug: string): Promise<ArtistListing | null> {
-  const row = await db.artist.findFirst({
+  const row = await getDb().artist.findFirst({
     where: { slug, isSuspended: false },
     include: {
       specialities: {

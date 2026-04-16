@@ -15,7 +15,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { getDb } from '@/lib/db';
 import { issueMagicLink } from '@/lib/auth';
 import { analyticsServer } from '@/lib/analytics-server';
 
@@ -38,13 +38,13 @@ export async function generateSlug(fullName: string): Promise<string> {
     .replace(/^-|-$/g, '');
 
   // Check if base slug is available
-  const existing = await db.artist.findUnique({ where: { slug: base } });
+  const existing = await getDb().artist.findUnique({ where: { slug: base } });
   if (!existing) return base;
 
   // Try numeric suffixes
   for (let i = 1; i <= 999; i++) {
     const candidate = `${base}-${i}`;
-    const conflict = await db.artist.findUnique({ where: { slug: candidate } });
+    const conflict = await getDb().artist.findUnique({ where: { slug: candidate } });
     if (!conflict) return candidate;
   }
 
@@ -63,7 +63,7 @@ export async function POST(
   const { id } = params;
 
   // 1. Fetch the RegistrationRequest
-  const registration = await db.registrationRequest.findUnique({
+  const registration = await getDb().registrationRequest.findUnique({
     where: { id },
     include: {
       specialities: true,
@@ -88,7 +88,7 @@ export async function POST(
   const slug = await generateSlug(registration.fullName);
 
   // 3. Create Artist record
-  const artist = await db.artist.create({
+  const artist = await getDb().artist.create({
     data: {
       slug,
       fullName: registration.fullName,
@@ -106,11 +106,11 @@ export async function POST(
   for (let i = 0; i < registration.specialities.length; i++) {
     const spec = registration.specialities[i];
     // Look up the Speciality by name
-    const speciality = await db.speciality.findUnique({
+    const speciality = await getDb().speciality.findUnique({
       where: { name: spec.specialityName },
     });
     if (speciality) {
-      await db.artistSpeciality.create({
+      await getDb().artistSpeciality.create({
         data: {
           artistId: artist.id,
           specialityId: speciality.id,
@@ -122,7 +122,7 @@ export async function POST(
 
   // 5. Create ExternalLink records
   if (registration.links.length > 0) {
-    await db.externalLink.createMany({
+    await getDb().externalLink.createMany({
       data: registration.links.map((link) => ({
         artistId: artist.id,
         linkType: link.linkType,
@@ -135,7 +135,7 @@ export async function POST(
   await issueMagicLink(registration.email);
 
   // 7. Update RegistrationRequest status
-  await db.registrationRequest.update({
+  await getDb().registrationRequest.update({
     where: { id },
     data: {
       status: 'approved',

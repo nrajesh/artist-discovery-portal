@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { db } from '@/lib/db';
+import { getDb } from '@/lib/db';
 import { uploadFile } from '@/lib/storage';
 
 // ---------------------------------------------------------------------------
@@ -200,7 +200,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create RegistrationRequest + related records in a transaction
-    await db.registrationRequest.create({
+    await getDb().registrationRequest.create({
       data: {
         id: registrationId,
         fullName: validated.fullName,
@@ -223,7 +223,7 @@ export async function POST(request: NextRequest) {
     // Create Notification records for all admin accounts
     const adminEmails = getAdminEmails();
     if (adminEmails.length > 0) {
-      const adminArtists = await db.artist.findMany({
+      const adminArtists = await getDb().artist.findMany({
         where: {
           email: { in: adminEmails },
         },
@@ -231,7 +231,7 @@ export async function POST(request: NextRequest) {
       });
 
       if (adminArtists.length > 0) {
-        await db.notification.createMany({
+        await getDb().notification.createMany({
           data: adminArtists.map((admin) => ({
             artistId: admin.id,
             type: 'new_registration',
