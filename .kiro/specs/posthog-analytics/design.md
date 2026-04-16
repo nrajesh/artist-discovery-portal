@@ -2,7 +2,7 @@
 
 ## Overview
 
-This design integrates PostHog analytics into the Carnatic Artist Portal — a Next.js 14 App Router application with three route groups (`/(public)/*`, `/(artist)/*`, `/(admin)/*`). The integration is split across two SDK layers:
+This design integrates PostHog analytics into the Carnatic Artist Portal - a Next.js 14 App Router application with three route groups (`/(public)/*`, `/(artist)/*`, `/(admin)/*`). The integration is split across two SDK layers:
 
 - **Client-side** (`posthog-js`): initialised once in the root layout via a React Provider, captures page views on every App Router navigation, and fires explicit events for user interactions.
 - **Server-side** (`posthog-node`): used inside Next.js API route handlers to capture backend events (login, logout, registration approvals/rejections, artist suspension) with the actor's `artistId` as the PostHog `distinctId`.
@@ -67,7 +67,7 @@ graph TD
 
 ## Components and Interfaces
 
-### 1. `lib/analytics-client.ts` — PostHog JS singleton
+### 1. `lib/analytics-client.ts` - PostHog JS singleton
 
 ```typescript
 // Exports the configured posthog-js instance.
@@ -81,7 +81,7 @@ Responsibilities:
 - Guards against missing `NEXT_PUBLIC_POSTHOG_KEY`.
 - Sets `debug: true` when `NODE_ENV === 'development'`.
 
-### 2. `components/posthog-provider.tsx` — React context wrapper
+### 2. `components/posthog-provider.tsx` - React context wrapper
 
 ```typescript
 'use client'
@@ -93,7 +93,7 @@ Responsibilities:
 - Wraps children in `posthog-js/react`'s `PHProvider` so all descendants can call `usePostHog()`.
 - Mounts the `PageViewTracker` component.
 
-### 3. `components/page-view-tracker.tsx` — App Router navigation listener
+### 3. `components/page-view-tracker.tsx` - App Router navigation listener
 
 ```typescript
 'use client'
@@ -105,7 +105,7 @@ Responsibilities:
 - Fires `posthog.capture('$pageview', { $current_url: pathname + search })` on every navigation change.
 - Returns `null` (no rendered output).
 
-### 4. `app/api/ph/[...path]/route.ts` — Proxy route
+### 4. `app/api/ph/[...path]/route.ts` - Proxy route
 
 ```typescript
 export async function GET(request: NextRequest, { params }: { params: { path: string[] } }): Promise<Response>
@@ -120,12 +120,12 @@ Responsibilities:
 - Returns 503 if `POSTHOG_HOST` is absent.
 - No authentication required.
 
-### 5. `lib/analytics-server.ts` — PostHog Node singleton
+### 5. `lib/analytics-server.ts` - PostHog Node singleton
 
 ```typescript
 import { PostHog } from 'posthog-node'
 
-// Module-level singleton — initialised once per Node.js process.
+// Module-level singleton - initialised once per Node.js process.
 export const analyticsServer: PostHog | null
 export function shutdownAnalytics(): Promise<void>
 ```
@@ -133,12 +133,12 @@ export function shutdownAnalytics(): Promise<void>
 Responsibilities:
 - Creates a `PostHog` instance with `host: process.env.POSTHOG_HOST`.
 - Returns `null` (no-op) if `POSTHOG_HOST` or `NEXT_PUBLIC_POSTHOG_KEY` is absent.
-- Exports `shutdownAnalytics()` which calls `posthog.shutdown()` — called from a process `SIGTERM`/`SIGINT` handler.
+- Exports `shutdownAnalytics()` which calls `posthog.shutdown()` - called from a process `SIGTERM`/`SIGINT` handler.
 
-### 6. `components/dev-admin-badge.tsx` — Development floating badge
+### 6. `components/dev-admin-badge.tsx` - Development floating badge
 
 ```typescript
-// Server Component — no 'use client' directive.
+// Server Component - no 'use client' directive.
 export function DevAdminBadge(): JSX.Element | null
 ```
 
@@ -147,13 +147,13 @@ Responsibilities:
 - Returns `null` when `NODE_ENV !== 'development'`.
 - Renders a fixed-position amber badge with a link to the admin path (or a "not set" message).
 
-### 7. `app/(public)/privacy/page.tsx` — Privacy policy page
+### 7. `app/(public)/privacy/page.tsx` - Privacy policy page
 
 A standard Next.js Server Component page at `/privacy` within the `/(public)` route group. Contains the required disclosures about PostHog analytics usage, data retention, opt-out mechanism, and self-hosted status.
 
 ### 8. Event-capturing hooks / inline captures
 
-Each page or component that needs to fire an event calls `usePostHog()` and invokes `posthog.capture()` directly. No separate abstraction layer is introduced — the PostHog API is the abstraction.
+Each page or component that needs to fire an event calls `usePostHog()` and invokes `posthog.capture()` directly. No separate abstraction layer is introduced - the PostHog API is the abstraction.
 
 ---
 
@@ -188,19 +188,19 @@ posthog.identify(artistId, {
 | Event Name | Trigger | Properties | SDK |
 |---|---|---|---|
 | `$pageview` | Every route change | `$current_url` | Client |
-| `artist_listing_viewed` | `/artists` page mount | — | Client |
+| `artist_listing_viewed` | `/artists` page mount | - | Client |
 | `artist_profile_viewed` | `/artists/[slug]` page mount | `artist_slug` | Client |
-| `cta_join_clicked` | "Join as an Artist" click | — | Client |
+| `cta_join_clicked` | "Join as an Artist" click | - | Client |
 | `registration_submitted` | Registration form submit | `speciality_count` | Client |
-| `artist_login` | Session created in login API | — | Server |
-| `artist_logout` | Session cleared in logout API | — | Server |
-| `dashboard_viewed` | `/dashboard` page mount | — | Client |
-| `profile_edit_started` | "Edit profile" click | — | Client |
-| `profile_edit_saved` | Profile save success | — | Client |
-| `collab_created` | New collab form submit | — | Client |
+| `artist_login` | Session created in login API | - | Server |
+| `artist_logout` | Session cleared in logout API | - | Server |
+| `dashboard_viewed` | `/dashboard` page mount | - | Client |
+| `profile_edit_started` | "Edit profile" click | - | Client |
+| `profile_edit_saved` | Profile save success | - | Client |
+| `collab_created` | New collab form submit | - | Client |
 | `availability_updated` | Availability save success | `window_count` | Client |
 | `artist_search_performed` | Search results rendered | `result_count` | Client |
-| `admin_dashboard_viewed` | `/admin/dashboard` page mount | — | Client |
+| `admin_dashboard_viewed` | `/admin/dashboard` page mount | - | Client |
 | `registration_approved` | Approve API handler | `registration_id` | Server |
 | `registration_rejected` | Reject API handler | `registration_id` | Server |
 | `artist_suspension_changed` | Suspension API handler | `artist_id`, `suspended` | Server |
@@ -233,7 +233,7 @@ if (dnt || optOutCookie) {
 
 ## Correctness Properties
 
-*A property is a characteristic or behavior that should hold true across all valid executions of a system — essentially, a formal statement about what the system should do. Properties serve as the bridge between human-readable specifications and machine-verifiable correctness guarantees.*
+*A property is a characteristic or behavior that should hold true across all valid executions of a system - essentially, a formal statement about what the system should do. Properties serve as the bridge between human-readable specifications and machine-verifiable correctness guarantees.*
 
 The project already uses `fast-check` (present in `devDependencies`) and `vitest`. All property tests use `fc.assert(fc.property(...))` with the default 100 iterations minimum.
 
@@ -316,7 +316,7 @@ The project already uses `fast-check` (present in `devDependencies`) and `vitest
 ### Missing `NEXT_PUBLIC_POSTHOG_KEY`
 
 - `initPostHog()` checks for the key before calling `posthog.init()`.
-- If absent or empty: logs `console.warn('[analytics] NEXT_PUBLIC_POSTHOG_KEY is not set — analytics disabled')` and returns without initialising.
+- If absent or empty: logs `console.warn('[analytics] NEXT_PUBLIC_POSTHOG_KEY is not set - analytics disabled')` and returns without initialising.
 - All subsequent `posthog.capture()` calls are no-ops because `posthog-js` is not initialised.
 
 ### Missing `POSTHOG_HOST`
@@ -328,7 +328,7 @@ The project already uses `fast-check` (present in `devDependencies`) and `vitest
 
 - The proxy route wraps the upstream `fetch()` in a try/catch.
 - On network error: returns `HTTP 502` with body `{ "error": "upstream unreachable" }`.
-- This is a best-effort degradation — analytics failure must never break the user-facing request.
+- This is a best-effort degradation - analytics failure must never break the user-facing request.
 
 ### Server-side SDK shutdown
 
@@ -367,9 +367,9 @@ Configuration:
 - Tag format: `// Feature: posthog-analytics, Property N: <property_text>`
 
 Property test file locations:
-- `lib/__tests__/analytics-client.test.ts` — Properties 1, 2, 3, 4, 5, 10, 11, 12
-- `lib/__tests__/analytics-server.test.ts` — Properties 6, 7, 8
-- `app/api/ph/__tests__/proxy.test.ts` — Property 9
+- `lib/__tests__/analytics-client.test.ts` - Properties 1, 2, 3, 4, 5, 10, 11, 12
+- `lib/__tests__/analytics-server.test.ts` - Properties 6, 7, 8
+- `app/api/ph/__tests__/proxy.test.ts` - Property 9
 
 ### Unit Tests
 

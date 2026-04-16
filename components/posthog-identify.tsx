@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * PostHogIdentify — client component that stitches the PostHog anonymous
+ * PostHogIdentify - client component that stitches the PostHog anonymous
  * identity to the authenticated artist after a successful magic-link login.
  *
  * Mounted on the artist dashboard when the URL contains `?ph_identify=1`.

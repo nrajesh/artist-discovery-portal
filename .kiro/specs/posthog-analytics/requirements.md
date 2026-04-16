@@ -26,7 +26,7 @@ The portal has three distinct user contexts: unauthenticated public visitors, au
 - **Artist**: An approved, authenticated portal user with role `artist`.
 - **Admin**: An authenticated portal user with role `admin`.
 - **Session**: A JWT-signed cookie (`session`) that carries `artistId` and `role`, verified by the Edge Middleware.
-- **PII**: Personally Identifiable Information — full names, email addresses, phone numbers.
+- **PII**: Personally Identifiable Information - full names, email addresses, phone numbers.
 
 ---
 
@@ -80,7 +80,7 @@ The portal has three distinct user contexts: unauthenticated public visitors, au
 #### Acceptance Criteria
 
 1. WHEN an artist successfully authenticates via magic link, THE Analytics_Client SHALL call `posthog.identify(artistId)` to associate the browser's anonymous Distinct_ID with the artist's `artistId`.
-2. WHEN `posthog.identify()` is called, THE Analytics_Client SHALL set the person properties `role` to `'artist'` and `province` to the artist's province value — and SHALL NOT set `email`, `name`, or `contactNumber`.
+2. WHEN `posthog.identify()` is called, THE Analytics_Client SHALL set the person properties `role` to `'artist'` and `province` to the artist's province value - and SHALL NOT set `email`, `name`, or `contactNumber`.
 3. WHEN an artist logs out, THE Analytics_Client SHALL call `posthog.reset()` to disassociate the browser session from the artist identity.
 4. THE Analytics_Server SHALL capture the event `artist_login` server-side (via the PostHog Node SDK) with the `artistId` as the Distinct_ID immediately after a session is created.
 5. THE Analytics_Server SHALL capture the event `artist_logout` server-side with the `artistId` as the Distinct_ID immediately before the session cookie is cleared.
@@ -200,7 +200,7 @@ The portal has three distinct user contexts: unauthenticated public visitors, au
 1. THE Portal SHALL include a privacy policy page (or a dedicated analytics section within an existing privacy policy page) that is reachable via a link in the public footer.
 2. THE Privacy_Policy SHALL state that the portal uses PostHog analytics to track page views and user interactions for the purpose of improving the service.
 3. THE Privacy_Policy SHALL state that no PII (including email addresses, full names, or phone numbers) is included in any analytics event.
-4. THE Privacy_Policy SHALL state the data retention period configured on the PostHog_Instance (e.g. "event data is retained for 12 months") — this value SHALL match the actual retention setting on the PostHog_Instance.
+4. THE Privacy_Policy SHALL state the data retention period configured on the PostHog_Instance (e.g. "event data is retained for 12 months") - this value SHALL match the actual retention setting on the PostHog_Instance.
 5. THE Privacy_Policy SHALL describe the opt-out mechanism: WHEN a user sets the Do Not Track browser signal or an opt-out cookie is present, THE Analytics_Client SHALL not capture any events for that user.
 6. THE Privacy_Policy SHALL identify the PostHog_Instance as a self-hosted instance operated by the portal operator, so that users understand their data does not leave the operator's infrastructure.
 7. WHEN the privacy policy content is updated to reflect analytics usage, THE Portal's public footer SHALL include a visible link labelled "Privacy Policy" that navigates to the privacy policy page.

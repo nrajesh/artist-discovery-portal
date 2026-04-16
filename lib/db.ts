@@ -1,11 +1,11 @@
 /**
  * Prisma + Neon on Cloudflare Workers (OpenNext).
  *
- * Do **not** create PrismaClient at module load — `process.env.DATABASE_URL` is
+ * Do **not** create PrismaClient at module load - `process.env.DATABASE_URL` is
  * bound per request in the Worker.
  *
  * Use React `cache()` when available (React 19+) to dedupe one client per
- * request. On React 18, `cache` is missing — we fall back to creating a client
+ * request. On React 18, `cache` is missing - we fall back to creating a client
  * per `getDb()` call (multiple pools per request under heavy parallel queries;
  * acceptable for Neon serverless at moderate traffic).
  *
@@ -64,7 +64,7 @@ function normalizeDatabaseUrl(raw: string): string {
 }
 
 function resolveDatabaseUrl(): string {
-  // Prefer Worker bindings (secrets / vars) — matches OpenNext Postgres + Hyperdrive patterns.
+  // Prefer Worker bindings (secrets / vars) - matches OpenNext Postgres + Hyperdrive patterns.
   // `populateProcessEnv` also mirrors string bindings onto `process.env`, but ordering bugs or
   // internal fetches should still see `env.DATABASE_URL` when sync context is available.
   try {
@@ -81,7 +81,7 @@ function resolveDatabaseUrl(): string {
 
 export const getDb = requestMemo((): PrismaClient => {
   const connectionString = resolveDatabaseUrl();
-  // Pass `PoolConfig`, not a `Pool` — the adapter does `new Pool(config)` internally; a Pool
+  // Pass `PoolConfig`, not a `Pool` - the adapter does `new Pool(config)` internally; a Pool
   // instance is invalid config and Neon falls back to localhost (your Worker log error).
   const adapter = new PrismaNeon({ connectionString, maxUses: 1 });
   return new PrismaClient({ adapter } as ConstructorParameters<typeof PrismaClient>[0]);

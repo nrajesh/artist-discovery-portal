@@ -6,7 +6,7 @@ import { usePostHog } from 'posthog-js/react'
 
 /**
  * Fires `dashboard_viewed` once on mount.
- * Returns null — no rendered output.
+ * Returns null - no rendered output.
  */
 export function DashboardViewTracker(): null {
   const posthog = usePostHog()

@@ -35,7 +35,7 @@ export default async function ArtistDashboardPage({
       });
       province = artist?.province ?? null;
     } catch {
-      // Silently ignore DB errors — analytics must not break the page
+      // Silently ignore DB errors - analytics must not break the page
     }
   }
 

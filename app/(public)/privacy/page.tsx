@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 /**
- * Privacy Policy page — analytics disclosure.
+ * Privacy Policy page - analytics disclosure.
  * Server Component at the /privacy route.
  * Requirements: 12.1, 12.2, 12.3, 12.4, 12.5, 12.6
  */
@@ -42,7 +42,7 @@ export default function PrivacyPage() {
             <p>
               Events that are tracked include page views, artist profile views, registration form submissions, and
               key interactions within the artist dashboard (such as collab creation and availability updates).
-              No tracking occurs outside of these explicitly defined events — autocapture is disabled.
+              No tracking occurs outside of these explicitly defined events - autocapture is disabled.
             </p>
           </div>
         </section>
@@ -120,7 +120,7 @@ export default function PrivacyPage() {
               </div>
             </div>
             <p className="text-sm text-stone-500">
-              When either opt-out mechanism is active, no events are sent — not even page views.
+              When either opt-out mechanism is active, no events are sent - not even page views.
             </p>
           </div>
         </section>

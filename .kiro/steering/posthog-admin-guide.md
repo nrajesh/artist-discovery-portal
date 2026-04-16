@@ -2,7 +2,7 @@
 inclusion: manual
 ---
 
-# PostHog Analytics — Admin Guide
+# PostHog Analytics - Admin Guide
 
 This guide is for portal admins and operators using the PostHog analytics integration. It covers what to expect, how to get value from the data, and what to avoid.
 
@@ -18,7 +18,7 @@ Once an artist logs in, PostHog stitches their anonymous pre-login activity to t
 - `role: artist`
 - `province: <their province>`
 
-No email, no name — just the opaque ID and those two properties. This is intentional for GDPR compliance.
+No email, no name - just the opaque ID and those two properties. This is intentional for GDPR compliance.
 
 ### Dashboards & Insights
 The main value of PostHog. Useful charts to build:
@@ -31,17 +31,17 @@ The main value of PostHog. Useful charts to build:
 
 ## What this integration does NOT do
 
-- **No autocapture** — only the 17 explicitly named events are tracked. If you want to track something new, a code change is needed.
-- **No session recordings** — disabled by default. Requires `NEXT_PUBLIC_POSTHOG_ENABLE_RECORDING=true` and GDPR review before enabling.
-- **No heatmaps** — these rely on autocapture, which is off.
-- **No feature flags or A/B testing** — not in scope, but PostHog supports them and they can be added later.
+- **No autocapture** - only the 17 explicitly named events are tracked. If you want to track something new, a code change is needed.
+- **No session recordings** - disabled by default. Requires `NEXT_PUBLIC_POSTHOG_ENABLE_RECORDING=true` and GDPR review before enabling.
+- **No heatmaps** - these rely on autocapture, which is off.
+- **No feature flags or A/B testing** - not in scope, but PostHog supports them and they can be added later.
 
 ---
 
 ## Day-to-day usage tips
 
 ### Finding your events
-Go to **Activity → Events** in the PostHog UI. Filter by event name to focus on a specific event. The `$pageview` event will be the most frequent — filter it out when looking for action events.
+Go to **Activity → Events** in the PostHog UI. Filter by event name to focus on a specific event. The `$pageview` event will be the most frequent - filter it out when looking for action events.
 
 ### Building a registration funnel
 **Insights → Funnels.** The most useful funnel for this app:
@@ -67,14 +67,14 @@ The privacy policy states no PII is collected. If you ever add a new `posthog.ca
 An amber floating badge showing the PostHog admin path appears in the bottom-right corner when running locally (`NODE_ENV=development`). It will never appear in production.
 
 ### The admin UI URL is a secret
-`POSTHOG_ADMIN_PATH` is a 32+ character random string — treat it like a password:
+`POSTHOG_ADMIN_PATH` is a 32+ character random string - treat it like a password:
 - Don't share it in Slack or email
 - Don't commit it to version control
 - Don't put it in a README or wiki
 - If it leaks, generate a new one and update the reverse proxy config
 
 ### Analytics failures are silent by design
-If PostHog is unreachable, the app keeps working normally — events are just lost. If event counts drop to zero unexpectedly, check:
+If PostHog is unreachable, the app keeps working normally - events are just lost. If event counts drop to zero unexpectedly, check:
 1. The PostHog Docker container is running
 2. `POSTHOG_HOST` is set correctly in the environment
 3. The reverse proxy is routing correctly
@@ -92,7 +92,7 @@ After spinning up the self-hosted PostHog instance:
 3. Copy the key (it begins with `phc_`)
 4. Set it as `NEXT_PUBLIC_POSTHOG_KEY` in `.env.local`
 
-This key is safe to expose to the browser — it is a write-only ingestion key, not an admin credential.
+This key is safe to expose to the browser - it is a write-only ingestion key, not an admin credential.
 
 ---
 
@@ -101,19 +101,19 @@ This key is safe to expose to the browser — it is a write-only ingestion key, 
 | Event | Where it fires | Key properties |
 |---|---|---|
 | `$pageview` | Every route change | `$current_url` |
-| `artist_listing_viewed` | `/artists` page | — |
+| `artist_listing_viewed` | `/artists` page | - |
 | `artist_profile_viewed` | `/artists/[slug]` page | `artist_slug` |
-| `cta_join_clicked` | Home page CTA | — |
+| `cta_join_clicked` | Home page CTA | - |
 | `registration_submitted` | Registration form | `speciality_count` |
-| `artist_login` | Login API (server) | — |
-| `artist_logout` | Logout API (server) | — |
-| `dashboard_viewed` | Artist dashboard | — |
-| `profile_edit_started` | Edit profile click | — |
-| `profile_edit_saved` | Profile save success | — |
-| `collab_created` | New collab submit | — |
+| `artist_login` | Login API (server) | - |
+| `artist_logout` | Logout API (server) | - |
+| `dashboard_viewed` | Artist dashboard | - |
+| `profile_edit_started` | Edit profile click | - |
+| `profile_edit_saved` | Profile save success | - |
+| `collab_created` | New collab submit | - |
 | `availability_updated` | Availability save | `window_count` |
 | `artist_search_performed` | Search results | `result_count` |
-| `admin_dashboard_viewed` | Admin dashboard | — |
+| `admin_dashboard_viewed` | Admin dashboard | - |
 | `registration_approved` | Approve API (server) | `registration_id` |
 | `registration_rejected` | Reject API (server) | `registration_id` |
 | `artist_suspension_changed` | Suspension API (server) | `artist_id`, `suspended` |

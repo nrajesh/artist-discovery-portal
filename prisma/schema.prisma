@@ -1,4 +1,4 @@
-// Carnatic Artist Portal — Prisma Schema
+// Carnatic Artist Portal - Prisma Schema
 // Runtime adapter: @neondatabase/serverless (see lib/db.ts)
 // Use pooled DATABASE_URL for serverless functions; set DIRECT_DATABASE_URL for migrations.
 

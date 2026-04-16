@@ -1,8 +1,23 @@
 import posthog from 'posthog-js'
 
 /**
+ * Browser ingest URL. In development we call PostHog Cloud directly so the SDK works without
+ * `POSTHOG_HOST` on the server (the `/api/ph` proxy would otherwise return 503 and cause
+ * "Failed to fetch" / RemoteConfig errors). Production keeps the same-origin proxy.
+ */
+function posthogApiHost(): string {
+  if (process.env.NODE_ENV === 'development') {
+    const direct =
+      process.env.NEXT_PUBLIC_POSTHOG_INGEST_HOST?.trim() ||
+      'https://eu.i.posthog.com'
+    return direct.replace(/\/$/, '')
+  }
+  return '/api/ph'
+}
+
+/**
  * When `api_host` is a same-origin proxy path, PostHog still needs the real app origin for
- * toolbar links and some SDK loads — otherwise the client can request bad URLs and Safari logs
+ * toolbar links and some SDK loads - otherwise the client can request bad URLs and Safari logs
  * "The network connection was lost" for a stray resource (often shown as "(e, line 0)").
  * @see https://posthog.com/docs/advanced/proxy/nextjs
  */
@@ -17,12 +32,12 @@ export function initPostHog(): void {
   const key = process.env.NEXT_PUBLIC_POSTHOG_KEY
 
   if (!key) {
-    console.warn('[analytics] NEXT_PUBLIC_POSTHOG_KEY is not set — analytics disabled')
+    console.warn('[analytics] NEXT_PUBLIC_POSTHOG_KEY is not set - analytics disabled')
     return
   }
 
   posthog.init(key, {
-    api_host: '/api/ph',
+    api_host: posthogApiHost(),
     ui_host: posthogUiHost(),
     capture_pageview: false,
     autocapture: false,

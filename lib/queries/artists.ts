@@ -1,7 +1,7 @@
 import { getDb } from "@/lib/db";
 import type { Speciality } from "@prisma/client";
 
-/** Listing card — matches prior dummy-artists usage in directory UI */
+/** Listing card - matches prior dummy-artists usage in directory UI */
 export type ArtistListing = {
   id: string;
   slug: string;
@@ -38,7 +38,7 @@ export async function listArtistsForDirectory(): Promise<ArtistListing[]> {
   }));
 }
 
-/** Profile page shape — aligned with former DummyArtist */
+/** Profile page shape - aligned with former DummyArtist */
 export type ArtistProfileView = {
   id: string;
   slug: string;

@@ -3,7 +3,7 @@ import { getDb } from "@/lib/db";
 
 /**
  * Minimal DB connectivity check for production debugging.
- * Open `/api/health/db` — 200 means Prisma reached Postgres; 503 means check
+ * Open `/api/health/db` - 200 means Prisma reached Postgres; 503 means check
  * Worker **runtime** `DATABASE_URL`, Neon status, and `wrangler tail` logs.
  */
 export async function GET() {

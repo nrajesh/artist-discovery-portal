@@ -2,7 +2,7 @@
 
 ## Overview
 
-Integrate PostHog analytics into the Carnatic Artist Portal using `posthog-js` (client-side) and `posthog-node` (server-side). All SDK traffic is routed through a Next.js reverse-proxy route. Events are captured explicitly — no autocapture. Privacy controls (opt-out, PII masking) are first-class requirements.
+Integrate PostHog analytics into the Carnatic Artist Portal using `posthog-js` (client-side) and `posthog-node` (server-side). All SDK traffic is routed through a Next.js reverse-proxy route. Events are captured explicitly - no autocapture. Privacy controls (opt-out, PII masking) are first-class requirements.
 
 ## Tasks
 
@@ -55,7 +55,7 @@ Integrate PostHog analytics into the Carnatic Artist Portal using `posthog-js` (
 - [x] 3. Create the PostHog Node server singleton
   - [x] 3.1 Create `lib/analytics-server.ts`
     - Create a module-level `PostHog` singleton with `host: process.env.POSTHOG_HOST`
-    - Export `analyticsServer` as `PostHog | null` — returns `null` if `POSTHOG_HOST` or `NEXT_PUBLIC_POSTHOG_KEY` is absent
+    - Export `analyticsServer` as `PostHog | null` - returns `null` if `POSTHOG_HOST` or `NEXT_PUBLIC_POSTHOG_KEY` is absent
     - Export `shutdownAnalytics()` that calls `posthog.shutdown()`
     - Register `process.on('SIGTERM', ...)` and `process.on('SIGINT', ...)` handlers that call `shutdownAnalytics()`
     - _Requirements: 9.5_
@@ -94,7 +94,7 @@ Integrate PostHog analytics into the Carnatic Artist Portal using `posthog-js` (
     - For any request path suffix, HTTP method, request body, and mocked PostHog response, the proxy forwards the request to `${POSTHOG_HOST}/${path}` with the original method and body, and returns a response with the same status code and body
     - **Validates: Requirements 7.1, 7.2, 7.3**
 
-- [x] 5. Checkpoint — Ensure all tests pass
+- [x] 5. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [x] 6. Wire PostHogProvider and DevAdminBadge into the root layout
@@ -147,7 +147,7 @@ Integrate PostHog analytics into the Carnatic Artist Portal using `posthog-js` (
 
 - [x] 8. Add identity stitching and auth event captures
   - [x] 8.1 Update the magic-link verify page (`app/(public)/auth/verify/page.tsx`)
-    - After successful session creation, call `posthog.identify(artistId, { role: 'artist', province })` — do NOT include email, name, or contactNumber
+    - After successful session creation, call `posthog.identify(artistId, { role: 'artist', province })` - do NOT include email, name, or contactNumber
     - _Requirements: 4.1, 4.2_
 
   - [x] 8.2 Update `app/api/auth/login/route.ts` (or the verify/callback handler that creates the session)
@@ -216,7 +216,7 @@ Integrate PostHog analytics into the Carnatic Artist Portal using `posthog-js` (
     - Call `analyticsServer?.capture({ distinctId: adminArtistId, event: 'artist_suspension_changed', properties: { artist_id: targetArtistId, suspended: suspendedBoolean } })` wrapped in try/catch
     - _Requirements: 6.3, 6.5_
 
-- [x] 11. Checkpoint — Ensure all tests pass
+- [x] 11. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [x] 12. Create the privacy policy page and update the footer
@@ -233,7 +233,7 @@ Integrate PostHog analytics into the Carnatic Artist Portal using `posthog-js` (
     - Test that the page renders and contains required disclosure text (PostHog, no PII, opt-out, self-hosted)
     - _Requirements: 12.2, 12.3, 12.5, 12.6_
 
-- [x] 13. Final checkpoint — Ensure all tests pass
+- [x] 13. Final checkpoint - Ensure all tests pass
   - Run `npm test` and confirm all property-based tests and unit tests pass
   - Verify `env.example` documents all four PostHog variables with comments
   - Ensure all tests pass, ask the user if questions arise.
@@ -243,5 +243,5 @@ Integrate PostHog analytics into the Carnatic Artist Portal using `posthog-js` (
 - Tasks marked with `*` are optional and can be skipped for faster MVP
 - Each task references specific requirements for traceability
 - Property tests live in `lib/__tests__/analytics-client.test.ts` (Properties 1–5, 10–12), `lib/__tests__/analytics-server.test.ts` (Properties 6–8), and `app/api/ph/__tests__/proxy.test.ts` (Property 9)
-- All `analyticsServer?.capture()` calls in API routes must be wrapped in try/catch — analytics failures must never break user-facing requests
+- All `analyticsServer?.capture()` calls in API routes must be wrapped in try/catch - analytics failures must never break user-facing requests
 - The `posthog-js` and `posthog-node` modules should be mocked via `vi.mock()` in all tests

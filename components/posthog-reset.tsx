@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * PostHogReset — client component that calls `posthog.reset()` on mount
+ * PostHogReset - client component that calls `posthog.reset()` on mount
  * to disassociate the PostHog identity after logout.
  *
  * Mounted on the home page when the URL contains `?ph_reset=1`.

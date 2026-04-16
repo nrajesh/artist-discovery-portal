@@ -5,7 +5,7 @@ import { usePostHog } from 'posthog-js/react'
 
 /**
  * Fires `admin_dashboard_viewed` once on mount.
- * Returns null — no rendered output.
+ * Returns null - no rendered output.
  *
  * Requirements: 6.4
  */

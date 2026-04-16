@@ -1,12 +1,12 @@
 import { PostHog } from 'posthog-node'
 
 /**
- * Module-level PostHog Node SDK singleton — initialised once per Node.js process.
+ * Module-level PostHog Node SDK singleton - initialised once per Node.js process.
  *
  * Returns `null` when either `POSTHOG_HOST` or `NEXT_PUBLIC_POSTHOG_KEY` is absent,
  * so the server starts cleanly in environments where analytics is not configured.
  *
- * Usage pattern at all call sites — analytics errors must never propagate to callers:
+ * Usage pattern at all call sites - analytics errors must never propagate to callers:
  *
  *   try {
  *     analyticsServer?.capture({ distinctId: artistId, event: 'artist_login' })
@@ -41,12 +41,12 @@ export async function shutdownAnalytics(): Promise<void> {
 // Flush pending events before the process exits so no data is lost.
 process.on('SIGTERM', () => {
   shutdownAnalytics().catch(() => {
-    // Ignore shutdown errors — process is exiting anyway
+    // Ignore shutdown errors - process is exiting anyway
   })
 })
 
 process.on('SIGINT', () => {
   shutdownAnalytics().catch(() => {
-    // Ignore shutdown errors — process is exiting anyway
+    // Ignore shutdown errors - process is exiting anyway
   })
 })
