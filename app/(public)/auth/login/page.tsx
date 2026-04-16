@@ -7,6 +7,7 @@
  * Requirements: 2.6, 2.7
  */
 
+import Link from 'next/link';
 import { useState, FormEvent } from 'react';
 
 export default function LoginPage() {
@@ -44,8 +45,17 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-stone-50 px-4">
+    <main className="flex flex-1 flex-col items-center justify-center bg-stone-50 px-4 py-12 sm:py-16">
       <div className="w-full max-w-md">
+        <div className="mb-6">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1 text-sm font-medium text-stone-600 transition-colors hover:text-amber-900"
+          >
+            <span aria-hidden="true">←</span> Back to home
+          </Link>
+        </div>
+
         {/* Card */}
         <div className="rounded-2xl border border-stone-200 bg-white p-8 shadow-sm">
           <h1 className="mb-2 text-2xl font-bold text-stone-800">Sign in</h1>
