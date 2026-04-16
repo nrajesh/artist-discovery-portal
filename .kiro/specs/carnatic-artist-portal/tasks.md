@@ -9,7 +9,7 @@ Implement the Carnatic Artist Portal as a Next.js 14 (App Router) TypeScript PWA
 - [x] 1. Project scaffolding and deployment configuration
   - Initialise Next.js 14 App Router project with TypeScript and Tailwind CSS
   - Create `deployment.config.ts` and load all deployment-specific values (region, name, locales, map GeoJSON URL, branding) from environment variables - no hard-coded values
-  - Add `.env.example` documenting all required environment variables (`DATABASE_URL`, `RESEND_API_KEY`, `VAPID_*`, `R2_*`, `KV_*`, etc.)
+  - Add `env.example` (committed template; `.env*` is gitignored) documenting required environment variables (`DATABASE_URL`, `RESEND_API_KEY`, `VAPID_*`, `R2_*`, `KV_*`, etc.)
   - Set up ESLint, Prettier, and Vitest with `fast-check` for property-based testing
   - Configure Playwright for E2E tests
   - Production hosting: **Cloudflare Workers** with **OpenNext** (`@opennextjs/cloudflare`), `wrangler.jsonc`, `open-next.config.ts`, `output: "standalone"`; CI uses `npm run build` + `npm run deploy:cf` (see README)

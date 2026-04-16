@@ -8,7 +8,7 @@ Integrate PostHog analytics into the Carnatic Artist Portal using `posthog-js` (
 
 - [x] 1. Install dependencies and configure environment variables
   - Install `posthog-js` and `posthog-node` packages via npm
-  - Add `NEXT_PUBLIC_POSTHOG_KEY`, `POSTHOG_HOST`, `POSTHOG_ADMIN_PATH`, and `NEXT_PUBLIC_POSTHOG_ENABLE_RECORDING` to `.env.example` with placeholder values and inline comments explaining each variable's purpose
+  - Add `NEXT_PUBLIC_POSTHOG_KEY`, `POSTHOG_HOST`, `POSTHOG_ADMIN_PATH`, and `NEXT_PUBLIC_POSTHOG_ENABLE_RECORDING` to `env.example` with placeholder values and inline comments explaining each variable's purpose
   - _Requirements: 10.1, 10.2, 10.3, 10.5_
 
 - [x] 2. Create the PostHog client singleton and provider
@@ -235,7 +235,7 @@ Integrate PostHog analytics into the Carnatic Artist Portal using `posthog-js` (
 
 - [x] 13. Final checkpoint — Ensure all tests pass
   - Run `npm test` and confirm all property-based tests and unit tests pass
-  - Verify `.env.example` documents all four PostHog variables with comments
+  - Verify `env.example` documents all four PostHog variables with comments
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes

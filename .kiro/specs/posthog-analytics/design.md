@@ -387,7 +387,7 @@ The following requirements are verified manually or via deployment checks:
 - PostHog instance not bound to public port (Requirement 8.1).
 - Reverse-proxy rewrite maps `POSTHOG_ADMIN_PATH` to PostHog internal address (Requirement 8.2–8.5).
 - `POSTHOG_ADMIN_PATH` not committed to version control (Requirement 8.6).
-- `.env.example` documents all three PostHog variables (Requirement 10.5).
+- `env.example` documents all three PostHog variables (Requirement 10.5).
 - `.gitignore` includes `.env.local` and `.env` (Requirement 10.6).
 
 ### Test File Structure

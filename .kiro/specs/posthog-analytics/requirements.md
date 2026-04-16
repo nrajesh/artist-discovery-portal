@@ -170,7 +170,7 @@ The portal has three distinct user contexts: unauthenticated public visitors, au
 2. THE Portal SHALL read the PostHog instance host URL from the environment variable `POSTHOG_HOST` (server-side only, not prefixed with `NEXT_PUBLIC_`).
 3. THE Portal SHALL read the secret Admin_UI_Path from the environment variable `POSTHOG_ADMIN_PATH` (server-side only).
 4. WHERE `NODE_ENV` equals `'development'`, THE Analytics_Client SHALL set `debug: true` to log all captured events to the browser console.
-5. THE `.env.example` file SHALL document all three PostHog environment variables (`NEXT_PUBLIC_POSTHOG_KEY`, `POSTHOG_HOST`, `POSTHOG_ADMIN_PATH`) with placeholder values and inline comments explaining each variable's purpose.
+5. THE `env.example` template file SHALL document all three PostHog environment variables (`NEXT_PUBLIC_POSTHOG_KEY`, `POSTHOG_HOST`, `POSTHOG_ADMIN_PATH`) with placeholder values and inline comments explaining each variable's purpose.
 6. THE `.gitignore` file SHALL include `.env.local` and `.env` to prevent PostHog credentials from being committed to version control.
 
 > **How to obtain `NEXT_PUBLIC_POSTHOG_KEY`:** After spinning up the self-hosted PostHog instance, navigate to **Settings → Project → Project API Key** in the PostHog web UI. Copy the key (it begins with `phc_`) and set it as the value of `NEXT_PUBLIC_POSTHOG_KEY` in your `.env.local` file. This key is safe to expose to the browser; it is not a secret write key.

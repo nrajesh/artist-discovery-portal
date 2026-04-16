@@ -81,7 +81,7 @@ function requireEnv(key: string): string {
   if (!value) {
     throw new Error(
       `Missing required environment variable: ${key}. ` +
-        "Please ensure all variables listed in .env.example are set.",
+        "Please ensure all variables listed in env.example are set.",
     );
   }
   return value;

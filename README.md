@@ -78,10 +78,10 @@ npm install
 
 ### 2. Configure environment variables
 
-Copy `.env.example` to `.env.local` and fill in the values:
+Copy `env.example` to `.env.local` and fill in the values:
 
 ```bash
-cp .env.example .env.local
+cp env.example .env.local
 ```
 
 Open `.env.local` and set at minimum:
@@ -252,7 +252,7 @@ The app is built for production with **Next.js** (`npm run build`, `output: "sta
 3. **Deploy command:** `npm run deploy:cf`  
    This runs `opennextjs-cloudflare build --skipNextBuild` (consumes the `.next` output from the build step) and then `opennextjs-cloudflare deploy`.
 4. **Non-production uploads (optional):** e.g. `opennextjs-cloudflare build --skipNextBuild && opennextjs-cloudflare upload` for version uploads / preview pipelines.
-5. Add all variables from `.env.example` under **Build variables and secrets** (including `DATABASE_URL`, `SESSION_SECRET`, R2, Resend, etc.).
+5. Add all variables from `env.example` under **Build variables and secrets** (including `DATABASE_URL`, `SESSION_SECRET`, R2, Resend, etc.).
 6. Set `DATABASE_URL` to your Neon **pooled** connection string; use the **direct** string for migrations (`prisma migrate deploy`) in CI or locally.
 7. Ensure Prisma client is generated during install/build (`npx prisma generate` in postinstall or build if needed).
 
