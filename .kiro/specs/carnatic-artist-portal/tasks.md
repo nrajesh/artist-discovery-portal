@@ -12,6 +12,7 @@ Implement the Carnatic Artist Portal as a Next.js 14 (App Router) TypeScript PWA
   - Add `.env.example` documenting all required environment variables (`DATABASE_URL`, `RESEND_API_KEY`, `VAPID_*`, `R2_*`, `KV_*`, etc.)
   - Set up ESLint, Prettier, and Vitest with `fast-check` for property-based testing
   - Configure Playwright for E2E tests
+  - Production hosting: **Cloudflare Workers** with **OpenNext** (`@opennextjs/cloudflare`), `wrangler.jsonc`, `open-next.config.ts`, `output: "standalone"`; CI uses `npm run build` + `npm run deploy:cf` (see README)
   - _Requirements: 16.1, 16.7_
 
 - [x] 2. Database schema and migrations

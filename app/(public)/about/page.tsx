@@ -354,13 +354,14 @@ export default function AboutPage() {
               <tbody className="divide-y divide-stone-100">
                 {[
                   ["Framework",      "Next.js 14 (App Router)",        "SSR/SSG, API routes, Edge middleware, PWA-friendly"],
+                  ["Hosting",        "Cloudflare Workers + OpenNext",  "Production app on Workers via @opennextjs/cloudflare; Wrangler CI"],
                   ["Language",       "TypeScript",                     "Full-stack type safety"],
                   ["Styling",        "Tailwind CSS",                   "Utility-first, dynamic theming via CSS variables"],
                   ["Database",       "PostgreSQL via Neon",            "Serverless, git-like branching, no connection exhaustion"],
                   ["ORM",            "Prisma",                         "Type-safe DB access, migrations"],
                   ["Auth",           "Custom magic-link (JWT + Resend)","No passwords, email-only"],
                   ["File storage",   "Cloudflare R2",                  "S3-compatible, zero egress fees"],
-                  ["Cache/sessions", "Cloudflare KV / Vercel KV",      "Edge-native, no separate service"],
+                  ["Cache/sessions", "Cloudflare KV (optional)",      "Edge-native when enabled; colocated with Workers"],
                   ["Rich text",      "Tiptap",                         "ProseMirror-based, Unicode-safe, extensible"],
                   ["Maps",           "D3.js + GeoJSON",                "Configurable, no external map API"],
                   ["i18n",           "next-intl",                      "File-based JSON translations, locale switching"],

@@ -2,7 +2,8 @@
  * Singleton PrismaClient configured with the @neondatabase/serverless adapter.
  *
  * The Neon serverless adapter enables edge-compatible, pooled connections via
- * WebSockets - required for Next.js serverless functions on Vercel.
+ * WebSockets - suitable for serverless and edge runtimes (e.g. Cloudflare Workers
+ * with OpenNext).
  *
  * Set DATABASE_URL to the Neon *pooled* connection string for serverless
  * functions. For migrations (prisma migrate dev / deploy) set DIRECT_DATABASE_URL

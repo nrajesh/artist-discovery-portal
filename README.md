@@ -46,12 +46,13 @@ Designed for Lighthouse PWA ≥90, Performance ≥85, Accessibility ≥90 on mob
 | Layer | Technology |
 |---|---|
 | Framework | Next.js 14 (App Router) + TypeScript |
+| Hosting & deploy | [Cloudflare Workers](https://workers.cloudflare.com/) + [OpenNext](https://opennext.js.org/cloudflare) (`@opennextjs/cloudflare`), [Wrangler](https://developers.cloudflare.com/workers/wrangler/) |
 | Styling | Tailwind CSS |
 | Database | PostgreSQL via [Neon](https://neon.tech) (serverless, no connection exhaustion) |
 | ORM | Prisma with `@neondatabase/serverless` adapter |
 | Auth | Custom magic-link (JWT via `jose` + Resend email) |
 | File storage | Cloudflare R2 (S3-compatible, zero egress fees) |
-| Cache/sessions | Cloudflare KV / Vercel KV |
+| Cache/sessions | Cloudflare KV (optional; colocated on Cloudflare) |
 | Rich text | Tiptap (ProseMirror-based, Unicode-safe) |
 | Maps | D3.js + configurable GeoJSON |
 | i18n | next-intl (JSON locale files) |
@@ -240,16 +241,38 @@ public/
 
 ---
 
-## Deploying to Vercel
+## Deploying to Cloudflare (OpenNext + Workers)
 
-1. Push to GitHub
-2. Import the repo in [vercel.com](https://vercel.com)
-3. Add all env vars from `.env.example` in the Vercel dashboard
-4. Set `DATABASE_URL` to your Neon **pooled** connection string
-5. Set `DATABASE_URL_UNPOOLED` to the **direct** connection string (used by Prisma migrations)
-6. Deploy - Prisma client is generated automatically during build
+The app is built for production with **Next.js** (`npm run build`, `output: "standalone"`), then packaged and deployed with the **OpenNext Cloudflare** adapter to **Cloudflare Workers**. Configuration lives in `wrangler.jsonc` and `open-next.config.ts`.
+
+### Workers Builds (Git-connected)
+
+1. Connect the repo in the [Cloudflare dashboard](https://dash.cloudflare.com/) (Workers & Pages → your project → Builds).
+2. **Build command:** `npm run build`
+3. **Deploy command:** `npm run deploy:cf`  
+   This runs `opennextjs-cloudflare build --skipNextBuild` (consumes the `.next` output from the build step) and then `opennextjs-cloudflare deploy`.
+4. **Non-production uploads (optional):** e.g. `opennextjs-cloudflare build --skipNextBuild && opennextjs-cloudflare upload` for version uploads / preview pipelines.
+5. Add all variables from `.env.example` under **Build variables and secrets** (including `DATABASE_URL`, `SESSION_SECRET`, R2, Resend, etc.).
+6. Set `DATABASE_URL` to your Neon **pooled** connection string; use the **direct** string for migrations (`prisma migrate deploy`) in CI or locally.
+7. Ensure Prisma client is generated during install/build (`npx prisma generate` in postinstall or build if needed).
+
+### Local preview (Workers runtime)
+
+```bash
+npm run build
+npm run preview:cf
+```
+
+### One-shot full build + deploy (CLI)
+
+```bash
+npm run deploy:cf:full
+```
+
+Requires Wrangler authentication (`wrangler login` or `CLOUDFLARE_API_TOKEN` in CI).
 
 ---
+
 
 ## Deploying for a different country
 

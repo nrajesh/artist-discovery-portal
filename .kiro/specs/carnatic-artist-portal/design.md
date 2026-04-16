@@ -38,7 +38,7 @@ graph TD
         Cache[Cache Storage]
     end
 
-    subgraph Server["Next.js Server (Node.js)"]
+    subgraph Worker["OpenNext on Cloudflare Workers (workerd)"]
         API[API Routes / Server Actions]
         Auth[Auth Service - Magic Link]
         Email[Email Service - Resend]
@@ -48,7 +48,7 @@ graph TD
     subgraph Data["Data Layer"]
         DB[(PostgreSQL via Neon)]
         Storage[Object Storage - Cloudflare R2]
-        KV[(KV Store - Cloudflare KV / Vercel KV)]
+        KV[(KV Store - Cloudflare KV)]
     end
 
     subgraph External["External Services"]
@@ -72,12 +72,13 @@ graph TD
 | Layer | Technology | Rationale |
 |---|---|---|
 | Framework | **Next.js 14 (App Router)** | SSR/SSG for SEO & performance, API routes, server actions, PWA-friendly |
+| Hosting | **Cloudflare Workers** + **OpenNext** (`@opennextjs/cloudflare`) | Next.js runs on the Workers runtime via OpenNext; production build uses `output: "standalone"`; Wrangler for deploy and Workers Builds CI |
 | Language | **TypeScript** | Type safety across full stack |
 | Styling | **Tailwind CSS** | Utility-first, easy dynamic theming via CSS variables |
-| Database | **PostgreSQL (Neon)** | Serverless PostgreSQL, git-like branching for preview envs, no connection exhaustion on serverless, official Vercel Postgres backend |
+| Database | **PostgreSQL (Neon)** | Serverless PostgreSQL, git-like branching for preview envs, no connection exhaustion on serverless; connects from Workers via HTTP/WebSocket driver |
 | ORM | **Prisma** | Type-safe DB access, migrations; uses `@neondatabase/serverless` driver for edge-compatible connections |
 | Auth | **Custom magic-link** (JWT + Resend) | No passwords; email-only per requirements |
-| File Storage | **Cloudflare R2** | S3-compatible object storage, zero egress fees, works on both Vercel and Cloudflare deployments; accessed via `@aws-sdk/client-s3` with R2 endpoint |
+| File Storage | **Cloudflare R2** | S3-compatible object storage, zero egress, same Cloudflare account/edge as Workers; accessed via `@aws-sdk/client-s3` with R2 endpoint |
 | Email | **Resend** | Transactional email (login links, notifications) |
 | Push Notifications | **Web Push (VAPID)** | PWA push for Collab invites, feedback notifications |
 | Rich Text | **Tiptap** | ProseMirror-based, Unicode-safe, extensible |
@@ -90,28 +91,27 @@ graph TD
 
 ```mermaid
 graph LR
-    subgraph Vercel["Vercel (Next.js Host)"]
-        App[Next.js App]
+    subgraph Workers["Cloudflare Workers (OpenNext)"]
+        App[Next.js app via OpenNext]
         Edge[Edge Middleware - Auth]
     end
     subgraph Neon["Neon (Serverless PostgreSQL)"]
         PG[(PostgreSQL)]
     end
-    subgraph CF["Cloudflare"]
+    subgraph CF["Cloudflare (platform)"]
         R2[R2 Object Storage]
-        KV[(Cloudflare KV)]
+        KV[(Workers KV)]
     end
-    VercelKV[(Vercel KV - fallback)]
     Resend[Resend Email]
 
     App --> PG
     App --> R2
     App --> KV
-    App --> VercelKV
     App --> Resend
     Edge --> KV
-    Edge --> VercelKV
 ```
+
+Production deploy: **Workers Builds** runs `npm run build`, then `npm run deploy:cf` (`opennextjs-cloudflare build --skipNextBuild` → `opennextjs-cloudflare deploy`). Bindings and env vars are configured in the Cloudflare dashboard and/or `wrangler.jsonc`.
 
 ### Multi-Region Configuration
 

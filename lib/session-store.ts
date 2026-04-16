@@ -2,7 +2,8 @@
  * Session store for edge middleware.
  *
  * Uses a simple in-memory Map as the implementation for local dev / testing.
- * Can be swapped for Cloudflare KV / Vercel KV by replacing the implementation
+ * Can be swapped for Cloudflare KV (recommended when running on Workers) by
+ * replacing the implementation
  * while keeping the same interface.
  *
  * Requirements: 12.4, 12.5
