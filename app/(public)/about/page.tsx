@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getArtistBySlug, listArtistsForDirectory } from "@/lib/queries/artists";
 import { getThemeForSpecialities } from "@/lib/speciality-theme";
+import { DevUrlReveal } from "@/components/dev-url-reveal";
 
 export const dynamic = "force-dynamic";
 
@@ -342,7 +343,19 @@ export default async function AboutPage() {
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 text-sm text-amber-800">
             <strong>Access:</strong> Admin routes (<code>/admin/*</code>) are protected by Edge middleware.
             Admin role is granted by listing the artist&apos;s email in the <code>ADMIN_EMAILS</code> env var (comma-separated).
-            In dev, use <Link href="/api/dev/login?role=admin" className="underline underline-offset-2">/api/dev/login?role=admin</Link> to get an instant admin session.
+            <span className="ml-1">
+              In dev, use
+              {" "}
+              <span className="text-amber-900">
+                <DevUrlReveal
+                  path="/api/dev/login?role=admin"
+                  label="/api/dev/login?role=admin"
+                  variant="inline"
+                />
+              </span>
+              {" "}
+              to get an instant admin session.
+            </span>
           </div>
         </Section>
 
@@ -388,13 +401,14 @@ export default async function AboutPage() {
           <div className="bg-stone-800 rounded-2xl p-6 text-white">
             <h3 className="font-bold mb-4 text-sm uppercase tracking-widest text-stone-400">Maintainer quick links</h3>
             <div className="grid sm:grid-cols-2 gap-3 text-sm">
+              {/* Dev-only paths — no navigation, no prefetch. Click to reveal the final URL. */}
+              <DevUrlReveal path="/api/dev/login?role=admin" label="🔑 Dev admin login" />
+              <DevUrlReveal path="/api/dev/login?role=artist" label="🎵 Dev artist login" />
               {[
-                ["/api/dev/login?role=admin",  "🔑 Dev admin login"],
-                ["/api/dev/login?role=artist", "🎵 Dev artist login"],
-                ["/admin/dashboard",           "🛠 Admin dashboard"],
-                ["/artists",                   "👥 Artist directory"],
-                ["/register",                  "📝 Registration form"],
-                ["/auth/login",                "🔗 Magic link login"],
+                ["/admin/dashboard", "🛠 Admin dashboard"],
+                ["/artists",        "👥 Artist directory"],
+                ["/register",       "📝 Registration form"],
+                ["/auth/login",     "🔗 Magic link login"],
               ].map(([href, label]) => (
                 <Link key={href} href={href}
                   className="flex items-center gap-2 px-4 py-2.5 bg-stone-700 hover:bg-stone-600 rounded-lg transition-colors font-medium">

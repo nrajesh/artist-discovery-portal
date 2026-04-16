@@ -121,21 +121,40 @@ export async function issueMagicLink(email: string, _now?: Date): Promise<void> 
     },
   });
 
-  // Send email via Resend
   const resendApiKey = process.env.RESEND_API_KEY;
   const fromEmail = process.env.RESEND_FROM_EMAIL ?? 'noreply@carnaticportal.nl';
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/+$/, '');
   const magicLinkUrl = `${appUrl}/auth/verify?token=${rawToken}`;
 
-  const resend = new Resend(resendApiKey);
-  await resend.emails.send({
-    from: fromEmail,
-    to: email,
-    subject: 'Your login link for Carnatic Artist Portal',
-    html: `<p>Click the link below to log in to the Carnatic Artist Portal:</p>
+  // Skip send if not configured; token row is still created so the dev
+  // link can be reconstructed from logs / DB. The login route always
+  // returns generic success, so this does not leak to the client.
+  if (!resendApiKey) {
+    console.warn('[auth] RESEND_API_KEY is not set - magic link email was not sent');
+    return;
+  }
+
+  try {
+    const resend = new Resend(resendApiKey);
+    await resend.emails.send({
+      from: fromEmail,
+      to: email,
+      subject: 'Your login link for Carnatic Artist Portal',
+      html: `<p>Click the link below to log in to the Carnatic Artist Portal:</p>
 <p><a href="${magicLinkUrl}">${magicLinkUrl}</a></p>
 <p>This link expires in 72 hours.</p>`,
-  });
+    });
+  } catch (err) {
+    // Do not rethrow: we must not reveal send failures to the client,
+    // and an unverified domain / bad API key should not turn the login
+    // route into a 500. Log for operators.
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('[auth] Failed to send magic link via Resend', {
+      from: fromEmail,
+      artistId: artist.id,
+      error: message,
+    });
+  }
 }
 
 // ---------------------------------------------------------------------------
