@@ -2,6 +2,9 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { verifySession } from "@/lib/session-jwt";
 import { DUMMY_ARTISTS } from "@/lib/dummy-artists";
+import { db } from "@/lib/db";
+import { PostHogIdentify } from "@/components/posthog-identify";
+import { DashboardViewTracker, EditProfileLink } from "@/components/dashboard-tracker";
 
 // Pick a dummy artist to represent the logged-in user
 const CURRENT_ARTIST = DUMMY_ARTISTS[0]; // Lakshmi Narayanan
@@ -13,9 +16,27 @@ const DUMMY_NOTIFICATIONS = [
   { id: "n4", type: "collab_closed",  text: "Rotterdam Kutcheri has been marked as Completed",            time: "1 week ago",   read: true,  href: "/collabs/rotterdam-kutcheri" },
 ];
 
-export default async function ArtistDashboardPage() {
+export default async function ArtistDashboardPage({
+  searchParams,
+}: {
+  searchParams: { ph_identify?: string };
+}) {
   const sessionCookie = cookies().get("session")?.value ?? null;
   const session = sessionCookie ? await verifySession(sessionCookie) : null;
+
+  // Fetch province for identity stitching when ph_identify=1
+  let province: string | null = null;
+  if (searchParams.ph_identify === "1" && session?.artistId) {
+    try {
+      const artist = await db.artist.findUnique({
+        where: { id: session.artistId },
+        select: { province: true },
+      });
+      province = artist?.province ?? null;
+    } catch {
+      // Silently ignore DB errors — analytics must not break the page
+    }
+  }
 
   const activeCollabs    = CURRENT_ARTIST.collabs.filter(c => c.status === "active");
   const completedCollabs = CURRENT_ARTIST.collabs.filter(c => c.status === "completed");
@@ -27,6 +48,14 @@ export default async function ArtistDashboardPage() {
   return (
     <main className="min-h-screen bg-amber-50 px-4 py-8 sm:px-8">
       <div className="max-w-4xl mx-auto">
+
+        {/* Identity stitching: runs once after magic-link login */}
+        {searchParams.ph_identify === "1" && session?.artistId && (
+          <PostHogIdentify artistId={session.artistId} province={province} />
+        )}
+
+        {/* Analytics: fires dashboard_viewed on mount */}
+        <DashboardViewTracker />
 
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
@@ -48,10 +77,10 @@ export default async function ArtistDashboardPage() {
               className="px-4 py-2 text-sm font-semibold text-amber-700 border border-amber-300 bg-white rounded-lg hover:bg-amber-50 transition-colors min-h-[44px] flex items-center">
               View public profile
             </Link>
-            <Link href="/profile/edit"
+            <EditProfileLink
               className="px-4 py-2 text-sm font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 transition-colors min-h-[44px] flex items-center">
               Edit profile
-            </Link>
+            </EditProfileLink>
           </div>
         </div>
 
@@ -174,7 +203,6 @@ export default async function ArtistDashboardPage() {
               {[
                 { href: "/search",              icon: "🔍", label: "Find artists"     },
                 { href: "/collabs",             icon: "💬", label: "My collabs"       },
-                { href: "/profile/edit",        icon: "✏️",  label: "Edit profile"    },
                 { href: "/profile/availability",icon: "📅", label: "Set availability" },
               ].map(item => (
                 <Link key={item.href} href={item.href}
@@ -182,6 +210,9 @@ export default async function ArtistDashboardPage() {
                   <span>{item.icon}</span> {item.label}
                 </Link>
               ))}
+              <EditProfileLink className="flex items-center gap-2 p-3 rounded-lg border border-stone-100 hover:border-amber-300 hover:bg-amber-50 transition-all text-sm text-stone-700 font-medium">
+                <span>✏️</span> Edit profile
+              </EditProfileLink>
             </div>
             <div className="mt-4 pt-4 border-t border-stone-100">
               <Link href="/api/auth/logout"

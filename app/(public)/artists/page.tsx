@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import ArtistsSearch from "./artists-search";
+import { ArtistListingTracker } from "./artist-listing-tracker";
 import { DUMMY_ARTISTS } from "@/lib/dummy-artists";
 
 const PROVINCES = Array.from(new Set(DUMMY_ARTISTS.map(a => a.province))).sort();
@@ -22,6 +23,7 @@ export default function ArtistsPage({ searchParams }: PageProps) {
 
   return (
     <main className="min-h-screen bg-amber-50 px-4 py-10">
+      <ArtistListingTracker />
       <div className="max-w-5xl mx-auto">
         <div className="mb-6">
           <Link href="/" className="text-sm text-amber-700 hover:text-amber-900 mb-2 inline-block">← Home</Link>

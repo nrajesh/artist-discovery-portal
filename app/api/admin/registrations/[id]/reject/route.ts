@@ -12,9 +12,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { analyticsServer } from '@/lib/analytics-server';
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } },
 ) {
   const { id } = params;
@@ -45,6 +46,15 @@ export async function POST(
       reviewedAt: now,
     },
   });
+
+  // Capture analytics event
+  try {
+    analyticsServer?.capture({
+      distinctId: request.headers.get('x-artist-id') ?? 'unknown-admin',
+      event: 'registration_rejected',
+      properties: { registration_id: id },
+    })
+  } catch { /* silently ignore */ }
 
   // 3. No Artist record created
 

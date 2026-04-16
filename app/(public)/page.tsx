@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { DUMMY_ARTISTS } from "@/lib/dummy-artists";
+import { JoinCtaButton } from "./join-cta-button";
+import { PostHogReset } from "@/components/posthog-reset";
 
 // ---------------------------------------------------------------------------
 // Dummy collab data for home page preview
@@ -13,13 +15,20 @@ const DUMMY_COLLABS = [
 const SINGER_OF_DAY        = DUMMY_ARTISTS.find(a => a.specialities[0]?.name === "Vocal")!;
 const INSTRUMENTALIST_OF_DAY = DUMMY_ARTISTS.find(a => a.specialities[0]?.name === "Mridangam")!;
 
-export default function HomePage() {
+export default function HomePage({
+  searchParams,
+}: {
+  searchParams: { ph_reset?: string };
+}) {
   const totalArtists = DUMMY_ARTISTS.length;
   const seekingCollab = 4; // dummy count
   const totalCollabs = DUMMY_COLLABS.length;
 
   return (
     <main className="min-h-screen bg-amber-50">
+      {/* Reset PostHog identity after logout */}
+      {searchParams.ph_reset === "1" && <PostHogReset />}
+
       {/* Hero */}
       <div className="bg-gradient-to-br from-amber-900 via-amber-800 to-amber-700 text-white px-6 py-20 text-center">
         <div className="text-5xl mb-4">🎵</div>
@@ -31,12 +40,7 @@ export default function HomePage() {
           violinists, percussionists, and more.
         </p>
         <div className="flex flex-wrap justify-center gap-4">
-          <Link
-            href="/register"
-            className="px-6 py-3 bg-white text-amber-900 font-semibold rounded-lg hover:bg-amber-100 transition-colors min-h-[44px] flex items-center"
-          >
-            Join as an Artist
-          </Link>
+          <JoinCtaButton />
           <Link
             href="/artists"
             className="px-6 py-3 border-2 border-white text-white font-semibold rounded-lg hover:bg-white/10 transition-colors min-h-[44px] flex items-center"
@@ -190,6 +194,16 @@ export default function HomePage() {
               >
                 Registration Form
               </Link>
+              {process.env.POSTHOG_HOST && (
+                <a
+                  href="https://eu.posthog.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 bg-purple-100 text-purple-900 border border-purple-300 text-sm font-semibold rounded-lg hover:bg-purple-200 transition-colors min-h-[44px] flex items-center"
+                >
+                  PostHog Admin ↗
+                </a>
+              )}
             </div>
           </div>
         </div>
@@ -203,6 +217,7 @@ export default function HomePage() {
           <Link href="/auth/login" className="hover:text-amber-900 underline underline-offset-2">Artist Login</Link>
           <Link href="/admin/registrations" className="hover:text-amber-900 underline underline-offset-2">Admin</Link>
           <Link href="/about" className="hover:text-amber-900 underline underline-offset-2">About this Portal</Link>
+          <Link href="/privacy" className="hover:text-amber-900 underline underline-offset-2">Privacy Policy</Link>
         </div>
       </div>
     </main>

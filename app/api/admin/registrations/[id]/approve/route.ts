@@ -17,6 +17,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { issueMagicLink } from '@/lib/auth';
+import { analyticsServer } from '@/lib/analytics-server';
 
 // ---------------------------------------------------------------------------
 // Slug generation
@@ -56,7 +57,7 @@ export async function generateSlug(fullName: string): Promise<string> {
 // ---------------------------------------------------------------------------
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } },
 ) {
   const { id } = params;
@@ -141,6 +142,15 @@ export async function POST(
       reviewedAt: now,
     },
   });
+
+  // Capture analytics event
+  try {
+    analyticsServer?.capture({
+      distinctId: request.headers.get('x-artist-id') ?? 'unknown-admin',
+      event: 'registration_approved',
+      properties: { registration_id: id },
+    })
+  } catch { /* silently ignore */ }
 
   // 8. Return success
   return NextResponse.json({ success: true });

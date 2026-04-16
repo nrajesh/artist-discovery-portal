@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
 import { verifySession } from "@/lib/session-jwt";
 import { DUMMY_ARTISTS_BY_SLUG } from "@/lib/dummy-artists";
+import { ArtistProfileTracker } from "./artist-profile-tracker";
 
 function StarRating({ rating }: { rating: number }) {
   return (
@@ -58,6 +59,7 @@ export default async function ArtistProfilePage({ params, searchParams }: PagePr
 
   return (
     <main className="min-h-screen bg-amber-50">
+      <ArtistProfileTracker artistSlug={params.slug} />
       {/* Hero */}
       <div className="px-6 pt-10 pb-20 text-white"
         style={{ background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}bb)` }}>

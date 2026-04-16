@@ -26,6 +26,8 @@
     "@tiptap/starter-kit": "^3.22.3",
     "jose": "^6.2.2",
     "next": "14.2.35",
+    "posthog-js": "^1.368.2",
+    "posthog-node": "^5.29.2",
     "prisma": "^6.19.3",
     "react": "^18",
     "react-dom": "^18",

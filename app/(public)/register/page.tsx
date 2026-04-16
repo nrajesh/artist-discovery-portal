@@ -14,6 +14,7 @@ import StarterKit from '@tiptap/starter-kit';
 import TiptapImage from '@tiptap/extension-image';
 import TiptapLink from '@tiptap/extension-link';
 import NextLink from 'next/link';
+import { usePostHog } from 'posthog-js/react';
 import SpecialityPicker from '@/components/speciality-picker';
 
 // ---------------------------------------------------------------------------
@@ -127,6 +128,7 @@ function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
 export default function RegisterPage() {
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const posthog = usePostHog();
 
   const {
     register,
@@ -188,6 +190,9 @@ export default function RegisterPage() {
       const json = await res.json();
 
       if (json.success) {
+        posthog.capture('registration_submitted', {
+          speciality_count: data.specialities.length,
+        });
         setSubmitted(true);
       } else {
         setSubmitError(json.error ?? 'Submission failed. Please try again.');

@@ -2,7 +2,7 @@
  * Magic Link Verification Page
  * Server component - reads token from URL, verifies it, sets session cookie, redirects.
  *
- * Requirements: 2.6, 2.7
+ * Requirements: 2.6, 2.7, 4.4
  */
 
 import { cookies } from 'next/headers';
@@ -10,6 +10,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { verifyMagicLink, AuthError } from '@/lib/auth';
 import { signSession } from '@/lib/session-jwt';
+import { analyticsServer } from '@/lib/analytics-server';
 
 interface VerifyPageProps {
   searchParams: { token?: string };
@@ -43,9 +44,27 @@ export default async function VerifyPage({ searchParams }: VerifyPageProps) {
       path: '/',
     });
 
-    // Redirect to dashboard on success
-    redirect('/dashboard');
+    // Capture login event server-side (Task 8.2)
+    try {
+      analyticsServer?.capture({ distinctId: session.artistId, event: 'artist_login' })
+    } catch {
+      // Silently ignore analytics errors
+    }
+
+    // Redirect to dashboard with identity-stitching flag (Task 8.1)
+    redirect('/dashboard?ph_identify=1');
   } catch (err) {
+    // Re-throw Next.js redirect errors so they propagate correctly
+    if (
+      err !== null &&
+      typeof err === 'object' &&
+      'digest' in err &&
+      typeof (err as { digest: unknown }).digest === 'string' &&
+      (err as { digest: string }).digest.startsWith('NEXT_REDIRECT')
+    ) {
+      throw err;
+    }
+
     if (err instanceof AuthError) {
       if (err.code === 'LINK_EXPIRED') {
         return (

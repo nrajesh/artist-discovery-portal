@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { usePostHog } from "posthog-js/react";
 import { DUMMY_ARTISTS } from "@/lib/dummy-artists";
 import SpecialityPicker from "@/components/speciality-picker";
 
@@ -38,6 +39,7 @@ const NL_PROVINCES = [
 ];
 
 export default function EditProfilePage() {
+  const posthog = usePostHog();
   const [fullName,       setFullName]       = useState(CURRENT_ARTIST.name);
   const [email,          setEmail]          = useState(CURRENT_ARTIST.email);
   const [contactNumber,  setContactNumber]  = useState(CURRENT_ARTIST.contactNumber);
@@ -67,6 +69,7 @@ export default function EditProfilePage() {
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
     setErrors({});
     setSaved(true);
+    posthog.capture('profile_edit_saved');
     setTimeout(() => setSaved(false), 3000);
   }
 

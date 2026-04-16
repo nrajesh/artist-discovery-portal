@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { AdminDashboardTracker } from "@/components/admin-dashboard-tracker";
 
 export default function AdminDashboardPage() {
   return (
     <main className="min-h-screen bg-stone-50 px-6 py-10">
+      <AdminDashboardTracker />
       <div className="max-w-3xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-stone-800">Admin Dashboard</h1>
