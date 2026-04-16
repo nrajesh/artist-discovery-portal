@@ -50,7 +50,7 @@ function resolveUpstreamBase(posthogHost: string, targetPath: string): string {
 
 async function handler(
   request: NextRequest,
-  { params }: { params: { path: string[] } },
+  { params }: { params: Promise<{ path: string[] }> },
 ): Promise<Response> {
   const posthogHost = process.env.POSTHOG_HOST?.replace(/\/$/, "");
 
@@ -64,7 +64,8 @@ async function handler(
     return Response.json({ error: "invalid POSTHOG_HOST" }, { status: 503 });
   }
 
-  const targetPath = params.path.join("/");
+  const { path: pathSegments } = await params;
+  const targetPath = pathSegments.join("/");
   const { search } = new URL(request.url);
   const upstreamBase = resolveUpstreamBase(posthogHost, targetPath);
   const targetUrl = `${upstreamBase}/${targetPath}${search}`;
@@ -83,9 +84,13 @@ async function handler(
     const upstreamResponse = await fetch(targetUrl, {
       method: request.method,
       headers: upstreamHeaders,
-      body: hasBody ? request.body : null,
-      // @ts-expect-error duplex for streaming body
-      duplex: "half",
+      ...(hasBody && request.body
+        ? {
+            body: request.body,
+            // @ts-expect-error duplex required when forwarding a streaming body (Node/undici)
+            duplex: "half",
+          }
+        : {}),
     });
 
     return new Response(upstreamResponse.body, {

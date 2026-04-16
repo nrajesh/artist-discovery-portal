@@ -58,9 +58,9 @@ export async function generateSlug(fullName: string): Promise<string> {
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  const { id } = params;
+  const { id } = await params;
 
   // 1. Fetch the RegistrationRequest
   const registration = await getDb().registrationRequest.findUnique({
