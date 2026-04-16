@@ -4,10 +4,6 @@ import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 const nextConfig = {
   // Required by @opennextjs/cloudflare to produce the server bundle under .next/standalone
   output: "standalone",
-  eslint: {
-    // Lint errors won't block production builds — run `npm run lint` separately
-    ignoreDuringBuilds: true,
-  },
   typescript: {
     // Type errors won't block builds during active development
     ignoreBuildErrors: true,
