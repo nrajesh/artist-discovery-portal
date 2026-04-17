@@ -150,3 +150,116 @@ export async function getCollabDetailForArtist(
     })),
   };
 }
+
+function slugify(input: string): string {
+  return input
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+async function resolveCollabId(idOrSlug: string): Promise<string | null> {
+  const direct = await getDb().collab.findUnique({
+    where: { id: idOrSlug },
+    select: { id: true },
+  });
+  if (direct) return direct.id;
+
+  const candidates = await getDb().collab.findMany({
+    select: { id: true, name: true },
+  });
+  const matched = candidates.find((c) => slugify(c.name) === idOrSlug);
+  return matched?.id ?? null;
+}
+
+export type AdminCollabListItem = {
+  id: string;
+  slug: string;
+  name: string;
+  owner: string;
+  members: number;
+  messages: number;
+  status: string;
+  createdAt: string;
+};
+
+export async function listCollabsForAdmin(): Promise<AdminCollabListItem[]> {
+  const collabs = await getDb().collab.findMany({
+    include: {
+      owner: { select: { fullName: true } },
+      _count: { select: { members: true, messages: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return collabs.map((c) => ({
+    id: c.id,
+    slug: slugify(c.name),
+    name: c.name,
+    owner: c.owner.fullName,
+    members: c._count.members,
+    messages: c._count.messages,
+    status: c.status,
+    createdAt: c.createdAt.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }),
+  }));
+}
+
+export type AdminCollabDetailView = {
+  id: string;
+  name: string;
+  owner: string;
+  members: string[];
+  status: string;
+  createdAt: string;
+  messages: { sender: string; text: string; time: string }[];
+};
+
+export async function getCollabDetailForAdmin(idOrSlug: string): Promise<AdminCollabDetailView | null> {
+  const collabId = await resolveCollabId(idOrSlug);
+  if (!collabId) return null;
+
+  const collab = await getDb().collab.findUnique({
+    where: { id: collabId },
+    include: {
+      owner: { select: { fullName: true } },
+      members: {
+        where: { leftAt: null },
+        include: { artist: { select: { fullName: true } } },
+      },
+      messages: {
+        where: { isDeleted: false },
+        orderBy: { sentAt: "asc" },
+        include: { sender: { select: { fullName: true } } },
+      },
+    },
+  });
+  if (!collab) return null;
+
+  return {
+    id: collab.id,
+    name: collab.name,
+    owner: collab.owner.fullName,
+    members: collab.members.map((m) => m.artist.fullName),
+    status: collab.status,
+    createdAt: collab.createdAt.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }),
+    messages: collab.messages.map((msg) => ({
+      sender: msg.sender.fullName,
+      text: msg.content,
+      time: msg.sentAt.toLocaleString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    })),
+  };
+}

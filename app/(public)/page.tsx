@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { JoinCtaButton } from "./join-cta-button";
 import { PostHogReset } from "@/components/posthog-reset";
 import {
@@ -10,6 +11,7 @@ import {
   listCollabsForHome,
 } from "@/lib/queries/artists";
 import { DEFAULT_ARTIST_ACCENT_COLOR } from "@/lib/speciality-theme";
+import { verifySession } from "@/lib/session-jwt";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +20,9 @@ export default async function HomePage({
 }: {
   searchParams: Promise<{ ph_reset?: string }>;
 }) {
+  const sessionCookie = (await cookies()).get("session")?.value ?? null;
+  const session = sessionCookie ? await verifySession(sessionCookie) : null;
+  const collabsIndexHref = session?.role === "admin" ? "/admin/collabs" : "/collabs";
   const { ph_reset } = await searchParams;
   const [
     totalArtists,
@@ -167,7 +172,7 @@ export default async function HomePage({
       <div className="max-w-4xl mx-auto px-6 pb-16">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-stone-800">Active collabs</h2>
-          <Link href="/collabs" className="text-sm text-amber-700 hover:text-amber-900 font-medium underline underline-offset-2">
+          <Link href={collabsIndexHref} className="text-sm text-amber-700 hover:text-amber-900 font-medium underline underline-offset-2">
             View all →
           </Link>
         </div>
@@ -175,7 +180,7 @@ export default async function HomePage({
           {homeCollabs.map((c) => (
             <Link
               key={c.slug}
-              href={`/collabs/${c.slug}`}
+              href={session?.role === "admin" ? `/admin/collabs/${c.slug}` : `/collabs/${c.slug}`}
               className="flex items-center justify-between bg-white rounded-xl border border-stone-200 px-5 py-4 hover:border-amber-400 hover:shadow-md transition-all"
             >
               <div>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { verifySession } from "@/lib/session-jwt";
+import { getDb } from "@/lib/db";
 import { getCollabDetailForArtist } from "@/lib/queries/collabs";
 import {
   addCollabMessageAction,
@@ -19,9 +20,19 @@ export default async function CollabChatPage({ params }: CollabChatPageProps) {
   const sessionCookie = (await cookies()).get("session")?.value ?? null;
   const session = sessionCookie ? await verifySession(sessionCookie) : null;
   if (!session) redirect("/auth/login");
+  if (session.role === "admin") redirect(`/admin/collabs/${id}`);
 
   const collab = await getCollabDetailForArtist(id, session.artistId);
-  if (!collab) notFound();
+  if (!collab) {
+    // Distinguish "not found" from "exists but user is not a member" so we
+    // don't show a misleading 404 when users click public collab previews.
+    const exists = await getDb().collab.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+    if (!exists) notFound();
+    redirect("/collabs?denied=1");
+  }
 
   const others = collab.members.filter((m) => m.artistId !== session.artistId);
 

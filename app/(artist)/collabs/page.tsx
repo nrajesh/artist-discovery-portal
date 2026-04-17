@@ -5,10 +5,16 @@ import { verifySession } from "@/lib/session-jwt";
 import { listCollabsForArtist } from "@/lib/queries/collabs";
 import { deleteCollabAction, updateCollabStatusAction } from "./actions";
 
-export default async function CollabListPage() {
+export default async function CollabListPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ denied?: string }>;
+}) {
   const sessionCookie = (await cookies()).get("session")?.value ?? null;
   const session = sessionCookie ? await verifySession(sessionCookie) : null;
   if (!session) redirect("/auth/login");
+  if (session.role === "admin") redirect("/admin/collabs");
+  const { denied } = await searchParams;
 
   const collabs = await listCollabsForArtist(session.artistId);
 
@@ -29,6 +35,11 @@ export default async function CollabListPage() {
             + New collab
           </Link>
         </div>
+        {denied === "1" && (
+          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            You don&apos;t have access to that collab. Join the collab first, then open it from this list.
+          </div>
+        )}
 
         {collabs.length === 0 ? (
           <div className="rounded-2xl border border-stone-200 bg-white p-8 text-center shadow-sm">

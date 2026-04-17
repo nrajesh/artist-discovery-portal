@@ -1,32 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-
-const DUMMY_COLLABS: Record<string, { id: string; name: string; owner: string; members: string[]; status: string; createdAt: string }> = {
-  c1: { id: "c1", name: "Margazhi Concert Prep",     owner: "Lakshmi Narayanan",    members: ["Lakshmi Narayanan","Ravi Krishnamurthy","Anand Subramanian","Meera Venkatesh"], status: "active",    createdAt: "10 Jan 2025" },
-  c2: { id: "c2", name: "Thyagaraja Aradhana 2025",  owner: "Ravi Krishnamurthy",   members: ["Ravi Krishnamurthy","Priya Balakrishnan","Suresh Iyer","Karthik Seshadri","Nithya Subramanian","Vijay Anantharaman"], status: "active", createdAt: "20 Jan 2025" },
-  c3: { id: "c3", name: "Rotterdam Kutcheri",        owner: "Anand Subramanian",    members: ["Anand Subramanian","Lakshmi Narayanan","Meera Venkatesh"], status: "completed", createdAt: "05 Nov 2024" },
-};
-
-const DUMMY_MESSAGES: Record<string, { sender: string; text: string; time: string }[]> = {
-  c1: [
-    { sender: "Lakshmi Narayanan",  text: "Let us plan the setlist for Margazhi. I am thinking we open with Kalyani.",  time: "10 Jan, 10:00" },
-    { sender: "Ravi Krishnamurthy", text: "Sounds great! I can prepare the violin accompaniment for the first 3 pieces.", time: "10 Jan, 10:15" },
-    { sender: "Anand Subramanian",  text: "I will handle the mridangam. Should we do a tani avartanam in the middle?",   time: "10 Jan, 10:30" },
-    { sender: "Lakshmi Narayanan",  text: "Yes! Let us keep it to 10 minutes. Rehearsal on Saturday at 3pm?",            time: "11 Jan, 09:00" },
-    { sender: "Meera Venkatesh",    text: "Saturday works for me. Shall I bring the tambura?",                           time: "11 Jan, 09:45" },
-  ],
-  c2: [
-    { sender: "Ravi Krishnamurthy",     text: "Welcome everyone to the Thyagaraja Aradhana planning group!",            time: "20 Jan, 14:00" },
-    { sender: "Priya Balakrishnan",     text: "Excited to be part of this. Which pancharatna kritis are we doing?",     time: "20 Jan, 14:30" },
-    { sender: "Nithya Subramanian",     text: "I suggest we do all five. It is a tradition after all.",                  time: "20 Jan, 15:00" },
-    { sender: "Suresh Iyer",            text: "Agreed. I will prepare the flute parts for Jagadananda Karaka.",         time: "21 Jan, 10:00" },
-  ],
-  c3: [
-    { sender: "Anand Subramanian",  text: "Great concert everyone! The audience loved the Bhairavi piece.",             time: "05 Nov, 22:00" },
-    { sender: "Lakshmi Narayanan",  text: "Thank you all. It was a wonderful evening. Shall we do this again?",         time: "05 Nov, 22:15" },
-    { sender: "Meera Venkatesh",    text: "Absolutely! Let us plan for spring.",                                         time: "06 Nov, 09:00" },
-  ],
-};
+import { getCollabDetailForAdmin } from "@/lib/queries/collabs";
 
 export default async function AdminCollabDetailPage({
   params,
@@ -34,9 +8,9 @@ export default async function AdminCollabDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const collab = DUMMY_COLLABS[id];
+  const collab = await getCollabDetailForAdmin(id);
   if (!collab) notFound();
-  const messages = DUMMY_MESSAGES[id] ?? [];
+  const messages = collab.messages;
 
   return (
     <main className="min-h-screen bg-stone-50 px-4 py-8 sm:px-8">
@@ -50,7 +24,7 @@ export default async function AdminCollabDetailPage({
             <p className="text-stone-500 text-sm mt-1">Owner: {collab.owner} &middot; Created {collab.createdAt}</p>
           </div>
           <span className={`inline-block rounded-full px-3 py-1 text-sm font-semibold ${collab.status === "active" ? "bg-green-50 text-green-700 border border-green-200" : "bg-blue-50 text-blue-700 border border-blue-200"}`}>
-            {collab.status === "active" ? "Active" : "Completed"}
+            {collab.status}
           </span>
         </div>
 
@@ -61,7 +35,7 @@ export default async function AdminCollabDetailPage({
         <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-5 mb-6">
           <h2 className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-3">Members ({collab.members.length})</h2>
           <div className="flex flex-wrap gap-2">
-            {collab.members.map(m => (
+            {collab.members.map((m) => (
               <span key={m} className="bg-stone-100 text-stone-700 text-xs px-3 py-1 rounded-full font-medium">{m}</span>
             ))}
           </div>
