@@ -4,7 +4,11 @@ import {
   DeleteObjectCommand,
   GetObjectCommand,
 } from '@aws-sdk/client-s3';
+import { FetchHttpHandler } from '@smithy/fetch-http-handler';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+
+/** Workers / unenv have no real `fs`; default Node HTTP handler can trigger `[unenv] fs.readFile`. */
+const r2RequestHandler = new FetchHttpHandler({});
 
 // ---------------------------------------------------------------------------
 // StorageError
@@ -115,6 +119,7 @@ async function getS3Client(): Promise<S3Client> {
       accessKeyId,
       secretAccessKey,
     },
+    requestHandler: r2RequestHandler,
   });
 }
 
