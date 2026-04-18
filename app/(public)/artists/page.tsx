@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import ArtistsSearch from "./artists-search";
 import { ArtistListingTracker } from "./artist-listing-tracker";
 import { listArtistsForDirectory } from "@/lib/queries/artists";
-import { DEFAULT_ARTIST_ACCENT_COLOR } from "@/lib/speciality-theme";
+import { getThemeFromArtistSpecialities } from "@/lib/speciality-theme";
 
 export const dynamic = "force-dynamic";
 
@@ -57,7 +57,10 @@ export default async function ArtistsPage({ searchParams }: PageProps) {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {filtered.map((artist) => {
-            const accent = artist.specialities[0]?.color ?? DEFAULT_ARTIST_ACCENT_COLOR;
+            const theme = getThemeFromArtistSpecialities(artist.specialities);
+            const headerBg = theme.background.startsWith("linear-gradient")
+              ? theme.background
+              : `linear-gradient(135deg, ${theme.background}, ${theme.background}cc)`;
             return (
             <Link
               key={artist.id}
@@ -67,12 +70,15 @@ export default async function ArtistsPage({ searchParams }: PageProps) {
               <div
                 className="h-20 flex items-end px-5 pb-3"
                 style={{
-                  background: `linear-gradient(135deg, ${accent}, ${accent}cc)`,
+                  background: headerBg,
                 }}
               >
                 <div
                   className="w-12 h-12 rounded-full border-2 border-white flex items-center justify-center text-xl font-bold translate-y-6 flex-shrink-0"
-                  style={{ backgroundColor: accent, color: "#FFFFFF" }}
+                  style={{
+                    background: theme.background.startsWith("linear-gradient") ? theme.background : theme.accentColor,
+                    color: "#FFFFFF",
+                  }}
                 >
                   {artist.name[0]}
                 </div>

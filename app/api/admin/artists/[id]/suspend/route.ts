@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { revalidateHomeMarketing } from "@/lib/cache/home-marketing";
 import { getDb } from "@/lib/db";
 import { verifySession } from "@/lib/session-jwt";
 import { analyticsServer } from "@/lib/analytics-server";
@@ -45,6 +46,8 @@ export async function POST(
     where: { id },
     data: { isSuspended: body.suspended },
   });
+
+  revalidateHomeMarketing();
 
   try {
     analyticsServer?.capture({

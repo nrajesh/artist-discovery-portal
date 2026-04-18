@@ -1,9 +1,68 @@
 import Link from "next/link";
 import { getArtistBySlug, listArtistsForDirectory } from "@/lib/queries/artists";
-import { getThemeForSpecialities } from "@/lib/speciality-theme";
+import {
+  SPECIALITY_PALETTE,
+  getThemeFromArtistSpecialities,
+} from "@/lib/speciality-theme";
 import { DevUrlReveal } from "@/components/dev-url-reveal";
 
 export const dynamic = "force-dynamic";
+
+/** Matches public directory cards (`/artists`) so maintainer screenshots match production. */
+function stylesForSpecialityCard(specialities: { name: string; color: string }[]) {
+  const theme = getThemeFromArtistSpecialities(specialities);
+  const headerBg = theme.background.startsWith("linear-gradient")
+    ? theme.background
+    : `linear-gradient(135deg, ${theme.background}, ${theme.background}cc)`;
+  const avatarBg = theme.background.startsWith("linear-gradient") ? theme.background : theme.accentColor;
+  return { headerBg, avatarBg };
+}
+
+function ColourThemePreviewCard({
+  caption,
+  name,
+  initial,
+  specialities,
+}: {
+  caption: string;
+  name: string;
+  initial: string;
+  specialities: { name: string; color: string }[];
+}) {
+  const { headerBg, avatarBg } = stylesForSpecialityCard(specialities);
+  return (
+    <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white">
+      <p className="border-b border-stone-100 bg-stone-50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-stone-500">
+        {caption}
+      </p>
+      <div className="overflow-hidden">
+        <div className="flex h-20 items-end px-5 pb-3" style={{ background: headerBg }}>
+          <div
+            className="flex h-12 w-12 translate-y-6 flex-shrink-0 items-center justify-center rounded-full border-2 border-white text-xl font-bold"
+            style={{ background: avatarBg, color: "#FFFFFF" }}
+          >
+            {initial}
+          </div>
+        </div>
+        <div className="px-5 pb-5 pt-8">
+          <p className="leading-tight font-semibold text-stone-800">{name}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {specialities.map((s) => (
+              <span
+                key={s.name}
+                className="rounded-full px-2 py-0.5 text-xs font-medium"
+                style={{ backgroundColor: s.color + "22", color: s.color }}
+              >
+                {s.name}
+              </span>
+            ))}
+          </div>
+          <p className="mt-2 text-xs italic text-stone-400">Fictional example - palette only</p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -42,6 +101,16 @@ export default async function AboutPage() {
   ]);
   const sampleArtists = allArtists.slice(0, 6);
   const demoReviews = lakshmi?.reviews ?? [];
+
+  const colourExampleTwoSpecs = [
+    { name: "Violin", color: SPECIALITY_PALETTE.Violin.primaryColor },
+    { name: "Morsing", color: SPECIALITY_PALETTE.Morsing.primaryColor },
+  ];
+  const colourExampleThreeSpecs = [
+    { name: "Vocal", color: SPECIALITY_PALETTE.Vocal.primaryColor },
+    { name: "Violin", color: SPECIALITY_PALETTE.Violin.primaryColor },
+    { name: "Mridangam", color: SPECIALITY_PALETTE.Mridangam.primaryColor },
+  ];
 
   return (
     <main className="min-h-screen bg-stone-50">
@@ -83,8 +152,9 @@ export default async function AboutPage() {
               ["#reviews",          "6. Feedback & review system"],
               ["#pwa",              "7. PWA & mobile-first design"],
               ["#multiregion",      "8. Multi-region extensibility"],
-              ["#admin",            "9. Admin moderation tools"],
-              ["#tech",             "10. Tech stack at a glance"],
+              ["#home-spotlight",   "9. Home spotlight & featured artist"],
+              ["#admin",            "10. Admin moderation tools"],
+              ["#tech",             "11. Tech stack at a glance"],
             ].map(([href, label]) => (
               <li key={href}>
                 <a href={href} className="text-amber-700 hover:text-amber-900 hover:underline underline-offset-2 transition-colors">
@@ -93,29 +163,61 @@ export default async function AboutPage() {
               </li>
             ))}
           </ol>
+          <p className="mt-4 border-t border-stone-100 pt-4 text-xs text-stone-500">
+            In the repository: <code className="text-stone-600">docs/README.md</code> indexes maintainer documentation and points to the
+            screenshot checklist in <code className="text-stone-600">docs/screenshots/README.md</code>.
+          </p>
         </nav>
 
         {/* 1. Colour theming */}
         <Section id="colour-theming" title="1. Speciality-based colour theming"
           subtitle="Every artist profile is visually themed by their instrument - instantly recognisable at a glance.">
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
-            {sampleArtists.map(artist => {
-              const theme = getThemeForSpecialities(artist.specialities.map(s => s.name));
+          <p className="mb-3 text-sm font-semibold text-stone-700">Illustrative cards (palette + directory layout)</p>
+          <div className="mb-8 grid gap-4 sm:grid-cols-2">
+            <ColourThemePreviewCard
+              caption="Two specialities"
+              name="Example: multi-instrumentalist"
+              initial="E"
+              specialities={colourExampleTwoSpecs}
+            />
+            <ColourThemePreviewCard
+              caption="Three specialities (maximum)"
+              name="Example: trio of roles"
+              initial="T"
+              specialities={colourExampleThreeSpecs}
+            />
+          </div>
+          <p className="mb-3 text-sm font-semibold text-stone-700">Registered artists from the directory</p>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 mb-6">
+            {sampleArtists.map((artist) => {
+              const { headerBg, avatarBg } = stylesForSpecialityCard(artist.specialities);
               return (
-                <Link key={artist.id} href={`/artists/${artist.slug}`}
-                  className="group rounded-2xl overflow-hidden border border-stone-200 hover:shadow-lg transition-all">
-                  <div className="h-16 flex items-end px-4 pb-2" style={{ background: theme.background }}>
-                    <div className="w-10 h-10 rounded-full border-2 border-white flex items-center justify-center text-lg font-bold translate-y-5"
-                      style={{ backgroundColor: theme.accentColor, color: "#fff" }}>
+                <Link
+                  key={artist.id}
+                  href={`/artists/${artist.slug}`}
+                  className="group overflow-hidden rounded-2xl border border-stone-200 transition-all hover:shadow-lg"
+                >
+                  <div className="flex h-20 items-end px-5 pb-3" style={{ background: headerBg }}>
+                    <div
+                      className="flex h-12 w-12 translate-y-6 flex-shrink-0 items-center justify-center rounded-full border-2 border-white text-xl font-bold"
+                      style={{ background: avatarBg, color: "#FFFFFF" }}
+                    >
                       {artist.name[0]}
                     </div>
                   </div>
-                  <div className="pt-7 px-4 pb-4 bg-white">
-                    <p className="font-semibold text-stone-800 text-sm group-hover:text-amber-800 transition-colors leading-tight">{artist.name}</p>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {artist.specialities.map(s => (
-                        <span key={s.name} className="text-xs px-2 py-0.5 rounded-full font-medium"
-                          style={{ backgroundColor: s.color + "22", color: s.color }}>{s.name}</span>
+                  <div className="bg-white px-5 pb-5 pt-8">
+                    <p className="text-sm font-semibold leading-tight text-stone-800 transition-colors group-hover:text-amber-800">
+                      {artist.name}
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {artist.specialities.map((s) => (
+                        <span
+                          key={s.name}
+                          className="rounded-full px-2 py-0.5 text-xs font-medium"
+                          style={{ backgroundColor: s.color + "22", color: s.color }}
+                        >
+                          {s.name}
+                        </span>
                       ))}
                     </div>
                   </div>
@@ -123,9 +225,12 @@ export default async function AboutPage() {
               );
             })}
           </div>
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 text-sm text-amber-800">
-            <strong>How it works:</strong> Each speciality (Vocal, Violin, Mridangam, Veena…) has a unique hex colour in the palette.
-            Single-speciality artists get a solid colour header. Multi-speciality artists get a CSS <code>linear-gradient</code> blending all their colours.
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800">
+            <strong>How it works:</strong> Each speciality (Vocal, Violin, Mridangam, Veena…) has a unique hex colour in the admin-managed
+            palette (mirrored in <code className="text-amber-950">lib/speciality-theme.ts</code> for tests). Artists can pick up to{" "}
+            <strong>three</strong> specialities on registration; each tag uses its stored colour, and the card header uses those same values
+            (solid for one colour, diagonal <code>linear-gradient</code> when several distinct colours apply). Single-speciality artists get
+            a solid colour header.
             All text colours are WCAG AA compliant (≥4.5:1 contrast ratio - verified by property-based tests).
           </div>
         </Section>
@@ -321,8 +426,41 @@ export default async function AboutPage() {
           </div>
         </Section>
 
-        {/* 9. Admin */}
-        <Section id="admin" title="9. Admin moderation tools"
+        {/* 9. Home spotlight */}
+        <Section
+          id="home-spotlight"
+          title="9. Home spotlight & featured artist"
+          subtitle="The landing page highlights one vocalist each local calendar day, with room for discovery without crowding the layout."
+        >
+          <div className="grid gap-6 sm:grid-cols-2 mb-6">
+            <div className="bg-white rounded-xl border border-stone-200 p-6">
+              <p className="font-semibold text-stone-800 mb-3">Daily rotation</p>
+              <p className="text-sm text-stone-600 leading-relaxed">
+                The featured slot prefers <strong>Vocal</strong> artists and falls back to the full directory when needed. Which artist
+                appears advances deterministically by <strong>calendar day</strong> in the deployment country&apos;s timezone (derived from{" "}
+                <code>DEPLOYMENT_REGION</code> unless <code>DEPLOYMENT_TIMEZONE</code> is set). Ops can pin a vocalist for a given day via
+                the <code>DailyFeatured</code> table.
+              </p>
+            </div>
+            <div className="bg-white rounded-xl border border-stone-200 p-6">
+              <p className="font-semibold text-stone-800 mb-3">Profile photo & collabs</p>
+              <p className="text-sm text-stone-600 leading-relaxed">
+                The card shows each artist&apos;s <strong>R2-hosted profile photo</strong> (with a coloured initial fallback). The side
+                column lists up to four <strong>active collabs</strong> they own or participate in so visitors see social proof at a glance.
+                Artists with no active collabs still get the photo and headline; the column explains that gently.
+              </p>
+            </div>
+          </div>
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 text-sm text-amber-900">
+            <strong>Implementation:</strong> <code className="text-amber-950">getDailyFeaturedArtistForHome()</code> in{" "}
+            <code className="text-amber-950">lib/queries/artists.ts</code>, local-day helpers in{" "}
+            <code className="text-amber-950">lib/local-day.ts</code>, deployment timezone in{" "}
+            <code className="text-amber-950">deployment.config.ts</code>.
+          </div>
+        </Section>
+
+        {/* 10. Admin */}
+        <Section id="admin" title="10. Admin moderation tools"
           subtitle="Full CRUD on artists, specialities, and collabs - plus chat moderation and account suspension.">
           <div className="grid sm:grid-cols-2 gap-4 mb-6">
             {[
@@ -359,8 +497,8 @@ export default async function AboutPage() {
           </div>
         </Section>
 
-        {/* 10. Tech stack */}
-        <Section id="tech" title="10. Tech stack at a glance"
+        {/* 11. Tech stack */}
+        <Section id="tech" title="11. Tech stack at a glance"
           subtitle="Modern, open-source, no usage-limit surprises.">
           <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden mb-6">
             <table className="w-full text-sm">
@@ -373,7 +511,7 @@ export default async function AboutPage() {
               </thead>
               <tbody className="divide-y divide-stone-100">
                 {[
-                  ["Framework",      "Next.js 14 (App Router)",        "SSR/SSG, API routes, Edge middleware, PWA-friendly"],
+                  ["Framework",      "Next.js 16 (App Router)",        "SSR/SSG, API routes, Edge middleware, PWA-friendly"],
                   ["Hosting",        "Cloudflare Workers + OpenNext",  "Production app on Workers via @opennextjs/cloudflare; Wrangler CI"],
                   ["Language",       "TypeScript",                     "Full-stack type safety"],
                   ["Styling",        "Tailwind CSS",                   "Utility-first, dynamic theming via CSS variables"],
@@ -401,7 +539,7 @@ export default async function AboutPage() {
           <div className="bg-stone-800 rounded-2xl p-6 text-white">
             <h3 className="font-bold mb-4 text-sm uppercase tracking-widest text-stone-400">Maintainer quick links</h3>
             <div className="grid sm:grid-cols-2 gap-3 text-sm">
-              {/* Dev-only paths — no navigation, no prefetch. Click to reveal the final URL. */}
+              {/* Dev-only paths  -  no navigation, no prefetch. Click to reveal the final URL. */}
               <DevUrlReveal path="/api/dev/login?role=admin" label="🔑 Dev admin login" />
               <DevUrlReveal path="/api/dev/login?role=artist" label="🎵 Dev artist login" />
               {[

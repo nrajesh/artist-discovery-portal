@@ -16,8 +16,10 @@
 import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
 import {
+  DEFAULT_ARTIST_ACCENT_COLOR,
   SPECIALITY_PALETTE,
   getThemeForSpecialities,
+  getThemeFromArtistSpecialities,
 } from '../speciality-theme';
 
 // ---------------------------------------------------------------------------
@@ -44,6 +46,35 @@ const multiNameArb = fc
 // ---------------------------------------------------------------------------
 // Example-based tests
 // ---------------------------------------------------------------------------
+
+describe('getThemeFromArtistSpecialities (stored DB colours)', () => {
+  it('empty → default accent', () => {
+    const t = getThemeFromArtistSpecialities([]);
+    expect(t.background).toBe(DEFAULT_ARTIST_ACCENT_COLOR);
+    expect(t.accentColor).toBe(DEFAULT_ARTIST_ACCENT_COLOR);
+    expect(t.background).not.toMatch(/gradient/i);
+  });
+
+  it('one speciality → solid background from stored color', () => {
+    const c = SPECIALITY_PALETTE.Violin.primaryColor;
+    const t = getThemeFromArtistSpecialities([{ name: 'Violin', color: c }]);
+    expect(t.background).toBe(c);
+    expect(t.accentColor).toBe(c);
+  });
+
+  it('two distinct stored colours → gradient lists both', () => {
+    const a = SPECIALITY_PALETTE.Violin.primaryColor;
+    const b = SPECIALITY_PALETTE.Morsing.primaryColor;
+    const t = getThemeFromArtistSpecialities([
+      { name: 'Violin', color: a },
+      { name: 'Morsing', color: b },
+    ]);
+    expect(t.background).toMatch(/^linear-gradient/i);
+    expect(t.background).toContain(a);
+    expect(t.background).toContain(b);
+    expect(t.accentColor).toBe(a);
+  });
+});
 
 describe('getThemeForSpecialities - example-based', () => {
   it("single known speciality → background equals that speciality's primaryColor (solid)", () => {

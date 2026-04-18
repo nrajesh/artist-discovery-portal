@@ -2,6 +2,7 @@
 
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { revalidateHomeMarketing } from "@/lib/cache/home-marketing";
 import { z } from "zod";
 import { getDb } from "@/lib/db";
 import { verifySession } from "@/lib/session-jwt";
@@ -95,5 +96,6 @@ export async function updateArtistProfile(
   revalidatePath("/dashboard");
   revalidatePath("/profile/edit");
   revalidatePath(`/artists/${session.artistId}`);
+  revalidateHomeMarketing();
   return { ok: true };
 }

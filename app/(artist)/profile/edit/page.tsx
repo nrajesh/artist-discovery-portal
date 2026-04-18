@@ -3,22 +3,10 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { verifySession } from "@/lib/session-jwt";
 import { getArtistForEdit, listSpecialities } from "@/lib/queries/artists";
+import { NL_DEFAULT_PROVINCES } from "@/lib/geo/nl-default-provinces";
 import { EditProfileForm } from "./edit-profile-form";
 
-const NL_PROVINCES = [
-  "Drenthe",
-  "Flevoland",
-  "Friesland",
-  "Gelderland",
-  "Groningen",
-  "Limburg",
-  "Noord-Brabant",
-  "Noord-Holland",
-  "Overijssel",
-  "Utrecht",
-  "Zeeland",
-  "Zuid-Holland",
-];
+const NL_PROVINCES = [...NL_DEFAULT_PROVINCES];
 
 export default async function EditProfilePage() {
   const sessionCookie = (await cookies()).get("session")?.value ?? null;

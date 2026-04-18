@@ -38,12 +38,12 @@ export function DevUrlReveal({ path, label, variant = "dark" }: DevUrlRevealProp
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1500);
     } catch {
-      // Clipboard API unavailable (e.g. insecure context) — fail quietly
+      // Clipboard API unavailable (e.g. insecure context)  -  fail quietly
     }
   }
 
   if (variant === "inline") {
-    // Inherits color from the surrounding text — works on both light and dark surfaces.
+    // Inherits color from the surrounding text  -  works on both light and dark surfaces.
     return (
       <span className="inline-flex flex-wrap items-center gap-2 align-baseline">
         <button

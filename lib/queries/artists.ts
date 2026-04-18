@@ -17,6 +17,12 @@ export type ArtistListing = {
   openToCollab: boolean;
 };
 
+/** Home spotlight - directory fields plus photo URL and active collab teasers */
+export type FeaturedArtistListing = ArtistListing & {
+  profilePhotoUrl: string;
+  activeCollabs: { slug: string; name: string }[];
+};
+
 export function specColor(s: Speciality) {
   return { name: s.name, color: s.primaryColor };
 }
@@ -41,6 +47,42 @@ function toArtistListing(a: {
   };
 }
 
+async function fetchActiveCollabPreviewsForArtist(
+  artistId: string,
+  limit: number,
+): Promise<{ slug: string; name: string }[]> {
+  const rows = await getDb().collab.findMany({
+    where: {
+      status: "active",
+      OR: [{ ownerId: artistId }, { members: { some: { artistId, leftAt: null } } }],
+    },
+    select: { id: true, name: true },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
+  return rows.map((c) => ({ slug: c.id, name: c.name }));
+}
+
+function toFeaturedArtistListing(
+  a: {
+    id: string;
+    slug: string;
+    fullName: string;
+    email: string;
+    province: string;
+    openToCollab: boolean;
+    profilePhotoUrl: string;
+    specialities: { speciality: Speciality }[];
+  },
+  activeCollabs: { slug: string; name: string }[],
+): FeaturedArtistListing {
+  return {
+    ...toArtistListing(a),
+    profilePhotoUrl: a.profilePhotoUrl,
+    activeCollabs,
+  };
+}
+
 export async function listArtistsForDirectory(): Promise<ArtistListing[]> {
   const rows = await getDb().artist.findMany({
     where: { isSuspended: false },
@@ -55,12 +97,26 @@ export async function listArtistsForDirectory(): Promise<ArtistListing[]> {
   return rows.map(toArtistListing);
 }
 
+/** Active artists grouped by province name (must match GeoJSON label, e.g. `properties.naam`). */
+export async function countActiveArtistsByProvince(): Promise<Record<string, number>> {
+  const rows = await getDb().artist.groupBy({
+    by: ["province"],
+    where: { isSuspended: false },
+    _count: { _all: true },
+  });
+  const out: Record<string, number> = {};
+  for (const r of rows) {
+    out[r.province] = r._count._all;
+  }
+  return out;
+}
+
 /**
  * Home hero spotlight: optional manual row in DailyFeatured (singer) for "today"
  * in the deployment timezone (see `getDeploymentTimezone` in deployment.config),
  * otherwise a deterministic daily pick from vocalists (fallback: all active artists).
  */
-export async function getDailyFeaturedArtistForHome(): Promise<ArtistListing | null> {
+export async function getDailyFeaturedArtistForHome(): Promise<FeaturedArtistListing | null> {
   const db = getDb();
   const todayLocal = getLocalCalendarDateForDb(new Date());
 
@@ -84,7 +140,8 @@ export async function getDailyFeaturedArtistForHome(): Promise<ArtistListing | n
   });
 
   if (override?.artist && !override.artist.isSuspended) {
-    return toArtistListing(override.artist);
+    const collabs = await fetchActiveCollabPreviewsForArtist(override.artist.id, 4);
+    return toFeaturedArtistListing(override.artist, collabs);
   }
 
   const vocalistInclude = {
@@ -121,7 +178,9 @@ export async function getDailyFeaturedArtistForHome(): Promise<ArtistListing | n
   if (poolRows.length === 0) return null;
 
   const idx = getLocalDayOrdinalForRotation(new Date()) % poolRows.length;
-  return toArtistListing(poolRows[idx]);
+  const picked = poolRows[idx];
+  const collabs = await fetchActiveCollabPreviewsForArtist(picked.id, 4);
+  return toFeaturedArtistListing(picked, collabs);
 }
 
 /** Profile page shape - aligned with former DummyArtist */

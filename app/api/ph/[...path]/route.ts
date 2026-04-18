@@ -37,7 +37,7 @@ function buildUpstreamHeaders(request: NextRequest, posthogHostname: string): He
 /**
  * Hop-by-hop / encoding headers to strip when re-emitting the upstream response.
  *
- * Cloudflare `fetch()` auto-decompresses gzip/br responses — forwarding the original
+ * Cloudflare `fetch()` auto-decompresses gzip/br responses  -  forwarding the original
  * `content-encoding` header would make the browser try to decode raw (already-decoded)
  * bytes and Safari logs "The network connection was lost. (e, line 0)".
  */

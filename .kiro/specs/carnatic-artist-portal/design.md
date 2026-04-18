@@ -71,7 +71,7 @@ graph TD
 
 | Layer | Technology | Rationale |
 |---|---|---|
-| Framework | **Next.js 14 (App Router)** | SSR/SSG for SEO & performance, API routes, server actions, PWA-friendly |
+| Framework | **Next.js 16 (App Router)** | SSR/SSG for SEO & performance, API routes, server actions, PWA-friendly |
 | Hosting | **Cloudflare Workers** + **OpenNext** (`@opennextjs/cloudflare`) | Next.js runs on the Workers runtime via OpenNext; production build uses `output: "standalone"`; Wrangler for deploy and Workers Builds CI |
 | Language | **TypeScript** | Type safety across full stack |
 | Styling | **Tailwind CSS** | Utility-first, easy dynamic theming via CSS variables |
@@ -140,6 +140,7 @@ app/
 │   │   ├── page.tsx              # Artist directory
 │   │   └── [slug]/page.tsx       # Artist profile
 │   ├── register/page.tsx         # Registration form
+│   ├── about/page.tsx            # Maintainer showcase (USPs, colour examples, Unicode demos)
 │   └── auth/
 │       ├── login/page.tsx        # Request login link
 │       └── verify/page.tsx       # Magic link verification
@@ -179,10 +180,14 @@ graph TD
     CollabChat --> MessageInput
     ArtistSearch --> SearchBar
     ArtistSearch --> ArtistCard
-    HomePage --> NetherlandsMap
+    HomePage --> ArtistsProvinceMap
     HomePage --> FeaturedArtistCard
     HomePage --> StatsCounter
 ```
+
+**Public surfacing of `SpecialityTheme`:** directory grid (`/artists`), public profile hero (`/artists/[slug]`), home featured-artist card initial fallback, `ArtistMiniCard` (map side panel + previews). **`ArtistsProvinceMap`** loads configurable GeoJSON, colours provinces by artist count, and shows a side panel: artist mini-cards when the province has listings; when the count is **zero**, body copy explains the gap and the footer calls **Join the portal** (registration) instead of browsing an empty filtered directory.
+
+**Home marketing cache:** `lib/cache/home-marketing.ts` exposes `getCachedHomeMarketingData()` (backed by `unstable_cache` and tag `home-marketing`) and `revalidateHomeMarketing()` for use after mutations that affect homepage aggregates (e.g. profile edits, registration approval, suspensions).
 
 ### Structured Artist Search Service Interface
 
@@ -234,19 +239,32 @@ async function invalidatePriorTokens(artistId: string): Promise<void>
 
 ### Speciality Theming Service Interface
 
-```typescript
-interface SpecialityTheme {
-  speciality: string;
-  primaryColor: string;    // hex
-  textColor: string;       // hex, contrast-safe (≥4.5:1)
-}
+Colours come from the **`Speciality`** table (`primaryColor` / `textColor`). Runtime UI uses **`getThemeFromArtistSpecialities(specs: { name: string; color: string }[])`** in `lib/speciality-theme.ts`:
 
-function getThemeForSpecialities(specialities: string[]): {
-  background: string;      // CSS gradient or solid color
+- **Empty list:** fallback accent (`DEFAULT_ARTIST_ACCENT_COLOR`).
+- **One speciality:** solid background using that stored hex.
+- **Several specialities:** if stored colours are **distinct**, background is **`linear-gradient(135deg, …)`** across those hex values so artists with multiple instruments do not mimic single-speciality peers who share only the same first instrument. **`accentColor`** stays aligned with the first speciality for borders/icons where needed.
+
+A separate pure helper, **`getThemeForSpecialities(specialityNames: string[])`**, resolves colours from the static **`SPECIALITY_PALETTE`** (must match `prisma/seed.ts`). Use it for tests and demos; **production cards and profile heroes use stored DB colours** via `getThemeFromArtistSpecialities`.
+
+```typescript
+interface SpecialityThemeResult {
+  /** CSS solid colour or linear-gradient(...) */
+  background: string;
   textColor: string;
   accentColor: string;
 }
+
+/** Production: uses hex values joined on Artist (same as admin palette). */
+declare function getThemeFromArtistSpecialities(
+  specs: { name: string; color: string }[],
+): SpecialityThemeResult;
+
+/** Tests / about-page demos: resolves names via SPECIALITY_PALETTE. */
+declare function getThemeForSpecialities(specialityNames: string[]): SpecialityThemeResult;
 ```
+
+Public profile **speciality pills** render with each speciality’s **`color`** (filled pill, white text). Registration and profile edit enforce **at most three** specialities per artist.
 
 ---
 
@@ -583,7 +601,7 @@ interface DeploymentConfig {
 
 ### Property 10: Speciality colour theme correctness
 
-*For any* Artist with a single Speciality, the theme applied to their Profile page and profile card SHALL use that Speciality's configured primary colour as the dominant background. *For any* Artist with multiple Specialities, the applied gradient SHALL reference the primary colour of every listed Speciality.
+*For any* Artist with a single Speciality, the theme applied to their Profile page and profile card SHALL use that Speciality's stored primary colour as the dominant background (solid). *For any* Artist with multiple Specialities whose stored colours differ, the applied theme SHALL use a gradient that references those stored colours so multi-speciality artists are not indistinguishable from artists who share only the same first speciality.
 
 **Validates: Requirements 4.5, 4.6, 5.2, 5.3, 5.4**
 

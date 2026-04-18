@@ -2,7 +2,9 @@
 
 A portfolio and collaboration platform for Carnatic musicians in The Netherlands - built mobile-first as a Progressive Web App with speciality-based colour theming, full Indic script support, and a clean admin moderation layer.
 
-> **Live demo:** visit `/about` after starting the dev server for a full maintainer walkthrough with live examples.
+> **Live demo:** visit `/about` after starting the dev server for a full maintainer walkthrough with live examples.  
+> **Docs index:** see [`docs/README.md`](docs/README.md) (specs, screenshot checklist, copy style).  
+> **Screenshots:** add captures under [`docs/screenshots/`](docs/screenshots/) (see [`docs/screenshots/README.md`](docs/screenshots/README.md)) and link them here for release notes or the GitHub readme.
 
 ---
 
@@ -10,7 +12,7 @@ A portfolio and collaboration platform for Carnatic musicians in The Netherlands
 
 | Audience | Capabilities |
 |---|---|
-| **Visitors** | Browse artist profiles, view bios, collab stats, and reviews |
+| **Visitors** | Browse artist profiles, daily featured vocalist on the home page, bios, collab stats, and reviews |
 | **Artists** | Manage portfolio, mark availability, search collaborators, create group chats (collabs), leave feedback |
 | **Admins** | Approve/reject registrations, moderate chats, manage artists/specialities/collabs |
 
@@ -19,7 +21,7 @@ A portfolio and collaboration platform for Carnatic musicians in The Netherlands
 ## Key USPs
 
 ### 🎨 Speciality-based colour theming
-Every artist profile is visually themed by their instrument. Vocal → purple, Mridangam → red, Veena → green, Flute → blue, and so on. Multi-instrument artists get a CSS gradient blending all their colours. All colour combinations are WCAG AA compliant (≥4.5:1 contrast ratio), verified by property-based tests.
+Every artist profile is visually themed by their **stored** speciality colours (same values as admin-seeded palette). **One** speciality: solid header. **Several** specialities with **distinct** colours: diagonal `linear-gradient` so multi-instrumentalists do not look identical to peers who share only the same first instrument. Directory cards, profile hero, home featured-artist fallback, and mini-cards all use `getThemeFromArtistSpecialities()` in `lib/speciality-theme.ts`. Public **profile** speciality pills use each row’s colour (not a single frosted style). The **`/about`** page includes **illustrative** example cards for **two** and **three** specialities (the **maximum** per artist). Tests cover `getThemeFromArtistSpecialities` alongside the name-based `getThemeForSpecialities()` helper. All combinations target WCAG AA contrast, verified by property-based tests.
 
 ### 🌐 Indic script & Unicode support
 Artists can write their bio, chat messages, and reviews in Tamil, Kannada, Telugu, Malayalam, Hindi/Devanagari, or any combination - including mixed-script paragraphs. The Tiptap rich-text editor accepts direct Unicode input. Google Fonts Noto family provides full glyph coverage with `font-display: swap` so rendering is beautiful without hurting performance.
@@ -27,11 +29,18 @@ Artists can write their bio, chat messages, and reviews in Tamil, Kannada, Telug
 ### 🔒 Magic-link authentication
 No passwords. Artists log in via a signed JWT link sent to their email (valid 72 hours). Sessions are 30-day signed JWTs validated by Edge middleware - no database round-trip on every request. Admin role is granted by listing an email in `ADMIN_EMAILS`.
 
+### ✨ Home spotlight
+
+The landing page showcases **one vocalist per local calendar day** (timezone follows `DEPLOYMENT_REGION` / optional `DEPLOYMENT_TIMEZONE`). The card uses their **R2 profile photo** (letter fallback if the URL fails), links to their profile, and lists **active collabs** they own or join - up to four titles - with a short message when they have none. Optional `DailyFeatured` rows can override the automatic pick for a given day.
+
 ### 🔍 Transparent search (no LLM)
 Artist search uses a typeahead speciality picker + province dropdown + optional date range - all server-side SQL, no external API calls. Deliberately avoids LLM-based NLP to preserve user trust and keep the platform self-contained.
 
 ### 🌍 Multi-region extensibility
-Deploy for Belgium, Singapore, or any country by swapping a GeoJSON file and a few env vars. No code changes needed. The home page map, language switcher, and date formats all update automatically.
+Deploy for Belgium, Singapore, or any country by swapping a GeoJSON file and a few env vars. No code changes needed. The home page **Netherlands** province map (`components/artists-province-map.tsx`), language switcher, and date formats all update automatically. When a province has **no** listed artists, the side panel promotes **Join the portal** instead of an empty directory browse link.
+
+### 🏠 Cached home marketing bundle
+Homepage aggregates (totals, featured artist, province map inputs, preview grid) load through **`lib/cache/home-marketing.ts`** (`unstable_cache` + tag **`home-marketing`**). Mutations that affect counts or listings call **`revalidateHomeMarketing()`** so stats and spotlight stay fresh without recomputing on every request.
 
 ### 📱 PWA-ready
 Designed for Lighthouse PWA ≥90, Performance ≥85, Accessibility ≥90 on mobile. All touch targets ≥44×44px. Service Worker, Web App Manifest, and push notifications (VAPID) are in the implementation plan.
@@ -45,7 +54,7 @@ Designed for Lighthouse PWA ≥90, Performance ≥85, Accessibility ≥90 on mob
 
 | Layer | Technology |
 |---|---|
-| Framework | Next.js 14 (App Router) + TypeScript |
+| Framework | Next.js 16 (App Router) + TypeScript |
 | Hosting & deploy | [Cloudflare Workers](https://workers.cloudflare.com/) + [OpenNext](https://opennext.js.org/cloudflare) (`@opennextjs/cloudflare`), [Wrangler](https://developers.cloudflare.com/workers/wrangler/) |
 | Styling | Tailwind CSS |
 | Database | PostgreSQL via [Neon](https://neon.tech) (serverless, no connection exhaustion) |
@@ -165,7 +174,7 @@ Since magic-link email requires Resend to be configured, use these shortcuts for
 
 | Path | Description |
 |---|---|
-| `/` | Home - stats, Singer/Instrumentalist of the Day, artist grid, active collabs |
+| `/` | Home - stats, daily featured vocalist (photo + gradient fallback + active collab teasers), NL province map, preview grid |
 | `/artists` | Artist directory with search (name, speciality, province) |
 | `/artists/[slug]` | Artist profile - bio, collab stats, reviews, availability |
 | `/register` | Artist registration form |
@@ -177,7 +186,7 @@ Since magic-link email requires Resend to be configured, use these shortcuts for
 | `/admin/artists` | Manage all artists |
 | `/admin/collabs` | Moderate group chats |
 | `/admin/specialities` | Manage speciality colour palette |
-| `/about` | Maintainer showcase - USPs, tech stack, live demos |
+| `/about` | Maintainer showcase - USPs, speciality **colour examples** (2 and 3 instruments), Unicode samples, tech stack, live demos |
 
 ---
 
@@ -194,7 +203,7 @@ npm run test:watch
 npm run test:e2e
 ```
 
-Current test coverage: **50 tests across 6 files** - all passing.
+Run `npm test` for the current count; unit and property-based tests live under `lib/__tests__/`.
 
 ---
 
@@ -218,17 +227,22 @@ app/
 └── api/               # Route handlers
 
 lib/
-├── auth.ts            # Magic-link issuance + verification
-├── session-jwt.ts     # JWT sign/verify (Edge-compatible)
-├── db.ts              # Prisma singleton (Neon adapter)
-├── storage.ts         # Cloudflare R2 helpers
-├── speciality-theme.ts # getThemeForSpecialities() pure function
-├── dummy-artists.ts   # Shared dummy data (12 artists)
-└── admin-approval.ts  # Approve/reject + filterRegistrations()
+├── auth.ts              # Magic-link issuance + verification
+├── session-jwt.ts       # JWT sign/verify (Edge-compatible)
+├── db.ts                # Prisma singleton (Neon adapter)
+├── storage.ts           # Cloudflare R2 helpers
+├── speciality-theme.ts  # getThemeFromArtistSpecialities() + getThemeForSpecialities()
+├── cache/
+│   └── home-marketing.ts # Cached homepage bundle + revalidateHomeMarketing()
+├── dummy-artists.ts     # Shared dummy data (12 artists)
+└── admin-approval.ts    # Approve/reject + filterRegistrations()
 
 components/
-├── speciality-picker.tsx  # Typeahead speciality selector
-└── sortable-table.tsx     # Reusable sortable table
+├── artists-province-map.tsx  # NL map, province side panel (empty-state Join CTA)
+├── artist-mini-card.tsx       # Compact cards (multi-speciality chips + theme)
+├── featured-artist-photo.tsx  # Spotlight photo + gradient initial fallback
+├── speciality-picker.tsx      # Typeahead speciality selector
+└── sortable-table.tsx         # Reusable sortable table
 
 prisma/
 ├── schema.prisma      # 16-entity schema
@@ -297,8 +311,10 @@ Then add `public/geo/belgium-provinces.geojson` with Belgian province boundaries
 Full requirements, design, and implementation plan are in `.kiro/specs/carnatic-artist-portal/`:
 
 - `requirements.md` - 19 requirements with EARS-pattern acceptance criteria
-- `design.md` - architecture, ERD, Prisma schema, 28 correctness properties, testing strategy
+- `design.md` - architecture, ERD, Prisma schema, speciality theming contracts, 28 correctness properties, testing strategy
 - `tasks.md` - 28 implementation tasks with progress tracking
+
+Shorter entry points: [`docs/README.md`](docs/README.md) and in-app **`/about`**.
 
 ---
 

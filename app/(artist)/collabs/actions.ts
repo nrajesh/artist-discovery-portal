@@ -2,6 +2,7 @@
 
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { revalidateHomeMarketing } from "@/lib/cache/home-marketing";
 import { getDb } from "@/lib/db";
 import { verifySession } from "@/lib/session-jwt";
 import { notifyReviewEvent } from "@/lib/notifications";
@@ -61,6 +62,7 @@ export async function createCollabAction(formData: FormData): Promise<void> {
   revalidatePath("/collabs");
   revalidatePath(`/collabs/${collab.id}`);
   revalidatePath("/dashboard");
+  revalidateHomeMarketing();
 }
 
 export async function addCollabMessageAction(formData: FormData): Promise<void> {
@@ -111,6 +113,7 @@ export async function updateCollabStatusAction(formData: FormData): Promise<void
   revalidatePath("/collabs");
   revalidatePath(`/collabs/${collabId}`);
   revalidatePath("/dashboard");
+  revalidateHomeMarketing();
 }
 
 export async function deleteCollabAction(formData: FormData): Promise<void> {
@@ -133,6 +136,7 @@ export async function deleteCollabAction(formData: FormData): Promise<void> {
 
   revalidatePath("/collabs");
   revalidatePath("/dashboard");
+  revalidateHomeMarketing();
 }
 
 export async function upsertFeedbackAction(formData: FormData): Promise<void> {

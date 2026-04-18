@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
 import { formatDeploymentCalendarDate } from "@/lib/format-deployment-datetime";
 import { verifySession } from "@/lib/session-jwt";
+import { getThemeFromArtistSpecialities } from "@/lib/speciality-theme";
 import { getArtistBySlug } from "@/lib/queries/artists";
 import { ArtistProfileTracker } from "./artist-profile-tracker";
 
@@ -49,7 +50,10 @@ export default async function ArtistProfilePage({ params, searchParams }: PagePr
     ? (artist.reviews.reduce((s, r) => s + r.rating, 0) / artist.reviews.length).toFixed(1)
     : null;
 
-  const primaryColor = artist.specialities[0]?.color ?? "#92400E";
+  const heroTheme = getThemeFromArtistSpecialities(artist.specialities);
+  const heroBackground = heroTheme.background.startsWith("linear-gradient")
+    ? heroTheme.background
+    : `linear-gradient(135deg, ${heroTheme.background}, ${heroTheme.background}bb)`;
   const activeCollabs    = artist.collabs.filter(c => c.status === "active");
   const completedCollabs = artist.collabs.filter(c => c.status === "completed");
 
@@ -66,7 +70,7 @@ export default async function ArtistProfilePage({ params, searchParams }: PagePr
       <ArtistProfileTracker artistSlug={slug} />
       {/* Hero */}
       <div className="px-6 pt-10 pb-20 text-white"
-        style={{ background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}bb)` }}>
+        style={{ background: heroBackground }}>
         <Link href="/artists" className="text-white/70 hover:text-white text-sm mb-6 inline-block">← All Artists</Link>
         <div className="flex items-center gap-5 max-w-3xl mx-auto">
           <div className="w-20 h-20 rounded-full border-4 border-white/30 flex items-center justify-center text-3xl font-bold flex-shrink-0"
@@ -76,8 +80,17 @@ export default async function ArtistProfilePage({ params, searchParams }: PagePr
           <div>
             <h1 className="text-3xl font-bold">{artist.name}</h1>
             <div className="flex flex-wrap gap-2 mt-2">
-              {artist.specialities.map(s => (
-                <span key={s.name} className="text-xs px-2 py-0.5 rounded-full font-semibold bg-white/20 text-white">{s.name}</span>
+              {artist.specialities.map((s) => (
+                <span
+                  key={s.name}
+                  className="text-xs px-2 py-0.5 rounded-full font-semibold shadow-sm ring-1 ring-white/35"
+                  style={{
+                    backgroundColor: s.color,
+                    color: "#FFFFFF",
+                  }}
+                >
+                  {s.name}
+                </span>
               ))}
               {artist.availableForCollab && (
                 <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-green-400/30 text-white border border-green-300/40">

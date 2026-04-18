@@ -58,6 +58,42 @@ export const DEFAULT_ARTIST_ACCENT_COLOR = '#92400E';
 // ---------------------------------------------------------------------------
 
 /**
+ * Hero / card backgrounds from stored speciality colours (same source as UI pills).
+ * - One speciality → solid fill
+ * - Several → diagonal gradient across distinct colours so multi-instrumentalists don’t look identical to single-speciality peers who share the same first instrument.
+ */
+export function getThemeFromArtistSpecialities(
+  specs: { name: string; color: string }[],
+): SpecialityThemeResult {
+  if (specs.length === 0) {
+    return {
+      background: DEFAULT_ARTIST_ACCENT_COLOR,
+      textColor: '#FFFFFF',
+      accentColor: DEFAULT_ARTIST_ACCENT_COLOR,
+    };
+  }
+
+  const colors = specs.map((s) => s.color.trim()).filter(Boolean);
+  const distinct = [...new Set(colors)];
+  const accentColor = colors[0] ?? DEFAULT_ARTIST_ACCENT_COLOR;
+
+  if (distinct.length === 1) {
+    const c = distinct[0]!;
+    return {
+      background: c,
+      textColor: '#FFFFFF',
+      accentColor: c,
+    };
+  }
+
+  return {
+    background: `linear-gradient(135deg, ${distinct.join(', ')})`,
+    textColor: '#FFFFFF',
+    accentColor,
+  };
+}
+
+/**
  * Derive a CSS colour theme from a list of speciality names.
  *
  * - Empty / no matches → neutral grey fallback

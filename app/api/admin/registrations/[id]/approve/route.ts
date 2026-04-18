@@ -16,6 +16,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
+import { revalidateHomeMarketing } from '@/lib/cache/home-marketing';
 import { getDb } from '@/lib/db';
 import { issueMagicLink } from '@/lib/auth';
 import { analyticsServer } from '@/lib/analytics-server';
@@ -155,6 +156,7 @@ export async function POST(
       : null;
 
   revalidatePath('/admin/specialities');
+  revalidateHomeMarketing();
 
   await notifyAdminRegistrationEvent({
     event: 'registration_approved',

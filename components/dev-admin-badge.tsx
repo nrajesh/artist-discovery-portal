@@ -22,7 +22,7 @@ export function DevAdminBadge() {
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2 text-xs">
         <span className="font-semibold uppercase tracking-wide text-amber-400">Dev</span>
         <nav className="flex flex-wrap items-center gap-x-4 gap-y-1">
-          {/* Dev login paths 404 in production — use reveal so Next never prefetches them. */}
+          {/* Dev login paths 404 in production  -  use reveal so Next never prefetches them. */}
           <DevUrlReveal path="/api/dev/login?role=admin" label="Login as admin" variant="inline" />
           <DevUrlReveal path="/api/dev/login?role=artist" label="Login as artist" variant="inline" />
           <Link href="/admin/dashboard" className="underline decoration-amber-500/80 underline-offset-2 hover:text-white">
