@@ -24,8 +24,18 @@
   //
   // DATABASE_URL must be a Worker runtime secret (dashboard → Worker → Variables and Secrets,
   // or `wrangler secret put DATABASE_URL`). Build-only secrets are not available when handling requests.
+  //
+  // Deployment branding (deployment.config.ts) - Workers do not load .env at runtime. These match
+  // env.example Netherlands defaults so production does not throw "Missing DEPLOYMENT_REGION".
+  // Override per environment in the dashboard or edit here for another country.
   "vars": {
-    "POSTHOG_HOST": "https://eu.i.posthog.com"
+    "POSTHOG_HOST": "https://eu.i.posthog.com",
+    "DEPLOYMENT_REGION": "NL",
+    "DEPLOYMENT_NAME": "Carnatic Artist Portal",
+    "DEPLOYMENT_LOCALE_PRIMARY": "en",
+    "DEPLOYMENT_LOCALE_SECONDARY": "nl",
+    "DEPLOYMENT_MAP_GEOJSON_URL": "/geo/netherlands-provinces.geojson",
+    "DEPLOYMENT_BRANDING_LOGO_URL": "/assets/logo.svg"
   },
   "assets": {
     "directory": ".open-next/assets",
