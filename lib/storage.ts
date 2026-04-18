@@ -5,6 +5,7 @@ import {
   GetObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
 
 // ---------------------------------------------------------------------------
 // StorageError
@@ -37,13 +38,44 @@ const ALLOWED_CONTENT_TYPES = new Set([
 ]);
 
 // ---------------------------------------------------------------------------
+// Env resolution (localhost + Cloudflare Workers)
+// ---------------------------------------------------------------------------
+
+/**
+ * R2 vars are normally read from `process.env`. On Cloudflare Workers, OpenNext injects plaintext
+ * `vars` into `process.env`; **Secrets** should appear there too after init, but some deployments
+ * only expose them on the raw Worker `env` object. Resolve from `process.env` first, then
+ * `getCloudflareContext().env` so dashboard secrets match runtime behaviour.
+ */
+function getR2EnvString(key: string): string | undefined {
+  const fromProcess = process.env[key];
+  if (typeof fromProcess === 'string' && fromProcess.trim() !== '') {
+    return fromProcess;
+  }
+
+  try {
+    const { env } = getCloudflareContext({ async: false }) as {
+      env: Record<string, unknown>;
+    };
+    const v = env[key];
+    if (typeof v === 'string' && v.trim() !== '') {
+      return v;
+    }
+  } catch {
+    // Local `next dev` without OpenNext worker context, or SSG - fall through
+  }
+
+  return undefined;
+}
+
+// ---------------------------------------------------------------------------
 // R2 S3 client (lazy-initialised so env vars are read at call time)
 // ---------------------------------------------------------------------------
 
 function getS3Client(): S3Client {
-  const accountId = process.env.R2_ACCOUNT_ID;
-  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+  const accountId = getR2EnvString('R2_ACCOUNT_ID');
+  const accessKeyId = getR2EnvString('R2_ACCESS_KEY_ID');
+  const secretAccessKey = getR2EnvString('R2_SECRET_ACCESS_KEY');
 
   if (!accountId || !accessKeyId || !secretAccessKey) {
     throw new StorageError(
@@ -63,7 +95,7 @@ function getS3Client(): S3Client {
 }
 
 function getBucketName(): string {
-  const bucket = process.env.R2_BUCKET_NAME;
+  const bucket = getR2EnvString('R2_BUCKET_NAME');
   if (!bucket) {
     throw new StorageError(
       'STORAGE_UNAVAILABLE',
@@ -74,7 +106,7 @@ function getBucketName(): string {
 }
 
 function getPublicUrl(): string {
-  const publicUrl = process.env.R2_PUBLIC_URL;
+  const publicUrl = getR2EnvString('R2_PUBLIC_URL');
   if (!publicUrl) {
     throw new StorageError(
       'STORAGE_UNAVAILABLE',

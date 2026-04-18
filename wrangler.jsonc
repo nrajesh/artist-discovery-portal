@@ -25,6 +25,12 @@
   // DATABASE_URL must be a Worker runtime secret (dashboard → Worker → Variables and Secrets,
   // or `wrangler secret put DATABASE_URL`). Build-only secrets are not available when handling requests.
   //
+  // R2 (S3 API): plaintext vars below (secrets never go in this file - use dashboard Secrets or
+  // `wrangler secret put R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY`). Values are env.example-style
+  // placeholders - replace with your account, bucket, and public URL before production deploy, or
+  // delete these three keys if you manage R2 only in the dashboard (otherwise `wrangler deploy`
+  // overwrites dashboard vars for these names). See README "R2 uploads".
+  //
   // Deployment branding (deployment.config.ts) - Workers do not load .env at runtime. These match
   // env.example Netherlands defaults so production does not throw "Missing DEPLOYMENT_REGION".
   // Override per environment in the dashboard or edit here for another country.
@@ -35,7 +41,11 @@
     "DEPLOYMENT_LOCALE_PRIMARY": "en",
     "DEPLOYMENT_LOCALE_SECONDARY": "nl",
     "DEPLOYMENT_MAP_GEOJSON_URL": "/geo/netherlands-provinces.geojson",
-    "DEPLOYMENT_BRANDING_LOGO_URL": "/assets/logo.svg"
+    "DEPLOYMENT_BRANDING_LOGO_URL": "/assets/logo.svg",
+    // Cloudflare R2 Bucket
+    "R2_ACCOUNT_ID": "4a978c47ceb63bdb40ad391bfb690f83",
+    "R2_BUCKET_NAME": "carnatic-artists-portal-r2-bucket",
+    "R2_PUBLIC_URL": "https://pub-720fa56797fb4f7081196455a57a2da5.r2.dev"
   },
   "assets": {
     "directory": ".open-next/assets",

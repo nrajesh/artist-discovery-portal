@@ -11,6 +11,9 @@ import { StorageError, uploadFile } from '@/lib/storage';
 import { notifyAdminRegistrationEvent } from '@/lib/notifications';
 import { normalizeSpecialityList } from '@/lib/speciality-catalog';
 
+const STORAGE_UNAVAILABLE_MESSAGE =
+  'File storage is not configured. For local dev, set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_PUBLIC_URL in .env.local. For Cloudflare Workers, set the same variable names on this Worker (plaintext for account, bucket, public URL - secrets for access keys) and include them in wrangler.jsonc or `wrangler secret put` if you deploy via CLI so the runtime always receives them.';
+
 function getFileExtension(contentType: string): string {
   const map: Record<string, string> = {
     'image/jpeg': 'jpg',
@@ -155,7 +158,7 @@ export async function POST(request: NextRequest) {
     console.error('Profile photo upload failed:', err);
     const message =
       err instanceof StorageError && err.code === 'STORAGE_UNAVAILABLE'
-        ? 'File storage is not available. On localhost, configure Cloudflare R2 in .env.local (R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_PUBLIC_URL).'
+        ? STORAGE_UNAVAILABLE_MESSAGE
         : 'Failed to upload profile photo. Please try again.';
     return NextResponse.json({ error: 'UPLOAD_ERROR', message }, { status: 503 });
   }
@@ -175,7 +178,7 @@ export async function POST(request: NextRequest) {
       console.error('Background image upload failed:', err);
       const message =
         err instanceof StorageError && err.code === 'STORAGE_UNAVAILABLE'
-          ? 'File storage is not available. On localhost, configure Cloudflare R2 in .env.local (R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_PUBLIC_URL).'
+          ? STORAGE_UNAVAILABLE_MESSAGE
           : 'Failed to upload background image. Please try again.';
       return NextResponse.json({ error: 'UPLOAD_ERROR', message }, { status: 503 });
     }
