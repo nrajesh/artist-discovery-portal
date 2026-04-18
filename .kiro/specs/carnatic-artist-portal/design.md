@@ -187,7 +187,7 @@ graph TD
 
 **Public surfacing of `SpecialityTheme`:** directory grid (`/artists`), public profile hero (`/artists/[slug]`), home featured-artist card initial fallback, `ArtistMiniCard` (map side panel + previews). **`ArtistsProvinceMap`** loads configurable GeoJSON, colours provinces by artist count, and shows a side panel: artist mini-cards when the province has listings; when the count is **zero**, body copy explains the gap and the footer calls **Join the portal** (registration) instead of browsing an empty filtered directory.
 
-**Home marketing cache:** `lib/cache/home-marketing.ts` exposes `getCachedHomeMarketingData()` (backed by `unstable_cache` and tag `home-marketing`) and `revalidateHomeMarketing()` for use after mutations that affect homepage aggregates (e.g. profile edits, registration approval, suspensions).
+**Home marketing data:** `lib/cache/home-marketing.ts` exposes `getCachedHomeMarketingData()` (aggregated Prisma queries for the public home page) and `revalidateHomeMarketing()` (wraps `revalidatePath("/")`) after mutations that affect homepage aggregates. `unstable_cache` is omitted for **OpenNext on Cloudflare Workers** compatibility, where tagged data cache is not always available and can 500 the home route.
 
 ### Structured Artist Search Service Interface
 

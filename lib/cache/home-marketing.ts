@@ -1,4 +1,4 @@
-import { revalidateTag, unstable_cache } from "next/cache";
+import { revalidatePath } from "next/cache";
 import {
   countActiveArtists,
   countActiveArtistsByProvince,
@@ -13,18 +13,15 @@ import {
 } from "@/lib/queries/artists";
 
 /**
- * Cached payload for the public home page marketing sections (stats, map/directory inputs,
- * featured artist, collab teaser list).
+ * Homepage marketing bundle (stats, map inputs, featured artist, collabs, preview grid).
  *
- * - Tag-based invalidation keeps counts and lists fresh when artists/collabs change (see call sites).
- * - `revalidate` is a safety net if a code path forgets to invalidate (max staleness window).
+ * **OpenNext / Cloudflare Workers:** `unstable_cache` from `next/cache` is not reliably wired to
+ * incremental cache in all deployments and can surface as a generic 500 on `/`. We load fresh data
+ * per request here; mutations call `revalidateHomeMarketing()` → `revalidatePath("/")` so the next
+ * visit reflects changes without relying on tagged data cache support.
  *
- * Note: Session/cookies are handled outside this function so the cached result stays a pure DB snapshot.
+ * Session/cookies stay outside this module so results stay usable for anonymous visitors.
  */
-export const HOME_MARKETING_CACHE_TAG = "home-marketing";
-
-const HOME_MARKETING_REVALIDATE_SECONDS = 120;
-
 export type HomeMarketingBundle = {
   totalArtists: number;
   seekingCollab: number;
@@ -65,13 +62,12 @@ async function loadHomeMarketingBundle(): Promise<HomeMarketingBundle> {
   };
 }
 
-/** Server-side cached home marketing data (shared across requests until tag/TTL eviction). */
-export const getCachedHomeMarketingData = unstable_cache(loadHomeMarketingBundle, ["home-marketing-bundle"], {
-  tags: [HOME_MARKETING_CACHE_TAG],
-  revalidate: HOME_MARKETING_REVALIDATE_SECONDS,
-});
+/** Public home page data - safe on Cloudflare Workers without incremental data cache bindings. */
+export async function getCachedHomeMarketingData(): Promise<HomeMarketingBundle> {
+  return loadHomeMarketingBundle();
+}
 
 /** Call after mutations that affect what anonymous visitors see on `/` (artists, collabs, approvals). */
 export function revalidateHomeMarketing(): void {
-  revalidateTag(HOME_MARKETING_CACHE_TAG, "max");
+  revalidatePath("/");
 }

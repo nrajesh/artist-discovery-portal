@@ -39,8 +39,8 @@ Artist search uses a typeahead speciality picker + province dropdown + optional 
 ### 🌍 Multi-region extensibility
 Deploy for Belgium, Singapore, or any country by swapping a GeoJSON file and a few env vars. No code changes needed. The home page **Netherlands** province map (`components/artists-province-map.tsx`), language switcher, and date formats all update automatically. When a province has **no** listed artists, the side panel promotes **Join the portal** instead of an empty directory browse link.
 
-### 🏠 Cached home marketing bundle
-Homepage aggregates (totals, featured artist, province map inputs, preview grid) load through **`lib/cache/home-marketing.ts`** (`unstable_cache` + tag **`home-marketing`**). Mutations that affect counts or listings call **`revalidateHomeMarketing()`** so stats and spotlight stay fresh without recomputing on every request.
+### 🏠 Home marketing bundle
+Homepage aggregates (totals, featured artist, province map inputs, preview grid) are loaded in **`lib/cache/home-marketing.ts`**. On **Cloudflare Workers** (OpenNext), `unstable_cache` is not used: it can break when incremental cache is not fully bound, so the module runs the DB bundle per request and uses **`revalidatePath("/")`** from **`revalidateHomeMarketing()`** after mutations (approvals, profile saves, collabs) to refresh the next view.
 
 ### 📱 PWA-ready
 Designed for Lighthouse PWA ≥90, Performance ≥85, Accessibility ≥90 on mobile. All touch targets ≥44×44px. Service Worker, Web App Manifest, and push notifications (VAPID) are in the implementation plan.
@@ -233,7 +233,7 @@ lib/
 ├── storage.ts           # Cloudflare R2 helpers
 ├── speciality-theme.ts  # getThemeFromArtistSpecialities() + getThemeForSpecialities()
 ├── cache/
-│   └── home-marketing.ts # Cached homepage bundle + revalidateHomeMarketing()
+│   └── home-marketing.ts # Home page DB bundle + revalidatePath via revalidateHomeMarketing()
 ├── dummy-artists.ts     # Shared dummy data (12 artists)
 └── admin-approval.ts    # Approve/reject + filterRegistrations()
 
