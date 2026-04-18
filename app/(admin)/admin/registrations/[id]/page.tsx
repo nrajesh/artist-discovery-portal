@@ -58,12 +58,16 @@ export default async function ReviewRegistrationPage({
         <div className="mb-6 grid gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1">
             <span className="text-xs font-semibold text-stone-500 uppercase tracking-wide">Profile Photo</span>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={reg.profilePhotoUrl}
-              alt={`${reg.fullName} profile`}
-              className="h-28 w-28 rounded-xl border border-stone-200 object-cover"
-            />
+            {reg.profilePhotoUrl ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={reg.profilePhotoUrl}
+                alt={`${reg.fullName} profile`}
+                className="h-28 w-28 rounded-xl border border-stone-200 object-cover"
+              />
+            ) : (
+              <p className="text-sm text-stone-500 italic">No profile photo URL provided.</p>
+            )}
           </div>
           {reg.backgroundImageUrl && (
             <div className="flex flex-col gap-1">

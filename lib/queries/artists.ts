@@ -13,13 +13,13 @@ export type ArtistListing = {
   name: string;
   email: string;
   province: string;
+  profilePhotoUrl: string | null;
   specialities: { name: string; color: string }[];
   openToCollab: boolean;
 };
 
 /** Home spotlight - directory fields plus photo URL and active collab teasers */
 export type FeaturedArtistListing = ArtistListing & {
-  profilePhotoUrl: string;
   activeCollabs: { slug: string; name: string }[];
 };
 
@@ -33,6 +33,7 @@ function toArtistListing(a: {
   fullName: string;
   email: string;
   province: string;
+  profilePhotoUrl: string | null;
   openToCollab: boolean;
   specialities: { speciality: Speciality }[];
 }): ArtistListing {
@@ -42,6 +43,7 @@ function toArtistListing(a: {
     name: a.fullName,
     email: a.email,
     province: a.province,
+    profilePhotoUrl: a.profilePhotoUrl,
     specialities: a.specialities.map((j) => specColor(j.speciality)),
     openToCollab: a.openToCollab,
   };
@@ -71,7 +73,7 @@ function toFeaturedArtistListing(
     email: string;
     province: string;
     openToCollab: boolean;
-    profilePhotoUrl: string;
+    profilePhotoUrl: string | null;
     specialities: { speciality: Speciality }[];
   },
   activeCollabs: { slug: string; name: string }[],
@@ -190,6 +192,8 @@ export type ArtistProfileView = {
   name: string;
   email: string;
   province: string;
+  profilePhotoUrl: string | null;
+  backgroundImageUrl: string | null;
   specialities: { name: string; color: string }[];
   contactNumber: string;
   contactType: string;
@@ -282,6 +286,8 @@ export async function getArtistBySlug(slug: string): Promise<ArtistProfileView |
     name: artist.fullName,
     email: artist.email,
     province: artist.province,
+    profilePhotoUrl: artist.profilePhotoUrl,
+    backgroundImageUrl: artist.backgroundImageUrl ?? null,
     specialities: artist.specialities.map((j) => specColor(j.speciality)),
     contactNumber: artist.contactNumber,
     contactType: artist.contactType,
@@ -568,6 +574,7 @@ export async function getArtistListingBySlug(slug: string): Promise<ArtistListin
     name: row.fullName,
     email: row.email,
     province: row.province,
+    profilePhotoUrl: row.profilePhotoUrl,
     specialities: row.specialities.map((j) => specColor(j.speciality)),
     openToCollab: row.openToCollab,
   };

@@ -177,7 +177,7 @@ Since magic-link email requires Resend to be configured, use these shortcuts for
 | `/` | Home - stats, daily featured vocalist (photo + gradient fallback + active collab teasers), NL province map, preview grid |
 | `/artists` | Artist directory with search (name, speciality, province) |
 | `/artists/[slug]` | Artist profile - bio, collab stats, reviews, availability |
-| `/register` | Artist registration form |
+| `/register` | Artist registration — required name, email, contact, specialities; optional HTTPS profile/banner image URLs |
 | `/auth/login` | Request magic link |
 | `/dashboard` | Artist dashboard (auth required) |
 | `/profile/edit` | Edit profile (auth required) |
@@ -270,7 +270,7 @@ The app is built for production with **Next.js** (`npm run build`, `output: "sta
 6. Add variables from `env.example` under **Build variables and secrets** for the Next.js build (`NEXT_PUBLIC_*`, etc.).
 7. **`DEPLOYMENT_*` branding:** Netherlands defaults (`DEPLOYMENT_REGION`, `DEPLOYMENT_NAME`, locales, GeoJSON path, logo URL) are declared in **`wrangler.jsonc`** (`vars`) so Workers runtime gets them - Cloudflare does **not** inject your laptop `.env` into the Worker. Override in the dashboard for another country or forked branding.
 8. Under the Worker’s **Variables and secrets** (runtime), set **`DATABASE_URL`** (Neon **pooled** string), `SESSION_SECRET`, and any other secrets the app reads at request time. If runtime `DATABASE_URL` is missing, database-backed routes return **500**. Wrangler deploy without `--keep-vars` can delete dashboard-only secrets - the deploy scripts pass **`--keep-vars`** so re-add secrets once if needed.
-9. **R2 uploads (registration, profile photos):** The app expects `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL` as plaintext **vars** and `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` as **Secrets**, all on **this** Worker. Put plaintext in **`wrangler.jsonc`** (`vars`) and use `wrangler secret put` for keys so CLI deploys match the dashboard. **`lib/storage.ts`** reads `process.env` first, then the Workers virtual module **`cloudflare:workers`** (`env`) so API routes see **Secrets** even when they do not appear on `process.env` inside OpenNext’s Node-compat isolate.
+9. **R2 (`lib/storage.ts`):** Registration does **not** upload files; applicants paste optional HTTPS image URLs only. Configure `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL` (plaintext **vars**) and `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` (**Secrets**) on the Worker if you use server-side uploads elsewhere. Put plaintext in **`wrangler.jsonc`** (`vars`) and use `wrangler secret put` for keys. The storage helper reads `process.env` first, then **`cloudflare:workers`** `env`, so secrets work in OpenNext’s Node-compat isolate.
 10. Use the **direct** (non-pooled) URL for `prisma migrate deploy` in CI or locally (`DATABASE_URL_UNPOOLED` / `directUrl` in Prisma).
 11. Ensure Prisma client is generated during install/build (`npx prisma generate` in postinstall or build if needed).
 

@@ -21,15 +21,18 @@ import SpecialityPicker, { type SpecialityCatalogItem } from '@/components/speci
 // Zod schema
 // ---------------------------------------------------------------------------
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
-const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-
-const fileSchema = z
-  .instanceof(File)
-  .refine((f) => f.size <= MAX_FILE_SIZE, 'File must be 5 MB or less')
-  .refine((f) => ACCEPTED_IMAGE_TYPES.includes(f.type), 'Only JPEG, PNG, WebP, and GIF are accepted');
-
 const urlSchema = z.string().url('Must be a valid URL').or(z.literal(''));
+
+/** Empty → omitted. When set, must be HTTPS (image URL you host). */
+const optionalHttpsPhotoUrlSchema = z
+  .string()
+  .transform((s) => s.trim())
+  .pipe(
+    z.union([
+      z.literal('').transform(() => undefined),
+      z.string().url('Must be a valid URL').refine((u) => /^https:\/\//i.test(u), 'Must use HTTPS'),
+    ]),
+  );
 
 export const registrationSchema = z.object({
   fullName: z.string().min(1, 'Full name is required'),
@@ -38,7 +41,7 @@ export const registrationSchema = z.object({
   contactType: z.enum(['whatsapp', 'mobile'], {
     required_error: 'Please select a contact type',
   }),
-  profilePhoto: fileSchema,
+  profilePhotoUrl: optionalHttpsPhotoUrlSchema,
   specialities: z
     .array(z.string().min(2).max(80))
     .min(1, 'At least one speciality is required')
@@ -47,7 +50,7 @@ export const registrationSchema = z.object({
       (arr) => new Set(arr.map((s) => s.trim().toLowerCase())).size === arr.length,
       'Each speciality must be unique',
     ),
-  backgroundImage: z.instanceof(File).optional().nullable(),
+  backgroundImageUrl: optionalHttpsPhotoUrlSchema,
   bioRichText: z.string().optional(),
   websiteUrls: z.array(z.object({ url: urlSchema })).optional(),
   linkedinUrl: urlSchema.optional(),
@@ -155,6 +158,8 @@ export default function RegisterPage() {
     resolver: zodResolver(registrationSchema),
     defaultValues: {
       contactType: 'whatsapp',
+      profilePhotoUrl: '',
+      backgroundImageUrl: '',
       specialities: [],
       websiteUrls: [],
     },
@@ -235,10 +240,10 @@ export default function RegisterPage() {
       formData.append('email', data.email);
       formData.append('contactNumber', data.contactNumber);
       formData.append('contactType', data.contactType);
-      formData.append('profilePhoto', data.profilePhoto);
+      if (data.profilePhotoUrl) formData.append('profilePhotoUrl', data.profilePhotoUrl);
       data.specialities.forEach((s) => formData.append('specialities', s));
 
-      if (data.backgroundImage) formData.append('backgroundImage', data.backgroundImage);
+      if (data.backgroundImageUrl) formData.append('backgroundImageUrl', data.backgroundImageUrl);
       if (data.bioRichText) formData.append('bioRichText', data.bioRichText);
       if (data.linkedinUrl) formData.append('linkedinUrl', data.linkedinUrl);
       if (data.instagramUrl) formData.append('instagramUrl', data.instagramUrl);
@@ -400,30 +405,26 @@ export default function RegisterPage() {
             )}
           </div>
 
-          {/* ── Profile Photo ── */}
+          {/* ── Profile photo URL (optional) ── */}
           <div>
-            <label htmlFor="profilePhoto" className="block text-sm font-semibold text-amber-900 mb-1">
-              Profile Photo <span className="text-red-600">*</span>
+            <label htmlFor="profilePhotoUrl" className="block text-sm font-semibold text-amber-900 mb-1">
+              Profile photo URL <span className="font-normal text-amber-600">(optional)</span>
             </label>
-            <p className="text-xs text-amber-600 mb-2">JPEG, PNG, WebP, or GIF - max 5 MB</p>
-            <Controller
-              name="profilePhoto"
-              control={control}
-              render={({ field: { onChange } }) => (
-                <input
-                  id="profilePhoto"
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) onChange(file);
-                  }}
-                  className="w-full border border-amber-300 rounded-lg px-3 py-2 text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-500 min-h-[44px] file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:bg-amber-100 file:text-amber-800 file:cursor-pointer"
-                />
-              )}
+            <p className="text-xs text-amber-600 mb-2">
+              If you have one, paste an <strong>https://</strong> link to a profile image you already host (your
+              website, a CDN, etc.). Leave blank to use the initial letter on your public profile.
+            </p>
+            <input
+              id="profilePhotoUrl"
+              type="url"
+              inputMode="url"
+              autoComplete="url"
+              placeholder="https://example.com/your-photo.jpg"
+              {...register('profilePhotoUrl')}
+              className="w-full border border-amber-300 rounded-lg px-3 py-2 text-amber-900 placeholder-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-500 min-h-[44px]"
             />
-            {errors.profilePhoto && (
-              <p className="mt-1 text-sm text-red-600" role="alert">{errors.profilePhoto.message as string}</p>
+            {errors.profilePhotoUrl && (
+              <p className="mt-1 text-sm text-red-600" role="alert">{errors.profilePhotoUrl.message as string}</p>
             )}
           </div>
 
@@ -458,30 +459,27 @@ export default function RegisterPage() {
           <div className="border-t border-amber-100 pt-4">
             <p className="text-sm font-semibold text-amber-700 mb-4">Optional Information</p>
 
-            {/* Background Image */}
+            {/* Background image URL */}
             <div className="mb-4">
-              <label htmlFor="backgroundImage" className="block text-sm font-semibold text-amber-900 mb-1">
-                Background Image
+              <label htmlFor="backgroundImageUrl" className="block text-sm font-semibold text-amber-900 mb-1">
+                Background image URL
               </label>
-              <p className="text-xs text-amber-600 mb-2">JPEG, PNG, WebP, or GIF - max 5 MB</p>
-              <Controller
-                name="backgroundImage"
-                control={control}
-                render={({ field: { onChange } }) => (
-                  <input
-                    id="backgroundImage"
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      onChange(file ?? null);
-                    }}
-                    className="w-full border border-amber-300 rounded-lg px-3 py-2 text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-500 min-h-[44px] file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:bg-amber-100 file:text-amber-800 file:cursor-pointer"
-                  />
-                )}
+              <p className="text-xs text-amber-600 mb-2">
+                Optional. HTTPS link for a wide banner-style image used on your public profile hero.
+              </p>
+              <input
+                id="backgroundImageUrl"
+                type="url"
+                inputMode="url"
+                autoComplete="off"
+                placeholder="https://example.com/banner.jpg"
+                {...register('backgroundImageUrl')}
+                className="w-full border border-amber-300 rounded-lg px-3 py-2 text-amber-900 placeholder-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-500 min-h-[44px]"
               />
-              {errors.backgroundImage && (
-                <p className="mt-1 text-sm text-red-600" role="alert">{errors.backgroundImage.message as string}</p>
+              {errors.backgroundImageUrl && (
+                <p className="mt-1 text-sm text-red-600" role="alert">
+                  {errors.backgroundImageUrl.message as string}
+                </p>
               )}
             </div>
 

@@ -50,6 +50,7 @@ export default async function HomePage({
       slug: a.slug,
       name: a.name,
       province: a.province,
+      profilePhotoUrl: a.profilePhotoUrl,
       specialities: a.specialities,
     });
   }
@@ -107,7 +108,7 @@ export default async function HomePage({
                 className="group flex gap-4 px-6 py-5 sm:px-8 sm:py-6"
               >
                 <FeaturedArtistPhoto
-                  photoUrl={featuredArtist.profilePhotoUrl}
+                  photoUrl={featuredArtist.profilePhotoUrl ?? ""}
                   initial={featuredArtist.name[0] ?? "?"}
                   accentColor={featuredAvatarAccent}
                   alt={`${featuredArtist.name} profile photo`}

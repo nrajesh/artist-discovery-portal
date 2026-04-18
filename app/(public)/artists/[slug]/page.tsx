@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
+import { FeaturedArtistPhoto } from "@/components/featured-artist-photo";
 import { formatDeploymentCalendarDate } from "@/lib/format-deployment-datetime";
 import { verifySession } from "@/lib/session-jwt";
 import { getThemeFromArtistSpecialities } from "@/lib/speciality-theme";
@@ -54,6 +55,10 @@ export default async function ArtistProfilePage({ params, searchParams }: PagePr
   const heroBackground = heroTheme.background.startsWith("linear-gradient")
     ? heroTheme.background
     : `linear-gradient(135deg, ${heroTheme.background}, ${heroTheme.background}bb)`;
+  const heroAvatarAccent = heroTheme.background.startsWith("linear-gradient")
+    ? heroTheme.background
+    : heroTheme.accentColor;
+  const bgCover = artist.backgroundImageUrl?.trim();
   const activeCollabs    = artist.collabs.filter(c => c.status === "active");
   const completedCollabs = artist.collabs.filter(c => c.status === "completed");
 
@@ -69,14 +74,28 @@ export default async function ArtistProfilePage({ params, searchParams }: PagePr
     <main className="min-h-screen bg-amber-50">
       <ArtistProfileTracker artistSlug={slug} />
       {/* Hero */}
-      <div className="px-6 pt-10 pb-20 text-white"
-        style={{ background: heroBackground }}>
+      <div
+        className="px-6 pt-10 pb-20 text-white"
+        style={
+          bgCover
+            ? {
+                backgroundImage: `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.58)), url(${bgCover})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }
+            : { background: heroBackground }
+        }
+      >
         <Link href="/artists" className="text-white/70 hover:text-white text-sm mb-6 inline-block">← All Artists</Link>
         <div className="flex items-center gap-5 max-w-3xl mx-auto">
-          <div className="w-20 h-20 rounded-full border-4 border-white/30 flex items-center justify-center text-3xl font-bold flex-shrink-0"
-            style={{ backgroundColor: "rgba(255,255,255,0.2)" }}>
-            {artist.name[0]}
-          </div>
+          <FeaturedArtistPhoto
+            photoUrl={artist.profilePhotoUrl ?? ""}
+            initial={artist.name[0] ?? "?"}
+            accentColor={heroAvatarAccent}
+            alt={`${artist.name} profile photo`}
+            sizeClassName="h-20 w-20 text-3xl border-4 border-white/40"
+            imgClassName="!ring-white/50 border-4 border-white/40 shadow-lg"
+          />
           <div>
             <h1 className="text-3xl font-bold">{artist.name}</h1>
             <div className="flex flex-wrap gap-2 mt-2">

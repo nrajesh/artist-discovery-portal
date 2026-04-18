@@ -32,7 +32,7 @@ model Artist {
   email              String             @unique
   contactNumber      String
   contactType        ContactType
-  profilePhotoUrl    String
+  profilePhotoUrl    String?
   backgroundImageUrl String?
   bioRichText        String?
   province           String
@@ -109,7 +109,7 @@ model RegistrationRequest {
   email              String
   contactNumber      String
   contactType        ContactType
-  profilePhotoUrl    String
+  profilePhotoUrl    String?
   backgroundImageUrl String?
   bioRichText        String?
   status             String    @default("pending") // "pending" | "approved" | "rejected"

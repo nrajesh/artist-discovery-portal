@@ -33,8 +33,8 @@ The Carnatic Artist Portal is a web-based portfolio platform for Carnatic musici
 #### Acceptance Criteria
 
 1. THE Portal SHALL provide a publicly accessible registration form for Applicants.
-2. WHEN an Applicant submits the registration form, THE Portal SHALL require the following mandatory fields: full name, email address, contact number, contact type (WhatsApp or mobile-only, selected via a toggle or radio button alongside the contact number field), profile photo, and at least one Speciality (maximum three Specialities).
-3. WHEN an Applicant submits the registration form, THE Portal SHALL accept the following optional fields: background image, personal or professional website URLs (one or more), LinkedIn URL, Instagram URL, Facebook URL, Twitter/X URL, YouTube channel URL, and a biographical write-up.
+2. WHEN an Applicant submits the registration form, THE Portal SHALL require the following mandatory fields: full name, email address, contact number, contact type (WhatsApp or mobile-only, selected via a toggle or radio button alongside the contact number field), and at least one Speciality (maximum three Specialities).
+3. WHEN an Applicant submits the registration form, THE Portal SHALL accept the following optional fields: profile photo URL (HTTPS link to an image), background banner image URL (HTTPS), personal or professional website URLs (one or more), LinkedIn URL, Instagram URL, Facebook URL, Twitter/X URL, YouTube channel URL, and a biographical write-up.
 4. THE Portal SHALL accept a biographical write-up that supports rich text including embedded photos and video links (e.g., YouTube, Vimeo).
 5. THE Portal SHALL display a contact type toggle or radio button directly alongside the contact number field, allowing the Applicant to indicate whether the number is a WhatsApp number or a mobile-only number. This contact type indicator is NOT a separate free-text field; it is a required selection (either "WhatsApp" or "Mobile only") that the Applicant must make as part of providing their contact number.
 6. WHEN an Applicant submits the registration form with all mandatory fields present and valid, THE Portal SHALL store the Registration Request and display a confirmation message to the Applicant.
@@ -51,7 +51,7 @@ The Carnatic Artist Portal is a web-based portfolio platform for Carnatic musici
 #### Acceptance Criteria
 
 1. THE Admin Dashboard SHALL display all pending Registration Requests with the Applicant's submitted details.
-2. WHEN an Admin views a Registration Request, THE Admin Dashboard SHALL present the Applicant's name, email, contact number, profile photo, Specialities, biographical write-up, and any optional links.
+2. WHEN an Admin views a Registration Request, THE Admin Dashboard SHALL present the Applicant's name, email, contact number, profile photo URL (if provided), Specialities, biographical write-up, and any optional links.
 3. WHEN an Admin approves a Registration Request, THE Portal SHALL create an Artist account and send a Login Link to the Applicant's registered email address.
 4. WHEN an Admin rejects a Registration Request, THE Portal SHALL mark the request as rejected and SHALL NOT create an Artist account.
 5. THE Login Link SHALL expire after 72 hours from the time of issue.
@@ -67,10 +67,10 @@ The Carnatic Artist Portal is a web-based portfolio platform for Carnatic musici
 
 #### Acceptance Criteria
 
-1. WHEN an Artist is authenticated, THE Portal SHALL provide a profile management interface where the Artist can edit all fields submitted during registration. The Artist profile SHALL mandatorily include: full name, email address, contact number, contact type (WhatsApp or mobile-only toggle alongside the contact number field), profile photo, province, and at least one Speciality (maximum three Specialities).
+1. WHEN an Artist is authenticated, THE Portal SHALL provide a profile management interface where the Artist can edit all fields submitted during registration. The Artist profile SHALL mandatorily include: full name, email address, contact number, contact type (WhatsApp or mobile-only toggle alongside the contact number field), province, and at least one Speciality (maximum three Specialities). A profile photo URL is optional; when absent, the public UI uses a fallback avatar.
 2. THE Profile management interface SHALL allow the Artist to add, edit, or remove Specialities, subject to the constraint that at least one Speciality must always be present and no more than three Specialities may be associated with the Artist. The UX SHALL provide an "Add Speciality" control that is hidden or disabled once three Specialities have been selected.
 3. THE Profile management interface SHALL allow the Artist to update the biographical write-up with rich text, embedded photos, and video links.
-4. THE Profile management interface SHALL allow the Artist to upload or replace the profile photo and optional background image.
+4. THE Profile management interface SHALL allow the Artist to set or replace the profile photo URL and optional background image URL (HTTPS).
 5. THE Profile management interface SHALL allow the Artist to add, edit, or remove external links (personal website, social media, YouTube).
 6. WHEN an Artist saves profile changes, THE Portal SHALL validate all mandatory fields and, if valid, persist the changes and display a success confirmation.
 7. IF an Artist saves profile changes with a mandatory field empty, THEN THE Portal SHALL display a field-level validation error and SHALL NOT persist the changes.

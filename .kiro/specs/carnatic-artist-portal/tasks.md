@@ -65,11 +65,11 @@ Implement the Carnatic Artist Portal as a Next.js 14 (App Router) TypeScript PWA
   - Ensure all tests pass, ask the user if questions arise.
 
 - [x] 7. Registration request feature
-  - [x] 7.1 Build `app/(public)/register/page.tsx` registration form with all mandatory fields (full name, email, contact number, contact-type toggle/radio alongside contact number, profile photo, 1–3 specialities) and optional fields (background image, website URLs, LinkedIn, Instagram, Facebook, Twitter/X, YouTube, bio rich text via Tiptap)
+  - [x] 7.1 Build `app/(public)/register/page.tsx` registration form with all mandatory fields (full name, email, contact number, contact-type toggle/radio alongside contact number, 1–3 specialities) and optional fields (HTTPS profile photo URL, background banner URL, website URLs, LinkedIn, Instagram, Facebook, Twitter/X, YouTube, bio rich text via Tiptap)
     - Hide/disable "Add Speciality" control once 3 specialities are selected
     - Display field-level validation errors without submitting when mandatory fields are missing or invalid
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.7, 1.8_
-  - [x] 7.2 Implement `POST /api/registrations` server action: validate all mandatory fields, upload profile photo and background image to R2, persist `RegistrationRequest` + `RegistrationSpeciality` + `RegistrationLink` rows, create `Notification` records for all Admin accounts, return confirmation
+  - [x] 7.2 Implement `POST /api/registrations`: validate all mandatory fields and optional HTTPS image URLs, persist `RegistrationRequest` + `RegistrationSpeciality` + `RegistrationLink` rows, create `Notification` records for all Admin accounts, return confirmation
     - _Requirements: 1.6, 1.7, 1.9_
   - [x]* 7.3 Write property test for registration mandatory-field validation
     - **Property 1: Registration mandatory-field validation**

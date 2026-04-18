@@ -24,7 +24,7 @@ const mockState = vi.hoisted(() => {
     email: string;
     contactNumber: string;
     contactType: string;
-    profilePhotoUrl: string;
+    profilePhotoUrl: string | null;
     backgroundImageUrl?: string;
     bioRichText?: string;
     status: string;
@@ -75,18 +75,6 @@ vi.mock('../db', () => {
     },
   };
   return { getDb: () => mockClient };
-});
-
-// ---------------------------------------------------------------------------
-// Mock storage (uploadFile)
-// ---------------------------------------------------------------------------
-
-vi.mock('../storage', () => {
-  return {
-    uploadFile: vi.fn(async (params: { key: string }) => {
-      return `https://cdn.example.com/${params.key}`;
-    }),
-  };
 });
 
 // ---------------------------------------------------------------------------
@@ -158,11 +146,16 @@ const arbSpecialities = fc
   .filter((arr) => arr.length >= 1);
 
 // Valid registration payload
+const arbProfilePhotoUrl = fc.webUrl().map((u) =>
+  u.startsWith('http://') ? u.replace('http://', 'https://') : u.startsWith('https://') ? u : `https://${u}`,
+);
+
 const arbValidPayload = fc.record({
   fullName: arbNonEmptyString,
   email: arbEmail,
   contactNumber: arbNonEmptyString,
   contactType: arbContactType,
+  profilePhotoUrl: fc.option(arbProfilePhotoUrl, { nil: undefined }),
   specialities: arbSpecialities,
 });
 

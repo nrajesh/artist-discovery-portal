@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import ArtistsSearch from "./artists-search";
 import { ArtistListingTracker } from "./artist-listing-tracker";
+import { FeaturedArtistPhoto } from "@/components/featured-artist-photo";
 import { listArtistsForDirectory } from "@/lib/queries/artists";
 import { getThemeFromArtistSpecialities } from "@/lib/speciality-theme";
 
@@ -61,6 +62,9 @@ export default async function ArtistsPage({ searchParams }: PageProps) {
             const headerBg = theme.background.startsWith("linear-gradient")
               ? theme.background
               : `linear-gradient(135deg, ${theme.background}, ${theme.background}cc)`;
+            const avatarAccent = theme.background.startsWith("linear-gradient")
+              ? theme.background
+              : theme.accentColor;
             return (
             <Link
               key={artist.id}
@@ -73,14 +77,15 @@ export default async function ArtistsPage({ searchParams }: PageProps) {
                   background: headerBg,
                 }}
               >
-                <div
-                  className="w-12 h-12 rounded-full border-2 border-white flex items-center justify-center text-xl font-bold translate-y-6 flex-shrink-0"
-                  style={{
-                    background: theme.background.startsWith("linear-gradient") ? theme.background : theme.accentColor,
-                    color: "#FFFFFF",
-                  }}
-                >
-                  {artist.name[0]}
+                <div className="translate-y-6 flex-shrink-0">
+                  <FeaturedArtistPhoto
+                    photoUrl={artist.profilePhotoUrl ?? ""}
+                    initial={artist.name[0] ?? "?"}
+                    accentColor={avatarAccent}
+                    alt=""
+                    sizeClassName="h-12 w-12 text-xl"
+                    imgClassName="!ring-white border-2 border-white shadow-md"
+                  />
                 </div>
               </div>
               <div className="pt-8 px-5 pb-5">

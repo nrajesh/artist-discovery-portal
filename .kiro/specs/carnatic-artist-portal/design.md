@@ -447,7 +447,7 @@ model Artist {
   email             String              @unique
   contactNumber     String
   contactType       String              // enum: "whatsapp" | "mobile" - selected via toggle/radio alongside contactNumber, NOT free text
-  profilePhotoUrl   String
+  profilePhotoUrl   String?
   backgroundImageUrl String?
   bioRichText       String?             // Tiptap JSON stored as text
   province          String              // mandatory, non-nullable
@@ -547,7 +547,7 @@ interface DeploymentConfig {
 
 ### Property 1: Registration mandatory-field validation
 
-*For any* registration form submission where one or more mandatory fields (full name, email, contact number, contact type, profile photo, at least one Speciality - maximum three) are absent or invalid, the Portal SHALL reject the submission and return field-level validation errors without persisting any data.
+*For any* registration form submission where one or more mandatory fields (full name, email, contact number, contact type, at least one Speciality - maximum three) are absent or invalid, the Portal SHALL reject the submission and return field-level validation errors without persisting any data. Optional HTTPS profile and banner image URLs, when present, SHALL be validated as URLs.
 
 **Validates: Requirements 1.2, 1.7**
 
