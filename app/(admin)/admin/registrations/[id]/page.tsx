@@ -13,10 +13,13 @@ function StatusBadge({ status }: { status: string }) {
 
 export default async function ReviewRegistrationPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ done?: string; error?: string }>;
 }) {
   const { id } = await params;
+  const { done, error: queryError } = await searchParams;
   const [reg, catalogueRows] = await Promise.all([
     getDb().registrationRequest.findUnique({
       where: { id },
@@ -43,6 +46,22 @@ export default async function ReviewRegistrationPage({
   return (
     <main className="min-h-screen bg-stone-50 px-4 py-8 sm:px-8">
       <Link href="/admin/registrations" className="mb-6 inline-flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 font-medium">← Back to registrations</Link>
+
+      {done === "approved" ? (
+        <div className="mx-auto mb-6 max-w-3xl rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-950">
+          Registration approved. The artist account was created and a login link was emailed to the applicant.
+        </div>
+      ) : null}
+      {done === "rejected" ? (
+        <div className="mx-auto mb-6 max-w-3xl rounded-lg border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-800">
+          Registration rejected.
+        </div>
+      ) : null}
+      {queryError === "already_processed" ? (
+        <div className="mx-auto mb-6 max-w-3xl rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          This request was already reviewed; nothing was changed.
+        </div>
+      ) : null}
 
       <div className="mx-auto max-w-3xl">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">

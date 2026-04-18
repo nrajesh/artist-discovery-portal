@@ -21,11 +21,11 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 interface PageProps {
-  searchParams: Promise<{ status?: string; from?: string; to?: string }>;
+  searchParams: Promise<{ status?: string; from?: string; to?: string; error?: string }>;
 }
 
 export default async function RegistrationsPage({ searchParams }: PageProps) {
-  const { status, from, to } = await searchParams;
+  const { status, from, to, error } = await searchParams;
   const parsedStatus = VALID_STATUSES.includes(status as RegistrationStatus)
     ? (status as RegistrationStatus)
     : undefined;
@@ -74,6 +74,12 @@ export default async function RegistrationsPage({ searchParams }: PageProps) {
   return (
     <main className="min-h-screen bg-stone-50 px-4 py-8 sm:px-8">
       <Link href="/admin/dashboard" className="text-sm text-amber-700 hover:text-amber-900 mb-6 inline-block">← Dashboard</Link>
+
+      {error === "not_found" ? (
+        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-950">
+          That registration could not be found.
+        </div>
+      ) : null}
 
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-stone-800">Registration Requests</h1>

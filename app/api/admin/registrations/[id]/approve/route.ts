@@ -17,6 +17,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { revalidateHomeMarketing } from '@/lib/cache/home-marketing';
+import { isBrowserDocumentNavigation, redirectPublicPath } from '@/lib/http/document-navigation';
 import { getDb } from '@/lib/db';
 import { issueMagicLink } from '@/lib/auth';
 import { analyticsServer } from '@/lib/analytics-server';
@@ -67,6 +68,7 @@ export async function POST(
   const { id } = await params;
   const db = getDb();
   const reviewerId = request.headers.get('x-artist-id');
+  const html = isBrowserDocumentNavigation(request);
 
   // 1. Fetch the RegistrationRequest
   const registration = await db.registrationRequest.findUnique({
@@ -78,10 +80,12 @@ export async function POST(
   });
 
   if (!registration) {
+    if (html) return redirectPublicPath(request, '/admin/registrations?error=not_found');
     return NextResponse.json({ error: 'NOT_FOUND', message: 'Registration not found.' }, { status: 404 });
   }
 
   if (registration.status !== 'pending') {
+    if (html) return redirectPublicPath(request, `/admin/registrations/${id}?error=already_processed`);
     return NextResponse.json(
       { error: 'ALREADY_PROCESSED', message: 'This registration has already been processed.' },
       { status: 404 },
@@ -101,7 +105,7 @@ export async function POST(
       email: registration.email,
       contactNumber: registration.contactNumber,
       contactType: registration.contactType,
-      profilePhotoUrl: registration.profilePhotoUrl ?? null,
+      profilePhotoUrl: registration.profilePhotoUrl ?? '',
       backgroundImageUrl: registration.backgroundImageUrl ?? undefined,
       bioRichText: registration.bioRichText ?? undefined,
       province: '',
@@ -175,6 +179,7 @@ export async function POST(
     })
   } catch { /* silently ignore */ }
 
-  // 8. Return success
+  // 8. Return success (JSON for APIs; redirect for browser form POST)
+  if (html) return redirectPublicPath(request, `/admin/registrations/${id}?done=approved`);
   return NextResponse.json({ success: true });
 }

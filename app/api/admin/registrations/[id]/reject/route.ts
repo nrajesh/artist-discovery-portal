@@ -11,6 +11,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { isBrowserDocumentNavigation, redirectPublicPath } from '@/lib/http/document-navigation';
 import { getDb } from '@/lib/db';
 import { analyticsServer } from '@/lib/analytics-server';
 import { notifyAdminRegistrationEvent } from '@/lib/notifications';
@@ -22,6 +23,7 @@ export async function POST(
   const { id } = await params;
   const db = getDb();
   const reviewerId = request.headers.get('x-artist-id');
+  const html = isBrowserDocumentNavigation(request);
 
   // 1. Fetch the RegistrationRequest
   const registration = await db.registrationRequest.findUnique({
@@ -29,10 +31,12 @@ export async function POST(
   });
 
   if (!registration) {
+    if (html) return redirectPublicPath(request, '/admin/registrations?error=not_found');
     return NextResponse.json({ error: 'NOT_FOUND', message: 'Registration not found.' }, { status: 404 });
   }
 
   if (registration.status !== 'pending') {
+    if (html) return redirectPublicPath(request, `/admin/registrations/${id}?error=already_processed`);
     return NextResponse.json(
       { error: 'ALREADY_PROCESSED', message: 'This registration has already been processed.' },
       { status: 404 },
@@ -78,6 +82,7 @@ export async function POST(
 
   // 3. No Artist record created
 
-  // 4. Return success
+  // 4. Return success (JSON for APIs; redirect for browser form POST)
+  if (html) return redirectPublicPath(request, `/admin/registrations/${id}?done=rejected`);
   return NextResponse.json({ success: true });
 }

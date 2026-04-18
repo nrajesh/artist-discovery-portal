@@ -122,7 +122,8 @@ export async function POST(request: NextRequest) {
         email: validated.email,
         contactNumber: validated.contactNumber,
         contactType: validated.contactType as 'whatsapp' | 'mobile',
-        profilePhotoUrl: profilePhotoUrl ?? null,
+        // Empty string when omitted: works before/after DB migration (NOT NULL legacy + optional URL).
+        profilePhotoUrl: profilePhotoUrl ?? '',
         backgroundImageUrl: backgroundImageUrl ?? undefined,
         bioRichText: validated.bioRichText,
         status: 'pending',

@@ -90,7 +90,7 @@ export async function approveRegistration(
       email: registration.email,
       contactNumber: registration.contactNumber,
       contactType: registration.contactType,
-      profilePhotoUrl: registration.profilePhotoUrl ?? null,
+      profilePhotoUrl: registration.profilePhotoUrl ?? '',
       backgroundImageUrl: registration.backgroundImageUrl ?? undefined,
       bioRichText: registration.bioRichText ?? undefined,
       province: '',
