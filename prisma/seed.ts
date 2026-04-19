@@ -3,8 +3,10 @@
  * Uses standard PrismaClient (DATABASE_URL in .env / .env.local).
  */
 import { PrismaClient } from "@prisma/client";
+import { buildEncryptedArtistPiiPayload } from "../lib/artist-pii";
 import { DUMMY_ARTISTS } from "../lib/dummy-artists";
 import { getLocalCalendarDateForDb } from "../lib/local-day";
+import { logSafeError } from "../lib/safe-log";
 
 const prisma = new PrismaClient();
 
@@ -43,7 +45,7 @@ const COLLABS: {
   { slug: "amsterdam-rasikas-evening", name: "Amsterdam Rasikas Evening", ownerId: "6", status: "active", closedAt: null },
   { slug: "veena-flute-jugalbandi", name: "Veena & Flute Jugalbandi", ownerId: "4", status: "completed", closedAt: new Date("2025-01-20T18:00:00Z") },
   { slug: "percussion-ensemble-nl", name: "Percussion Ensemble NL", ownerId: "7", status: "active", closedAt: null },
-  { slug: "carnatic-youth-workshop", name: "Carnatic Youth Workshop", ownerId: "12", status: "active", closedAt: null },
+  { slug: "youth-music-workshop", name: "Youth Music Workshop", ownerId: "12", status: "active", closedAt: null },
   { slug: "navarathri-golu-concert", name: "Navarathri Golu Concert", ownerId: "10", status: "incomplete", closedAt: null },
 ];
 
@@ -104,7 +106,7 @@ async function main() {
     { name: "Kanjira", primaryColor: "#BE185D", textColor: "#FFFFFF" },
     { name: "Thavil", primaryColor: "#7E22CE", textColor: "#FFFFFF" },
     { name: "Nadaswaram", primaryColor: "#C2410C", textColor: "#FFFFFF" },
-    { name: "Violin (Carnatic)", primaryColor: "#A16207", textColor: "#FFFFFF" },
+    { name: "Violin (South Indian)", primaryColor: "#A16207", textColor: "#FFFFFF" },
     { name: "Morsing", primaryColor: "#065F46", textColor: "#FFFFFF" },
     { name: "Tavil", primaryColor: "#1D4ED8", textColor: "#FFFFFF" },
   ];
@@ -118,13 +120,19 @@ async function main() {
   console.log("Seeding artists…");
   for (const a of DUMMY_ARTISTS) {
     const joined = new Date(JOINED_ISO[a.id] ?? "2024-09-01T12:00:00.000Z");
+    const pii = buildEncryptedArtistPiiPayload(a.id, a.email, a.contactNumber);
     await prisma.artist.create({
       data: {
         id: a.id,
         slug: a.slug,
         fullName: a.name,
-        email: a.email,
-        contactNumber: a.contactNumber,
+        email: pii.emailPlaceholder,
+        contactNumber: null,
+        emailCipher: pii.emailCipher,
+        emailLookupHash: pii.emailLookupHash,
+        contactCipher: pii.contactCipher,
+        emailVisibility: "PUBLIC_PROFILE",
+        contactVisibility: "PUBLIC_PROFILE",
         contactType: a.contactType === "whatsapp" ? "whatsapp" : "mobile",
         profilePhotoUrl: PLACEHOLDER_IMG(a.name, a.slug),
         backgroundImageUrl: null,
@@ -254,7 +262,7 @@ async function main() {
 
 main()
   .catch((e) => {
-    console.error(e);
+    logSafeError("[prisma/seed]", e);
     process.exit(1);
   })
   .finally(() => prisma.$disconnect());

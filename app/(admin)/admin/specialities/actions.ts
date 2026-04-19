@@ -130,3 +130,44 @@ export async function deleteSpecialityAction(formData: FormData): Promise<Specia
   revalidatePath("/admin/specialities");
   return { ok: true };
 }
+
+const BulkIdsSchema = z.array(z.string().uuid()).min(1).max(100);
+
+export type BulkDeleteSpecialitiesResult =
+  | { ok: true; deleted: number; blocked: number }
+  | { ok: false; error: string };
+
+export async function deleteSpecialitiesBulkAction(ids: string[]): Promise<BulkDeleteSpecialitiesResult> {
+  const admin = await requireAdmin();
+  if (!admin) return { ok: false, error: "Unauthorized." };
+
+  const parsed = BulkIdsSchema.safeParse(ids);
+  if (!parsed.success) {
+    return { ok: false, error: "Invalid id list." };
+  }
+
+  const unique = [...new Set(parsed.data)];
+  let deleted = 0;
+  let blocked = 0;
+
+  for (const id of unique) {
+    const row = await getDb().speciality.findUnique({
+      where: { id },
+      select: { _count: { select: { artists: true } } },
+    });
+    if (!row) continue;
+    if (row._count.artists > 0) {
+      blocked += 1;
+      continue;
+    }
+    try {
+      await getDb().speciality.delete({ where: { id } });
+      deleted += 1;
+    } catch {
+      blocked += 1;
+    }
+  }
+
+  revalidatePath("/admin/specialities");
+  return { ok: true, deleted, blocked };
+}

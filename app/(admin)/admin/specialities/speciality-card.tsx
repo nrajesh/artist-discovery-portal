@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { AdminSpecialityRow } from "@/lib/queries/admin-specialities";
@@ -57,9 +58,16 @@ export function SpecialityCard({ row }: { row: AdminSpecialityRow }) {
               <span className="text-xs text-stone-400">text {row.textColor}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-stone-500">
-                {row.artistCount} artist{row.artistCount !== 1 ? "s" : ""}
-              </span>
+              {row.artistCount > 0 ? (
+                <Link
+                  href={`/admin/artists?speciality=${row.id}`}
+                  className="text-xs font-medium text-amber-800 underline underline-offset-2 hover:text-amber-950"
+                >
+                  {row.artistCount} artist{row.artistCount !== 1 ? "s" : ""}
+                </Link>
+              ) : (
+                <span className="text-xs text-stone-500">0 artists</span>
+              )}
               <button
                 type="button"
                 onClick={() => setEditing(true)}

@@ -6,6 +6,7 @@
 
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { logSafeError } from '@/lib/safe-log';
 
 export async function GET() {
   try {
@@ -21,7 +22,7 @@ export async function GET() {
 
     return NextResponse.json(specialities);
   } catch (error) {
-    console.error('Failed to fetch specialities:', error);
+    logSafeError('[api/specialities] Failed to fetch specialities', error);
     return NextResponse.json({ error: 'Failed to fetch specialities' }, { status: 500 });
   }
 }

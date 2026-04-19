@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getCollabDetailForAdmin } from "@/lib/queries/collabs";
 import { verifySession } from "@/lib/session-jwt";
 import { getCollabDetailForArtist } from "@/lib/queries/collabs";
+import { isArtistCollabsRatingsEnabledServer } from "@/lib/feature-flags-server";
 import {
   addCollabMessageAction,
   deleteFeedbackAction,
@@ -18,6 +19,11 @@ export default async function AdminCollabDetailPage({
   const { id } = await params;
   const sessionCookie = (await cookies()).get("session")?.value ?? null;
   const session = sessionCookie ? await verifySession(sessionCookie) : null;
+  if (!session?.artistId) redirect("/auth/login");
+  const collabsRatingsEnabled = await isArtistCollabsRatingsEnabledServer({
+    distinctId: session.artistId,
+  });
+  if (!collabsRatingsEnabled) redirect("/admin/dashboard");
   const collab = await getCollabDetailForAdmin(id);
   if (!collab) notFound();
   const messages = collab.messages;

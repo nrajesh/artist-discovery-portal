@@ -1,5 +1,14 @@
 import webpush from "web-push";
+import type { Prisma } from "@prisma/client";
+import { decryptArtistStoredContact } from "@/lib/artist-pii";
+import { maskEmailForDisplay } from "@/lib/pii-display";
+import { emailLookupHash, isPiiCryptoConfigured, normalizeEmailForLookup } from "@/lib/pii-crypto";
 import { getDb } from "@/lib/db";
+import {
+  getPortalNameForEmail,
+  transactionalEmailHtml,
+  transactionalEmailPlainText,
+} from "@/lib/email-templates";
 import { Resend } from "resend";
 
 export type ReviewNotificationEvent = "added" | "updated" | "deleted";
@@ -130,15 +139,24 @@ export async function notifyReviewEvent(input: {
   rating?: number;
 }): Promise<void> {
   const db = getDb();
-  const reviewee = await db.artist.findUnique({
+  const revieweeRow = await db.artist.findUnique({
     where: { id: input.revieweeId },
-    select: { id: true, email: true, slug: true, fullName: true },
+    select: {
+      id: true,
+      email: true,
+      emailCipher: true,
+      contactCipher: true,
+      contactNumber: true,
+      slug: true,
+      fullName: true,
+    },
   });
-  if (!reviewee) return;
+  if (!revieweeRow) return;
+  const revieweeAddr = decryptArtistStoredContact(revieweeRow).email;
 
   const pref =
     (await db.notificationPreference.findUnique({
-      where: { artistId: reviewee.id },
+      where: { artistId: revieweeRow.id },
       select: {
         inAppEnabled: true,
         emailEnabled: true,
@@ -155,12 +173,12 @@ export async function notifyReviewEvent(input: {
   if (!reviewEventEnabled(pref, input.action)) return;
 
   const message = buildReviewMessage(input);
-  const href = `/artists/${reviewee.slug}#reviews`;
+  const href = `/artists/${revieweeRow.slug}#reviews`;
 
   if (pref.inAppEnabled) {
     await db.notification.create({
       data: {
-        artistId: reviewee.id,
+        artistId: revieweeRow.id,
         type: `feedback_${input.action}`,
         payload: {
           text: message,
@@ -175,23 +193,29 @@ export async function notifyReviewEvent(input: {
   if (pref.emailEnabled) {
     const resendApiKey = process.env.RESEND_API_KEY;
     if (resendApiKey) {
-      const fromEmail = process.env.RESEND_FROM_EMAIL ?? "noreply@carnaticportal.nl";
+      const fromEmail = process.env.RESEND_FROM_EMAIL ?? "noreply@artist-discovery.example";
       const profileUrl = `${normalizeAppUrl()}${href}`;
       const resend = new Resend(resendApiKey);
+      const portal = getPortalNameForEmail();
+      const reviewContent = {
+        eyebrow: `Hi ${revieweeRow.fullName},`,
+        title: `Review ${input.action}`,
+        paragraphs: [message],
+        primaryCta: { href: profileUrl, label: "View your reviews" },
+      };
       await resend.emails.send({
         from: fromEmail,
-        to: reviewee.email,
-        subject: `Review ${input.action} on Carnatic Artist Portal`,
-        html: `<p>Hi ${reviewee.fullName},</p>
-<p>${message}</p>
-<p><a href="${profileUrl}">View your reviews</a></p>`,
+        to: revieweeAddr,
+        subject: `Review ${input.action} · ${portal}`,
+        html: transactionalEmailHtml(reviewContent),
+        text: transactionalEmailPlainText(reviewContent),
       });
     }
   }
 
   if (pref.webPushEnabled && ensureWebPushConfigured()) {
     const subscriptions = await db.pushSubscription.findMany({
-      where: { artistId: reviewee.id },
+      where: { artistId: revieweeRow.id },
       select: { endpoint: true, p256dh: true, auth: true },
     });
     await sendPushNotifications({
@@ -213,7 +237,7 @@ function buildAdminRegistrationMessage(input: {
   if (input.event === "new_registration") {
     return {
       title: "New registration",
-      text: `New registration from ${input.applicantName} (${input.applicantEmail}).`,
+      text: `New registration from ${input.applicantName}.`,
       emailSubject: "New artist registration request",
     };
   }
@@ -254,14 +278,27 @@ export async function notifyAdminRegistrationEvent(input: {
   const adminEmails = getAdminEmails();
   if (adminEmails.length === 0) return;
 
+  const adminHashes = (() => {
+    if (!isPiiCryptoConfigured()) return [] as string[];
+    return adminEmails.map((e) => emailLookupHash(normalizeEmailForLookup(e)));
+  })();
+
+  const adminWhere: Prisma.ArtistWhereInput = {
+    OR: [
+      { email: { in: adminEmails } },
+      ...(adminHashes.length > 0 ? [{ emailLookupHash: { in: adminHashes } }] : []),
+    ],
+  };
+
   const db = getDb();
   const admins = await db.artist.findMany({
-    where: {
-      email: { in: adminEmails },
-    },
+    where: adminWhere,
     select: {
       id: true,
       email: true,
+      emailCipher: true,
+      contactCipher: true,
+      contactNumber: true,
       fullName: true,
       notificationPreference: {
         select: {
@@ -292,7 +329,7 @@ export async function notifyAdminRegistrationEvent(input: {
   const fullHref = appUrl ? `${appUrl}${href}` : href;
   const rendered = buildAdminRegistrationMessage(input);
   const resendApiKey = process.env.RESEND_API_KEY;
-  const fromEmail = process.env.RESEND_FROM_EMAIL ?? "noreply@carnaticportal.nl";
+  const fromEmail = process.env.RESEND_FROM_EMAIL ?? "noreply@artist-discovery.example";
 
   const inAppRows = admins
     .map((admin) => {
@@ -309,7 +346,7 @@ export async function notifyAdminRegistrationEvent(input: {
           href,
           registrationId: input.registrationId,
           applicantName: input.applicantName,
-          applicantEmail: input.applicantEmail,
+          applicantEmailMasked: maskEmailForDisplay(input.applicantEmail),
           ...(input.reviewComment != null && input.reviewComment !== ""
             ? { reviewComment: input.reviewComment }
             : {}),
@@ -332,13 +369,19 @@ export async function notifyAdminRegistrationEvent(input: {
         const pref = admin.notificationPreference ?? defaultNotificationPreferences();
         if (!adminRegistrationEventEnabled(pref, input.event) || !pref.emailEnabled) return;
 
+        const adminInbox = decryptArtistStoredContact(admin).email;
+        const regContent = {
+          eyebrow: `Hi ${admin.fullName},`,
+          title: rendered.emailSubject,
+          paragraphs: [rendered.text],
+          primaryCta: { href: fullHref, label: "Open registration request" },
+        };
         await resend.emails.send({
           from: fromEmail,
-          to: admin.email,
-          subject: `${rendered.emailSubject} · Carnatic Artist Portal`,
-          html: `<p>Hi ${admin.fullName},</p>
-<p>${rendered.text}</p>
-<p><a href="${fullHref}">Open registration request</a></p>`,
+          to: adminInbox,
+          subject: `${rendered.emailSubject} · ${getPortalNameForEmail()}`,
+          html: transactionalEmailHtml(regContent),
+          text: transactionalEmailPlainText(regContent),
         });
       }),
     );

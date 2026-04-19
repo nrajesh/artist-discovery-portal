@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Registration form page for Carnatic Artist Portal.
+ * Registration form page for Artist Discovery Portal.
  * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.7, 1.8
  */
 
@@ -75,7 +75,7 @@ export const registrationSchema = z.object({
       .min(1, 'Contact number is required')
       .refine(
         isPlausibleContactNumber,
-        'Enter 7–15 digits; optional + only at the start (no spaces or other symbols)',
+        'Enter 7-15 digits; optional + only at the start (no spaces or other symbols)',
       ),
   ),
   contactType: z.enum(['whatsapp', 'mobile']),
@@ -368,7 +368,7 @@ export default function RegisterPage() {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-amber-900 mb-2">Join the Portal</h1>
           <p className="text-amber-700">
-            Register as a Carnatic musician to create your portfolio and connect with fellow artists.
+            Register as a musician to create your portfolio and connect with fellow artists.
           </p>
         </div>
         {!sessionState.loading && sessionState.authenticated && (
@@ -420,7 +420,8 @@ export default function RegisterPage() {
               id="email"
               type="email"
               {...register('email')}
-              className="w-full border border-amber-300 rounded-lg px-3 py-2 text-amber-900 placeholder-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-500 min-h-[44px]"
+              autoComplete="email"
+              className="ph-no-capture w-full border border-amber-300 rounded-lg px-3 py-2 text-amber-900 placeholder-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-500 min-h-[44px]"
               placeholder="you@example.com"
             />
             {errors.email && (
@@ -434,7 +435,7 @@ export default function RegisterPage() {
               Contact Number <span className="text-red-600">*</span>
             </label>
             <p className="mb-2 text-xs text-amber-600">
-              Digits only (7–15). Use an optional <strong>+</strong> at the start for a country code  -  no spaces or other
+              Digits only (7-15). Use an optional <strong>+</strong> at the start for a country code  -  no spaces or other
               symbols.
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
@@ -452,7 +453,7 @@ export default function RegisterPage() {
                     onBlur={field.onBlur}
                     value={field.value ?? ''}
                     onChange={(e) => field.onChange(sanitizeContactNumberInput(e.target.value))}
-                    className="min-h-[44px] flex-1 rounded-lg border border-amber-300 px-3 py-2 text-amber-900 placeholder-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="ph-no-capture min-h-[44px] flex-1 rounded-lg border border-amber-300 px-3 py-2 text-amber-900 placeholder-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
                     placeholder="+31 6 12345678"
                   />
                 )}
@@ -515,7 +516,7 @@ export default function RegisterPage() {
           <div>
             <label className="block text-sm font-semibold text-amber-900 mb-1">
               Specialities <span className="text-red-600">*</span>{' '}
-              <span className="font-normal text-amber-600">(1–3)</span>
+              <span className="font-normal text-amber-600">(1-3)</span>
             </label>
             <p className="mb-2 text-xs text-amber-700">
               Pick from the list or add your own if it&apos;s missing - an admin can add it to the catalogue when reviewing your request.
@@ -588,8 +589,8 @@ export default function RegisterPage() {
                         name={`websiteUrls.${index}.url`}
                         control={control}
                         render={({ field: urlField }) => (
-                          <div className="flex w-full min-w-0 max-w-full flex-col rounded-lg border border-amber-300 bg-white focus-within:ring-2 focus-within:ring-amber-500 sm:flex-row sm:overflow-hidden">
-                            <span className="select-none break-all border-b border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] font-medium leading-snug text-amber-900 sm:border-b-0 sm:border-r sm:py-2 sm:text-xs">
+                          <div className="flex w-full min-w-0 max-w-full flex-col rounded-lg border border-amber-300 bg-white focus-within:ring-2 focus-within:ring-amber-500 sm:flex-row sm:items-stretch sm:overflow-hidden">
+                            <span className="flex min-h-[48px] shrink-0 select-none items-center break-all border-b border-amber-200 bg-amber-50 px-3 text-sm font-medium leading-normal text-amber-900 sm:min-h-0 sm:border-b-0 sm:border-r">
                               {REGISTRATION_HTTPS_PREFIX}
                             </span>
                             <input
@@ -602,7 +603,7 @@ export default function RegisterPage() {
                               value={websitePathSuffixFromStored(urlField.value ?? '')}
                               onChange={(e) => urlField.onChange(mergeWebsitePath(e.target.value))}
                               placeholder="yourwebsite.com"
-                              className="min-h-[48px] min-w-0 w-full flex-1 border-0 bg-transparent px-2 py-2 text-base text-amber-900 placeholder-amber-400 focus:outline-none focus:ring-0 sm:min-h-[44px]"
+                              className="min-h-[48px] min-w-0 w-full flex-1 border-0 bg-transparent px-3 py-2 text-sm leading-normal text-amber-900 placeholder-amber-400 focus:outline-none focus:ring-0 sm:min-h-[44px] sm:py-2.5"
                             />
                           </div>
                         )}

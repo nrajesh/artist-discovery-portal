@@ -2,7 +2,7 @@
 
 ## Overview
 
-Integrate PostHog analytics into the Carnatic Artist Portal using `posthog-js` (client-side) and `posthog-node` (server-side). All SDK traffic is routed through a Next.js reverse-proxy route. Events are captured explicitly - no autocapture. Privacy controls (opt-out, PII masking) are first-class requirements.
+Integrate PostHog analytics into Artist Discovery Portal using `posthog-js` (client-side) and `posthog-node` (server-side). All SDK traffic is routed through a Next.js reverse-proxy route. Events are captured explicitly - no autocapture. Privacy controls (opt-out, PII masking) are first-class requirements.
 
 ## Tasks
 
@@ -242,6 +242,6 @@ Integrate PostHog analytics into the Carnatic Artist Portal using `posthog-js` (
 
 - Tasks marked with `*` are optional and can be skipped for faster MVP
 - Each task references specific requirements for traceability
-- Property tests live in `lib/__tests__/analytics-client.test.ts` (Properties 1–5, 10–12), `lib/__tests__/analytics-server.test.ts` (Properties 6–8), and `app/api/ph/__tests__/proxy.test.ts` (Property 9)
+- Property tests live in `lib/__tests__/analytics-client.test.ts` (Properties 1-5, 10-12), `lib/__tests__/analytics-server.test.ts` (Properties 6-8), and `app/api/ph/__tests__/proxy.test.ts` (Property 9)
 - All `analyticsServer?.capture()` calls in API routes must be wrapped in try/catch - analytics failures must never break user-facing requests
 - The `posthog-js` and `posthog-node` modules should be mocked via `vi.mock()` in all tests

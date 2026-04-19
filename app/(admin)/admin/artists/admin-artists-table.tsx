@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useCallback, useState, useTransition } from "react";
 import SortableTable, { Column } from "@/components/sortable-table";
 import type { AdminArtistListRow } from "@/lib/queries/admin-artists";
+import { deleteArtistsAction, setArtistsStatusBulkAction } from "./actions";
 
 const COLUMNS: Column<AdminArtistListRow>[] = [
   {
@@ -75,7 +78,149 @@ const COLUMNS: Column<AdminArtistListRow>[] = [
 ];
 
 export function AdminArtistsTable({ rows }: { rows: AdminArtistListRow[] }) {
+  const router = useRouter();
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [banner, setBanner] = useState<{ type: "error" | "info"; text: string } | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  const onToggle = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const onToggleAllVisible = useCallback((visibleRowIds: string[]) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      const allSelected =
+        visibleRowIds.length > 0 && visibleRowIds.every((id) => next.has(id));
+      if (allSelected) {
+        visibleRowIds.forEach((id) => next.delete(id));
+      } else {
+        visibleRowIds.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  }, []);
+
+  function onBulkDelete() {
+    if (selectedIds.size === 0) return;
+    const n = selectedIds.size;
+    if (
+      !confirm(
+        `Permanently delete ${n} artist account${n === 1 ? "" : "s"}? This removes profiles, collabs they own, and related data. This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+    setBanner(null);
+    const ids = [...selectedIds];
+    startTransition(async () => {
+      const result = await deleteArtistsAction(ids);
+      if (!result.ok) {
+        setBanner({ type: "error", text: result.error });
+        return;
+      }
+      setSelectedIds(new Set());
+      router.refresh();
+    });
+  }
+
+  function onBulkStatusChange(nextSuspended: boolean) {
+    if (selectedIds.size === 0) return;
+    const n = selectedIds.size;
+    if (nextSuspended) {
+      if (
+        !confirm(
+          `Suspend ${n} artist account${n === 1 ? "" : "s"}? A standard bulk note will be stored on each profile. Your own account will be skipped if selected.`,
+        )
+      ) {
+        return;
+      }
+    } else if (!confirm(`Set ${n} artist account${n === 1 ? "" : "s"} to Active (not suspended)?`)) {
+      return;
+    }
+    setBanner(null);
+    const ids = [...selectedIds];
+    startTransition(async () => {
+      const result = await setArtistsStatusBulkAction(ids, nextSuspended);
+      if (!result.ok) {
+        setBanner({ type: "error", text: result.error });
+        return;
+      }
+      const { updated, skipped } = result;
+      if (skipped > 0) {
+        setBanner({
+          type: "info",
+          text: `Updated ${updated}. Skipped ${skipped} (not found${nextSuspended ? ", or cannot suspend your own account" : ""}).`,
+        });
+      } else {
+        setBanner(null);
+      }
+      setSelectedIds(new Set());
+      router.refresh();
+    });
+  }
+
   return (
-    <SortableTable columns={COLUMNS} rows={rows} rowKey={(a) => a.id} emptyMessage="No artists found." />
+    <div className="space-y-4">
+      {banner ? (
+        <p
+          className={`rounded-lg border px-4 py-2 text-sm ${
+            banner.type === "error"
+              ? "border-red-200 bg-red-50 text-red-900"
+              : "border-amber-200 bg-amber-50 text-amber-950"
+          }`}
+        >
+          {banner.text}
+        </p>
+      ) : null}
+      {selectedIds.size > 0 ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3">
+          <span className="text-sm font-medium text-stone-800">{selectedIds.size} selected</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-stone-500">Status</span>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => onBulkStatusChange(false)}
+              className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm font-medium text-green-900 hover:bg-green-100 disabled:opacity-50"
+            >
+              Active
+            </button>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => onBulkStatusChange(true)}
+              className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-900 hover:bg-red-100 disabled:opacity-50"
+            >
+              Suspended
+            </button>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={onBulkDelete}
+              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700 disabled:opacity-50"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      ) : null}
+      <SortableTable
+        columns={COLUMNS}
+        rows={rows}
+        rowKey={(a) => a.id}
+        emptyMessage="No artists found."
+        selection={{
+          selectedIds,
+          onToggle,
+          onToggleAllVisible,
+        }}
+      />
+    </div>
   );
 }

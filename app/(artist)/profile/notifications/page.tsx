@@ -5,11 +5,16 @@ import { verifySession } from "@/lib/session-jwt";
 import { getDb } from "@/lib/db";
 import { updateNotificationPreferencesAction } from "./actions";
 import { PushPreferences } from "./push-preferences";
+import { isArtistCollabsRatingsEnabledServer } from "@/lib/feature-flags-server";
 
 export default async function NotificationSettingsPage() {
   const token = (await cookies()).get("session")?.value ?? null;
   const session = token ? await verifySession(token) : null;
   if (!session) redirect("/auth/login");
+
+  const collabsRatingsEnabled = await isArtistCollabsRatingsEnabledServer({
+    distinctId: session.artistId,
+  });
 
   const pref =
     (await getDb().notificationPreference.findUnique({
@@ -65,21 +70,23 @@ export default async function NotificationSettingsPage() {
             </label>
           </fieldset>
 
-          <fieldset className="space-y-2">
-            <legend className="mb-2 text-sm font-semibold text-stone-700">Review events</legend>
-            <label className="flex items-center gap-2 text-sm text-stone-700">
-              <input type="checkbox" name="reviewAddedEnabled" defaultChecked={pref.reviewAddedEnabled} className="accent-amber-700" />
-              When a review is added
-            </label>
-            <label className="flex items-center gap-2 text-sm text-stone-700">
-              <input type="checkbox" name="reviewUpdatedEnabled" defaultChecked={pref.reviewUpdatedEnabled} className="accent-amber-700" />
-              When a review is edited
-            </label>
-            <label className="flex items-center gap-2 text-sm text-stone-700">
-              <input type="checkbox" name="reviewDeletedEnabled" defaultChecked={pref.reviewDeletedEnabled} className="accent-amber-700" />
-              When a review is deleted
-            </label>
-          </fieldset>
+          {collabsRatingsEnabled && (
+            <fieldset className="space-y-2">
+              <legend className="mb-2 text-sm font-semibold text-stone-700">Review events</legend>
+              <label className="flex items-center gap-2 text-sm text-stone-700">
+                <input type="checkbox" name="reviewAddedEnabled" defaultChecked={pref.reviewAddedEnabled} className="accent-amber-700" />
+                When a review is added
+              </label>
+              <label className="flex items-center gap-2 text-sm text-stone-700">
+                <input type="checkbox" name="reviewUpdatedEnabled" defaultChecked={pref.reviewUpdatedEnabled} className="accent-amber-700" />
+                When a review is edited
+              </label>
+              <label className="flex items-center gap-2 text-sm text-stone-700">
+                <input type="checkbox" name="reviewDeletedEnabled" defaultChecked={pref.reviewDeletedEnabled} className="accent-amber-700" />
+                When a review is deleted
+              </label>
+            </fieldset>
+          )}
 
           {session.role === "admin" && (
             <fieldset className="space-y-2">

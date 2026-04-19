@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "carnatic-artists-portal",
+  "name": "artist-discovery-portal",
   "main": ".open-next/worker.js",
   // 2025-03+ runtime: import { env } from "cloudflare:workers" (R2 secrets in lib/storage.ts)
   "compatibility_date": "2025-03-21",
@@ -38,14 +38,14 @@
   "vars": {
     "POSTHOG_HOST": "https://eu.i.posthog.com",
     "DEPLOYMENT_REGION": "NL",
-    "DEPLOYMENT_NAME": "Carnatic Artist Portal",
+    "DEPLOYMENT_NAME": "Artist Discovery Portal",
     "DEPLOYMENT_LOCALE_PRIMARY": "en",
     "DEPLOYMENT_LOCALE_SECONDARY": "nl",
     "DEPLOYMENT_MAP_GEOJSON_URL": "/geo/netherlands-provinces.geojson",
     "DEPLOYMENT_BRANDING_LOGO_URL": "/assets/logo.svg",
     // Cloudflare R2 Bucket
     "R2_ACCOUNT_ID": "4a978c47ceb63bdb40ad391bfb690f83",
-    "R2_BUCKET_NAME": "carnatic-artists-portal-r2-bucket",
+    "R2_BUCKET_NAME": "artist-discovery-portal-r2-bucket",
     "R2_PUBLIC_URL": "https://pub-720fa56797fb4f7081196455a57a2da5.r2.dev"
   },
   "assets": {
@@ -55,7 +55,7 @@
   "services": [
     {
       "binding": "WORKER_SELF_REFERENCE",
-      "service": "carnatic-artists-portal"
+      "service": "artist-discovery-portal"
     }
   ]
 }

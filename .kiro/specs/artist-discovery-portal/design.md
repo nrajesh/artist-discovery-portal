@@ -1,8 +1,8 @@
-# Design Document: Carnatic Artist Portal
+# Design Document: Artist Discovery Portal
 
 ## Overview
 
-The Carnatic Artist Portal is a mobile-first Progressive Web App (PWA) for Carnatic musicians based in The Netherlands. It serves two primary audiences: **Visitors** (unauthenticated browsers) and **Artists** (approved, authenticated musicians). A third role, **Admin**, manages approvals and moderation.
+Artist Discovery Portal is a mobile-first Progressive Web App (PWA) for musicians based in The Netherlands. It serves two primary audiences: **Visitors** (unauthenticated browsers) and **Artists** (approved, authenticated musicians). A third role, **Admin**, manages approvals and moderation.
 
 ### Core Capabilities
 
@@ -11,18 +11,24 @@ The Carnatic Artist Portal is a mobile-first Progressive Web App (PWA) for Carna
 | Browse artist profiles & directory | Public |
 | Submit registration request | Public |
 | Manage own profile & availability | Artist |
+| Configure notification channels (email / push) | Artist |
 | Structured artist search | Artist |
 | Create & participate in Collabs (group chat) | Artist |
 | Leave feedback after collaborations | Artist |
-| Approve/reject registrations, moderate content | Admin |
+| Approve/reject registrations (with review notes), suspend artists with audit context, moderate collabs and threads | Admin |
 
 ### Key Design Goals
 
 - **Mobile-first PWA** - installable, offline-capable, Lighthouse PWA ≥ 90
 - **Speciality-based visual theming** - colour-coded profiles per instrument
-- **Magic-link authentication** - no passwords, email-only login
+- **Magic-link authentication** - no passwords, email-only login; verify step uses POST so link previews cannot consume tokens
 - **Multi-region extensibility** - all deployment-specific values in config/env
 - **Full Unicode / Indic script support** - Tamil, Kannada, Telugu, Malayalam, Devanagari, etc.
+- **Privacy-conscious optional analytics** - PostHog with manual pageviews, no autocapture, proxy + disclosure documented in `.kiro/specs/posthog-analytics/`
+
+### Related specifications
+
+- **PostHog integration** (proxy route, Session Replay, server capture, privacy): `.kiro/specs/posthog-analytics/` and `.kiro/steering/posthog-admin-guide.md`
 
 ---
 
@@ -119,7 +125,7 @@ All deployment-specific values are read from environment variables and a `deploy
 
 ```
 DEPLOYMENT_REGION=NL
-DEPLOYMENT_NAME="Carnatic Artist Portal"
+DEPLOYMENT_NAME="Artist Discovery Portal"
 DEPLOYMENT_LOCALE_PRIMARY=en
 DEPLOYMENT_LOCALE_SECONDARY=nl
 DEPLOYMENT_MAP_GEOJSON_URL=/geo/netherlands-provinces.geojson
@@ -394,7 +400,7 @@ erDiagram
         uuid reviewer_id FK
         uuid reviewee_id FK
         text comment "optional (nullable)"
-        int star_rating "mandatory, NOT NULL, range 1–5"
+        int star_rating "mandatory, NOT NULL, range 1-5"
         timestamp submitted_at
         timestamp edited_at
     }
@@ -488,7 +494,7 @@ model Feedback {
   collabId    String
   reviewerId  String
   revieweeId  String
-  starRating  Int       // mandatory, NOT NULL, range 1–5
+  starRating  Int       // mandatory, NOT NULL, range 1-5
   comment     String?   // optional (nullable)
   submittedAt DateTime  @default(now())
   editedAt    DateTime?
@@ -709,7 +715,7 @@ interface DeploymentConfig {
 
 ### Property 28: Feedback star rating mandatory, comment optional
 
-*For any* Feedback submission that omits the `star_rating` field or provides a value outside the range 1–5, the Portal SHALL reject the submission with a validation error. *For any* Feedback submission that omits the `comment` field, the Portal SHALL accept the submission provided `star_rating` is a valid integer in the range 1–5.
+*For any* Feedback submission that omits the `star_rating` field or provides a value outside the range 1-5, the Portal SHALL reject the submission with a validation error. *For any* Feedback submission that omits the `comment` field, the Portal SHALL accept the submission provided `star_rating` is a valid integer in the range 1-5.
 
 **Validates: Requirements 11.1, 11.2**
 
@@ -759,7 +765,7 @@ Client-side validation mirrors server-side rules to provide immediate feedback b
 
 ### Real-time / SSE Errors
 
-- SSE connection drop: client re-establishes the `EventSource` connection with exponential backoff (max 30 s); falls back to short-polling every 2–3 seconds if SSE is unavailable
+- SSE connection drop: client re-establishes the `EventSource` connection with exponential backoff (max 30 s); falls back to short-polling every 2-3 seconds if SSE is unavailable
 - Message send failure: optimistic UI rolls back; toast notification shown
 
 ### Offline Behaviour (PWA)
@@ -784,7 +790,7 @@ The testing strategy uses a dual approach: **property-based tests** for universa
 - Minimum **100 iterations** per property test
 - Each test tagged with a comment referencing the design property:
   ```typescript
-  // Feature: carnatic-artist-portal, Property 2: Registration data round-trip
+  // Feature: artist-discovery-portal, Property 2: Registration data round-trip
   ```
 
 **Properties to implement** (from Correctness Properties section):

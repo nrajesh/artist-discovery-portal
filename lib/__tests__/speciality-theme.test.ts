@@ -126,7 +126,7 @@ describe('Property 10: Speciality colour theme correctness - Validates: Requirem
     );
   });
 
-  it('2–3 palette names → background is a linear-gradient containing every matched primary colour', () => {
+  it('2-3 palette names → background is a linear-gradient containing every matched primary colour', () => {
     fc.assert(
       fc.property(multiNameArb, (names) => {
         const theme = getThemeForSpecialities(names);
@@ -142,7 +142,7 @@ describe('Property 10: Speciality colour theme correctness - Validates: Requirem
   });
 
   it('accentColor always equals the primaryColor of the first matched speciality', () => {
-    // Generate 1–3 palette names; the first name in the array is the first match
+    // Generate 1-3 palette names; the first name in the array is the first match
     const subsetArb = fc
       .shuffledSubarray(PALETTE_NAMES, { minLength: 1, maxLength: 3 })
       .filter((arr) => arr.length >= 1);
@@ -173,7 +173,7 @@ describe('Property 10: Speciality colour theme correctness - Validates: Requirem
     );
   });
 
-  it('2–3 palette names → accentColor equals the primaryColor of the first name in the list', () => {
+  it('2-3 palette names → accentColor equals the primaryColor of the first name in the list', () => {
     fc.assert(
       fc.property(uniqueSubsetArb(2), (names) => {
         const theme = getThemeForSpecialities(names);

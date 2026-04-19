@@ -1,7 +1,7 @@
 import { getTimezonesForCountry } from "countries-and-timezones";
 
 /**
- * Deployment configuration for the Carnatic Artist Portal.
+ * Deployment configuration for Artist Discovery Portal.
  *
  * All deployment-specific values are read exclusively from environment variables.
  * Timezone is resolved from `DEPLOYMENT_REGION` (ISO 3166-1 alpha-2) via the
@@ -19,7 +19,7 @@ export interface DeploymentConfig {
    * via country→timezone data (single-zone countries only; multi-zone requires an explicit override).
    */
   timezone: string;
-  /** Portal display name, e.g. "Carnatic Artist Portal" */
+  /** Portal display name, e.g. "Artist Discovery Portal" */
   name: string;
   locales: {
     /** Primary UI language code, e.g. "en" */

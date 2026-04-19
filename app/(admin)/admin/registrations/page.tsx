@@ -1,24 +1,12 @@
 import Link from "next/link";
 import { formatDeploymentDate } from "@/lib/format-deployment-datetime";
+import { decryptRegistrationStoredContact } from "@/lib/artist-pii";
 import { getDb } from "@/lib/db";
 import { Prisma } from "@prisma/client";
+import { AdminRegistrationsList } from "./admin-registrations-list";
 
 const VALID_STATUSES = ["pending", "approved", "rejected"] as const;
 type RegistrationStatus = (typeof VALID_STATUSES)[number];
-
-function StatusBadge({ status }: { status: string }) {
-  const styles: Record<string, string> = {
-    pending:  "bg-amber-100 text-amber-800 border border-amber-300",
-    approved: "bg-green-100 text-green-800 border border-green-300",
-    rejected: "bg-red-100 text-red-800 border border-red-300",
-  };
-  const labels: Record<string, string> = { pending: "Pending", approved: "Approved", rejected: "Rejected" };
-  return (
-    <span className={`inline-block rounded-full px-3 py-0.5 text-xs font-semibold ${styles[status] ?? "bg-stone-100 text-stone-600"}`}>
-      {labels[status] ?? status}
-    </span>
-  );
-}
 
 interface PageProps {
   searchParams: Promise<{ status?: string; from?: string; to?: string; error?: string }>;
@@ -70,6 +58,17 @@ export default async function RegistrationsPage({ searchParams }: PageProps) {
   ]);
 
   const activeStatus = parsedStatus ?? "";
+
+  const registrationRows = registrations.map((reg) => ({
+    id: reg.id,
+    fullName: reg.fullName,
+    status: reg.status,
+    email: decryptRegistrationStoredContact(
+      reg as unknown as Parameters<typeof decryptRegistrationStoredContact>[0],
+    ).email,
+    specialityNames: reg.specialities.map((s) => s.specialityName),
+    submittedLabel: formatDeploymentDate(reg.submittedAt),
+  }));
 
   return (
     <main className="min-h-screen bg-stone-50 px-4 py-8 sm:px-8">
@@ -144,32 +143,7 @@ export default async function RegistrationsPage({ searchParams }: PageProps) {
 
       <p className="mb-4 text-sm text-stone-500">Showing {registrations.length} result{registrations.length !== 1 ? "s" : ""}</p>
 
-      {registrations.length === 0 ? (
-        <div className="rounded-xl border border-stone-200 bg-white p-12 text-center text-stone-400">No registration requests match the current filters.</div>
-      ) : (
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {registrations.map((reg) => (
-            <li key={reg.id}>
-              <Link href={`/admin/registrations/${reg.id}`}
-                className="block rounded-xl border border-stone-200 bg-white p-5 shadow-sm hover:border-amber-400 hover:shadow-md transition-all">
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <h2 className="text-base font-semibold text-stone-800 leading-tight">{reg.fullName}</h2>
-                  <StatusBadge status={reg.status} />
-                </div>
-                <p className="text-sm text-stone-500 mb-3 truncate">{reg.email}</p>
-                <div className="flex flex-wrap gap-1 mb-3">
-                  {reg.specialities.map((spec) => (
-                    <span key={spec.specialityName} className="rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-xs text-amber-700 font-medium">{spec.specialityName}</span>
-                  ))}
-                </div>
-                <p className="text-xs text-stone-400">
-                  Submitted {formatDeploymentDate(reg.submittedAt)}
-                </p>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+      <AdminRegistrationsList rows={registrationRows} />
     </main>
   );
 }

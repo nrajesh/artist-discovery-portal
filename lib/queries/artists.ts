@@ -1,7 +1,18 @@
 import { formatDeploymentDateNumericDay, formatDeploymentMonthYear } from "@/lib/format-deployment-datetime";
+import {
+  buildArtistKeywordHaystack,
+  stripHtmlForSearch,
+} from "@/lib/artist-directory-search";
 import { profileSocialFromExternalLinks } from "@/lib/artist-profile-links";
+import {
+  canRevealContact,
+  canRevealEmail,
+  decryptArtistStoredContact,
+  type ProfileViewerContext,
+} from "@/lib/artist-pii";
+import { artistsShareActiveCollab } from "@/lib/collaboration-scope";
 import { getDb } from "@/lib/db";
-import type { Speciality } from "@prisma/client";
+import type { PiiVisibility, Speciality } from "@prisma/client";
 import {
   getLocalCalendarDateForDb,
   getLocalDayOrdinalForRotation,
@@ -17,6 +28,8 @@ export type ArtistListing = {
   profilePhotoUrl: string | null;
   specialities: { name: string; color: string }[];
   openToCollab: boolean;
+  /** Lowercased name, speciality names, plain bio, and profile link URLs for keyword search */
+  keywordHaystack: string;
 };
 
 /** Home spotlight - directory fields plus photo URL and active collab teasers */
@@ -28,25 +41,38 @@ export function specColor(s: Speciality) {
   return { name: s.name, color: s.primaryColor };
 }
 
-function toArtistListing(a: {
-  id: string;
-  slug: string;
-  fullName: string;
-  email: string;
-  province: string;
-  profilePhotoUrl: string | null;
-  openToCollab: boolean;
-  specialities: { speciality: Speciality }[];
-}): ArtistListing {
+function toArtistListing(
+  a: {
+    id: string;
+    slug: string;
+    fullName: string;
+    province: string;
+    profilePhotoUrl: string | null;
+    openToCollab: boolean;
+    specialities: { speciality: Speciality }[];
+    bioRichText?: string | null;
+    externalLinks?: { url: string }[];
+  },
+  listingEmail: string,
+): ArtistListing {
+  const bioPlain = stripHtmlForSearch(a.bioRichText ?? "");
+  const linkUrls = (a.externalLinks ?? []).map((l) => l.url);
+  const keywordHaystack = buildArtistKeywordHaystack({
+    name: a.fullName,
+    specialityNames: a.specialities.map((j) => j.speciality.name),
+    bioPlain,
+    linkUrls,
+  });
   return {
     id: a.id,
     slug: a.slug,
     name: a.fullName,
-    email: a.email,
+    email: listingEmail,
     province: a.province,
     profilePhotoUrl: a.profilePhotoUrl,
     specialities: a.specialities.map((j) => specColor(j.speciality)),
     openToCollab: a.openToCollab,
+    keywordHaystack,
   };
 }
 
@@ -71,19 +97,29 @@ function toFeaturedArtistListing(
     id: string;
     slug: string;
     fullName: string;
-    email: string;
     province: string;
     openToCollab: boolean;
     profilePhotoUrl: string | null;
     specialities: { speciality: Speciality }[];
+    bioRichText?: string | null;
+    externalLinks?: { url: string }[];
   },
+  listingEmail: string,
   activeCollabs: { slug: string; name: string }[],
 ): FeaturedArtistListing {
   return {
-    ...toArtistListing(a),
+    ...toArtistListing(a, listingEmail),
     profilePhotoUrl: a.profilePhotoUrl,
     activeCollabs,
   };
+}
+
+function directoryListingEmail(
+  emailVisibility: PiiVisibility,
+  row: Parameters<typeof decryptArtistStoredContact>[0],
+): string {
+  if (emailVisibility !== "PUBLIC_PROFILE") return "";
+  return decryptArtistStoredContact(row).email;
 }
 
 export async function listArtistsForDirectory(): Promise<ArtistListing[]> {
@@ -94,10 +130,13 @@ export async function listArtistsForDirectory(): Promise<ArtistListing[]> {
         orderBy: { displayOrder: "asc" },
         include: { speciality: true },
       },
+      externalLinks: { select: { url: true } },
     },
     orderBy: { fullName: "asc" },
   });
-  return rows.map(toArtistListing);
+  return rows.map((r) =>
+    toArtistListing(r, directoryListingEmail(r.emailVisibility, r)),
+  );
 }
 
 /** Active artists grouped by province name (must match GeoJSON label, e.g. `properties.naam`). */
@@ -137,6 +176,7 @@ export async function getDailyFeaturedArtistForHome(): Promise<FeaturedArtistLis
             orderBy: { displayOrder: "asc" },
             include: { speciality: true },
           },
+          externalLinks: { select: { url: true } },
         },
       },
     },
@@ -144,7 +184,11 @@ export async function getDailyFeaturedArtistForHome(): Promise<FeaturedArtistLis
 
   if (override?.artist && !override.artist.isSuspended) {
     const collabs = await fetchActiveCollabPreviewsForArtist(override.artist.id, 4);
-    return toFeaturedArtistListing(override.artist, collabs);
+    return toFeaturedArtistListing(
+      override.artist,
+      directoryListingEmail(override.artist.emailVisibility, override.artist),
+      collabs,
+    );
   }
 
   const vocalistInclude = {
@@ -152,6 +196,7 @@ export async function getDailyFeaturedArtistForHome(): Promise<FeaturedArtistLis
       orderBy: { displayOrder: "asc" as const },
       include: { speciality: true },
     },
+    externalLinks: { select: { url: true } as const },
   };
 
   const vocalists = await db.artist.findMany({
@@ -183,7 +228,11 @@ export async function getDailyFeaturedArtistForHome(): Promise<FeaturedArtistLis
   const idx = getLocalDayOrdinalForRotation(new Date()) % poolRows.length;
   const picked = poolRows[idx];
   const collabs = await fetchActiveCollabPreviewsForArtist(picked.id, 4);
-  return toFeaturedArtistListing(picked, collabs);
+  return toFeaturedArtistListing(
+    picked,
+    directoryListingEmail(picked.emailVisibility, picked),
+    collabs,
+  );
 }
 
 /** Profile page shape - aligned with former DummyArtist */
@@ -225,7 +274,10 @@ export type ArtistProfileView = {
   links: { type: string; url: string }[];
 };
 
-export async function getArtistBySlug(slug: string): Promise<ArtistProfileView | null> {
+export async function getArtistBySlug(
+  slug: string,
+  viewer?: { artistId: string; role: "artist" | "admin" } | null,
+): Promise<ArtistProfileView | null> {
   const artist = await getDb().artist.findFirst({
     where: { slug, isSuspended: false },
     include: {
@@ -250,6 +302,19 @@ export async function getArtistBySlug(slug: string): Promise<ArtistProfileView |
     },
   });
   if (!artist) return null;
+
+  const decrypted = decryptArtistStoredContact(artist);
+  const ctx: ProfileViewerContext = {
+    viewerArtistId: viewer?.artistId ?? null,
+    viewerRole: viewer?.role ?? null,
+    profileOwnerId: artist.id,
+  };
+  let sharesCollab = false;
+  if (viewer?.artistId && viewer.role !== "admin") {
+    sharesCollab = await artistsShareActiveCollab(viewer.artistId, artist.id);
+  }
+  const showEmail = canRevealEmail(artist.emailVisibility, ctx, sharesCollab);
+  const showContact = canRevealContact(artist.contactVisibility, ctx, sharesCollab);
 
   const collabs = artist.collabMemberships.map((m) => {
     const c = m.collab;
@@ -285,12 +350,12 @@ export async function getArtistBySlug(slug: string): Promise<ArtistProfileView |
     id: artist.id,
     slug: artist.slug,
     name: artist.fullName,
-    email: artist.email,
+    email: showEmail ? decrypted.email : "",
     province: artist.province,
     profilePhotoUrl: artist.profilePhotoUrl,
     backgroundImageUrl: artist.backgroundImageUrl ?? null,
     specialities: artist.specialities.map((j) => specColor(j.speciality)),
-    contactNumber: artist.contactNumber,
+    contactNumber: showContact ? decrypted.contactNumber : "",
     contactType: artist.contactType,
     openToCollab: artist.openToCollab,
     availableForCollab: artist.openToCollab,
@@ -365,6 +430,9 @@ export type ArtistDashboardView = {
   province: string;
   specialities: { name: string; color: string }[];
   openToCollab: boolean;
+  /** Plain text from bio HTML for dashboard preview */
+  bioPlainPreview: string;
+  hasBio: boolean;
   collabs: DashboardCollab[];
   availabilityDates: { from: string; to: string }[];
   avgRating: string | null;
@@ -497,6 +565,11 @@ export async function getArtistDashboardView(artistId: string): Promise<ArtistDa
   const notifications = artist.notifications.map((n) => shapeNotification(n, now));
   const unreadNotificationCount = notifications.filter((n) => !n.read).length;
 
+  const bioPlain = stripHtmlForSearch(artist.bioRichText ?? "").trim();
+  const hasBio = bioPlain.length > 0;
+  const bioPlainPreview =
+    hasBio && bioPlain.length > 240 ? `${bioPlain.slice(0, 240).trimEnd()}…` : bioPlain;
+
   return {
     id: artist.id,
     slug: artist.slug,
@@ -504,6 +577,8 @@ export async function getArtistDashboardView(artistId: string): Promise<ArtistDa
     province: artist.province,
     specialities: artist.specialities.map((j) => specColor(j.speciality)),
     openToCollab: artist.openToCollab,
+    bioPlainPreview,
+    hasBio,
     collabs: Array.from(collabMap.values()),
     availabilityDates: artist.availabilityEntries.map((e) => ({
       from: e.startDate.toISOString().slice(0, 10),
@@ -521,6 +596,8 @@ export type ArtistEditView = {
   email: string;
   contactNumber: string;
   contactType: "whatsapp" | "mobile";
+  emailVisibility: PiiVisibility;
+  contactVisibility: PiiVisibility;
   province: string;
   specialities: string[];
   availabilityWindowCount: number;
@@ -554,12 +631,15 @@ export async function getArtistForEdit(artistIdOrSlug: string): Promise<ArtistEd
   });
   if (!artist) return null;
   const social = profileSocialFromExternalLinks(artist.externalLinks);
+  const d = decryptArtistStoredContact(artist);
   return {
     id: artist.id,
     fullName: artist.fullName,
-    email: artist.email,
-    contactNumber: artist.contactNumber,
+    email: d.email,
+    contactNumber: d.contactNumber,
     contactType: artist.contactType,
+    emailVisibility: artist.emailVisibility,
+    contactVisibility: artist.contactVisibility,
     province: artist.province,
     specialities: artist.specialities.map((j) => j.speciality.name),
     availabilityWindowCount: artist._count.availabilityEntries,
@@ -590,17 +670,9 @@ export async function getArtistListingBySlug(slug: string): Promise<ArtistListin
         orderBy: { displayOrder: "asc" },
         include: { speciality: true },
       },
+      externalLinks: { select: { url: true } },
     },
   });
   if (!row) return null;
-  return {
-    id: row.id,
-    slug: row.slug,
-    name: row.fullName,
-    email: row.email,
-    province: row.province,
-    profilePhotoUrl: row.profilePhotoUrl,
-    specialities: row.specialities.map((j) => specColor(j.speciality)),
-    openToCollab: row.openToCollab,
-  };
+  return toArtistListing(row, directoryListingEmail(row.emailVisibility, row));
 }

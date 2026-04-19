@@ -5,7 +5,7 @@
  * `/api/ph/*`; we forward to POSTHOG_HOST with a correct `Host` header so
  * PostHog Cloud accepts ingestion (forwarding the Workers hostname breaks this).
  *
- * Requirements: 7.1–7.6
+ * Requirements: 7.1-7.6
  */
 
 import { NextRequest } from "next/server";

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { listSpecialitiesForAdmin } from "@/lib/queries/admin-specialities";
 import { AddSpecialityForm } from "./add-speciality-form";
-import { SpecialityCard } from "./speciality-card";
+import { AdminSpecialitiesGrid } from "./admin-specialities-grid";
 
 export default async function AdminSpecialitiesPage() {
   const specialities = await listSpecialitiesForAdmin();
@@ -21,11 +21,7 @@ export default async function AdminSpecialitiesPage() {
 
       <AddSpecialityForm />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {specialities.map((spec) => (
-          <SpecialityCard key={spec.id} row={spec} />
-        ))}
-      </div>
+      <AdminSpecialitiesGrid rows={specialities} />
 
       {specialities.length === 0 ? (
         <p className="mt-8 text-center text-sm text-stone-500">No specialities yet - add one above or run the database seed.</p>

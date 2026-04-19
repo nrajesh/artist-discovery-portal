@@ -1,4 +1,5 @@
 import { formatDeploymentDate, formatDeploymentDateNumericDay, formatDeploymentMonthYear } from "@/lib/format-deployment-datetime";
+import { decryptArtistStoredContact } from "@/lib/artist-pii";
 import { getDb } from "@/lib/db";
 import { type ArtistProfileView, specColor } from "@/lib/queries/artists";
 
@@ -14,8 +15,20 @@ export type AdminArtistListRow = {
   joinedAtDisplay: string;
 };
 
-export async function listArtistsForAdmin(): Promise<AdminArtistListRow[]> {
+export async function listArtistsForAdmin(filters?: {
+  specialityId?: string;
+}): Promise<AdminArtistListRow[]> {
+  const where =
+    filters?.specialityId !== undefined
+      ? {
+          specialities: {
+            some: { specialityId: filters.specialityId },
+          },
+        }
+      : undefined;
+
   const rows = await getDb().artist.findMany({
+    where,
     include: {
       specialities: {
         orderBy: { displayOrder: "asc" },
@@ -28,7 +41,7 @@ export async function listArtistsForAdmin(): Promise<AdminArtistListRow[]> {
   return rows.map((a) => ({
     id: a.id,
     name: a.fullName,
-    email: a.email,
+    email: decryptArtistStoredContact(a).email,
     province: a.province,
     specialities: a.specialities.map((j) => specColor(j.speciality)),
     status: a.isSuspended ? "suspended" : "active",
@@ -92,6 +105,8 @@ export async function getArtistProfileForAdmin(idOrSlug: string): Promise<AdminA
 
   if (!artist) return null;
 
+  const pii = decryptArtistStoredContact(artist);
+
   const collabMap = new Map<string, ReturnType<typeof mapCollabRow>>();
   for (const m of artist.collabMemberships) {
     const c = m.collab;
@@ -119,10 +134,12 @@ export async function getArtistProfileForAdmin(idOrSlug: string): Promise<AdminA
     id: artist.id,
     slug: artist.slug,
     name: artist.fullName,
-    email: artist.email,
+    email: pii.email,
     province: artist.province,
+    profilePhotoUrl: artist.profilePhotoUrl,
+    backgroundImageUrl: artist.backgroundImageUrl ?? null,
     specialities: artist.specialities.map((j) => specColor(j.speciality)),
-    contactNumber: artist.contactNumber,
+    contactNumber: pii.contactNumber,
     contactType: artist.contactType,
     openToCollab: artist.openToCollab,
     availableForCollab: artist.openToCollab,

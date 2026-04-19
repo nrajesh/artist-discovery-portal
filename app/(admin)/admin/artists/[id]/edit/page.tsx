@@ -6,6 +6,7 @@ import { getArtistForEdit, listSpecialities } from "@/lib/queries/artists";
 import { NL_DEFAULT_PROVINCES } from "@/lib/geo/nl-default-provinces";
 import { ArtistProfileEditForm } from "@/components/artist-profile-edit-form";
 import { AdminModerationPanel } from "./admin-moderation-panel";
+import { isArtistCollabsRatingsEnabledServer } from "@/lib/feature-flags-server";
 
 const NL_PROVINCES = [...NL_DEFAULT_PROVINCES];
 
@@ -14,9 +15,12 @@ export default async function EditArtistPage({ params }: { params: Promise<{ id:
   const sessionCookie = (await cookies()).get("session")?.value ?? null;
   const session = sessionCookie ? await verifySession(sessionCookie) : null;
 
-  const [artist, allSpecialities] = await Promise.all([
+  const [artist, allSpecialities, collabsRatingsEnabled] = await Promise.all([
     getArtistForEdit(id),
     listSpecialities(),
+    session?.artistId
+      ? isArtistCollabsRatingsEnabledServer({ distinctId: session.artistId })
+      : Promise.resolve(false),
   ]);
   if (!artist) notFound();
 
@@ -37,26 +41,28 @@ export default async function EditArtistPage({ params }: { params: Promise<{ id:
         </p>
 
         <div className="mb-8 space-y-6">
-          <div className="rounded-xl border border-stone-200 bg-stone-50 px-5 py-4 text-sm text-stone-700">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-xs font-semibold uppercase tracking-wide text-stone-500">
-                Collaboration listing
-              </span>
-              <span
-                className={`inline-block rounded-full border px-3 py-1 text-xs font-semibold ${
-                  artist.openToCollab
-                    ? "border-green-200 bg-green-50 text-green-800"
-                    : "border-stone-200 bg-stone-100 text-stone-600"
-                }`}
-              >
-                {artist.openToCollab ? "Open to collaborate" : "Not open"}
-              </span>
+          {collabsRatingsEnabled && (
+            <div className="rounded-xl border border-stone-200 bg-stone-50 px-5 py-4 text-sm text-stone-700">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wide text-stone-500">
+                  Collaboration listing
+                </span>
+                <span
+                  className={`inline-block rounded-full border px-3 py-1 text-xs font-semibold ${
+                    artist.openToCollab
+                      ? "border-green-200 bg-green-50 text-green-800"
+                      : "border-stone-200 bg-stone-100 text-stone-600"
+                  }`}
+                >
+                  {artist.openToCollab ? "Open to collaborate" : "Not open"}
+                </span>
+              </div>
+              <p className="mt-2 text-xs text-stone-500">
+                Use <span className="font-medium text-stone-700">Open to collaborations</span> in the form
+                below to change whether they appear in collaboration discovery.
+              </p>
             </div>
-            <p className="mt-2 text-xs text-stone-500">
-              Use <span className="font-medium text-stone-700">Open to collaborations</span> in the form
-              below to change whether they appear in collaboration discovery.
-            </p>
-          </div>
+          )}
 
           <ArtistProfileEditForm
             key={artist.profileRevision}
@@ -65,6 +71,7 @@ export default async function EditArtistPage({ params }: { params: Promise<{ id:
             allSpecialities={allSpecialities}
             provinces={NL_PROVINCES}
             targetArtistId={artist.id}
+            collabsRatingsEnabled={collabsRatingsEnabled}
           />
 
           <AdminModerationPanel

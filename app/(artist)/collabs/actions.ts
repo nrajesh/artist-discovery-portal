@@ -6,6 +6,7 @@ import { revalidateHomeMarketing } from "@/lib/cache/home-marketing";
 import { getDb } from "@/lib/db";
 import { verifySession } from "@/lib/session-jwt";
 import { notifyReviewEvent } from "@/lib/notifications";
+import { assertArtistCollabsRatingsEnabled } from "@/lib/feature-flags-server";
 
 async function requireSessionArtistId(): Promise<string> {
   const token = (await cookies()).get("session")?.value ?? null;
@@ -29,6 +30,7 @@ function splitEmails(raw: string): string[] {
 
 export async function createCollabAction(formData: FormData): Promise<void> {
   const artistId = await requireSessionArtistId();
+  await assertArtistCollabsRatingsEnabled(artistId);
   const name = cleanString(formData.get("name"));
   const description = cleanString(formData.get("description"));
   const invitedEmails = splitEmails(cleanString(formData.get("invitedEmails")));
@@ -67,6 +69,7 @@ export async function createCollabAction(formData: FormData): Promise<void> {
 
 export async function addCollabMessageAction(formData: FormData): Promise<void> {
   const artistId = await requireSessionArtistId();
+  await assertArtistCollabsRatingsEnabled(artistId);
   const collabId = cleanString(formData.get("collabId"));
   const content = cleanString(formData.get("content"));
   if (!collabId || !content) throw new Error("Message content is required.");
@@ -90,6 +93,7 @@ export async function addCollabMessageAction(formData: FormData): Promise<void> 
 
 export async function updateCollabStatusAction(formData: FormData): Promise<void> {
   const artistId = await requireSessionArtistId();
+  await assertArtistCollabsRatingsEnabled(artistId);
   const collabId = cleanString(formData.get("collabId"));
   const status = cleanString(formData.get("status"));
   if (!collabId) throw new Error("Missing collab id.");
@@ -118,6 +122,7 @@ export async function updateCollabStatusAction(formData: FormData): Promise<void
 
 export async function deleteCollabAction(formData: FormData): Promise<void> {
   const artistId = await requireSessionArtistId();
+  await assertArtistCollabsRatingsEnabled(artistId);
   const collabId = cleanString(formData.get("collabId"));
   if (!collabId) throw new Error("Missing collab id.");
 
@@ -141,6 +146,7 @@ export async function deleteCollabAction(formData: FormData): Promise<void> {
 
 export async function upsertFeedbackAction(formData: FormData): Promise<void> {
   const reviewerId = await requireSessionArtistId();
+  await assertArtistCollabsRatingsEnabled(reviewerId);
   const collabId = cleanString(formData.get("collabId"));
   const revieweeId = cleanString(formData.get("revieweeId"));
   const comment = cleanString(formData.get("comment"));
@@ -224,6 +230,7 @@ export async function upsertFeedbackAction(formData: FormData): Promise<void> {
 
 export async function deleteFeedbackAction(formData: FormData): Promise<void> {
   const reviewerId = await requireSessionArtistId();
+  await assertArtistCollabsRatingsEnabled(reviewerId);
   const collabId = cleanString(formData.get("collabId"));
   const revieweeId = cleanString(formData.get("revieweeId"));
   if (!collabId || !revieweeId) throw new Error("Missing collab/reviewee.");

@@ -1,8 +1,8 @@
-# Implementation Plan: Carnatic Artist Portal
+# Implementation Plan: Artist Discovery Portal
 
 ## Overview
 
-Implement the Carnatic Artist Portal as a Next.js 14 (App Router) TypeScript PWA. Tasks are ordered to build foundational infrastructure first, then core data models, authentication, public-facing features, artist-authenticated features, admin features, and finally PWA/i18n/accessibility polish. Each task builds on the previous and ends with all code wired together.
+Implement Artist Discovery Portal as a Next.js 14 (App Router) TypeScript PWA. Tasks are ordered to build foundational infrastructure first, then core data models, authentication, public-facing features, artist-authenticated features, admin features, and finally PWA/i18n/accessibility polish. Each task builds on the previous and ends with all code wired together.
 
 ## Tasks
 
@@ -65,7 +65,7 @@ Implement the Carnatic Artist Portal as a Next.js 14 (App Router) TypeScript PWA
   - Ensure all tests pass, ask the user if questions arise.
 
 - [x] 7. Registration request feature
-  - [x] 7.1 Build `app/(public)/register/page.tsx` registration form with all mandatory fields (full name, email, contact number, contact-type toggle/radio alongside contact number, 1–3 specialities) and optional fields (HTTPS profile photo URL, background banner URL, website URLs, LinkedIn, Instagram, Facebook, Twitter/X, YouTube, bio rich text via Tiptap)
+  - [x] 7.1 Build `app/(public)/register/page.tsx` registration form with all mandatory fields (full name, email, contact number, contact-type toggle/radio alongside contact number, 1-3 specialities) and optional fields (HTTPS profile photo URL, background banner URL, website URLs, LinkedIn, Instagram, Facebook, Twitter/X, YouTube, bio rich text via Tiptap)
     - Hide/disable "Add Speciality" control once 3 specialities are selected
     - Display field-level validation errors without submitting when mandatory fields are missing or invalid
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.7, 1.8_
@@ -112,7 +112,7 @@ Implement the Carnatic Artist Portal as a Next.js 14 (App Router) TypeScript PWA
   - Ensure all tests pass, ask the user if questions arise.
 
 - [x] 10. Artist profile management
-  - [x] 10.1 Build `app/(artist)/profile/edit/page.tsx` with all editable fields: full name, email, contact number, contact-type toggle, profile photo, background image, province (mandatory), 1–3 specialities via `SpecialityPicker` typeahead, bio rich text (Tiptap), external links. Live profile preview strip. "Reviews I've Written" section with edit links.
+  - [x] 10.1 Build `app/(artist)/profile/edit/page.tsx` with all editable fields: full name, email, contact number, contact-type toggle, profile photo, background image, province (mandatory), 1-3 specialities via `SpecialityPicker` typeahead, bio rich text (Tiptap), external links. Live profile preview strip. "Reviews I've Written" section with edit links.
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
   - [x] 10.2 `PUT /api/profile` server action designed; client-side save with validation and success toast implemented (DB wiring pending)
     - _Requirements: 3.6, 3.7, 3.8_
@@ -140,37 +140,37 @@ Implement the Carnatic Artist Portal as a Next.js 14 (App Router) TypeScript PWA
   - [ ]* 12.3 Write property test for availability calendar round-trip
 
 - [x] 13. Artist search - public directory with client-side filtering complete; DB-backed search ready to wire
-  - [x] 13.1–13.3 `/artists` page with name, speciality typeahead, province filters; URL-based (shareable); `ArtistsSearch` client component
-    - _Requirements: 7.1–7.11_
-  - [ ]* 13.4–13.5 Property tests pending
+  - [x] 13.1-13.3 `/artists` page with name, speciality typeahead, province filters; URL-based (shareable); `ArtistsSearch` client component
+    - _Requirements: 7.1-7.11_
+  - [ ]* 13.4-13.5 Property tests pending
 
 - [x] 14. Checkpoint - 50 tests passing (6 test files)
 
 - [x] 15. Collab - UI and dummy data complete; API wiring pending
-  - [x] 15.1–15.5 Collab list, detail, message history pages; slug-based URLs; status badges
-    - _Requirements: 8.1–8.9_
+  - [x] 15.1-15.5 Collab list, detail, message history pages; slug-based URLs; status badges
+    - _Requirements: 8.1-8.9_
   - [ ] 15.6 API endpoints and property tests pending
 
 - [x] 16. Collab chat interface - UI complete; SSE/real-time pending
   - [x] 16.1 Admin collab detail with message history, member list, admin-visibility notice
     - _Requirements: 8.5, 10.3_
-  - [ ] 16.2–16.4 SSE endpoint, message persistence, property tests pending
+  - [ ] 16.2-16.4 SSE endpoint, message persistence, property tests pending
 
 - [x] 17. Collab lifecycle - status display complete; close/feedback API pending
-  - [x] 17.1–17.3 Status badges throughout; lifecycle rules documented
+  - [x] 17.1-17.3 Status badges throughout; lifecycle rules documented
   - [ ] 17.4 API endpoints and property tests pending
 
 - [x] 18. Artist feedback system - display complete; submission API pending
-  - [x] 18.1–18.4 Reviews on public profiles: stable anchor IDs, pagination, permalink `#`, edit button for reviewer/admin
-    - _Requirements: 11.1–11.4_
-  - [ ] 18.5–18.7 Feedback submission API and property tests pending
+  - [x] 18.1-18.4 Reviews on public profiles: stable anchor IDs, pagination, permalink `#`, edit button for reviewer/admin
+    - _Requirements: 11.1-11.4_
+  - [ ] 18.5-18.7 Feedback submission API and property tests pending
 
 - [x] 19. Checkpoint - All tests pass
 
 - [x] 20. Admin dashboard and moderation - all pages built with dummy data; DB wiring pending
   - [x] 20.1 Admin dashboard (`/admin/dashboard`) with navigation cards
   - [x] 20.2 Collab moderation (`/admin/collabs`) - sortable table, message history detail
-  - [x] 20.3–20.4 Message delete and artist suspend - UI stubs; API pending
+  - [x] 20.3-20.4 Message delete and artist suspend - UI stubs; API pending
   - [x] 20.5 Speciality management (`/admin/specialities`) - colour-coded cards, artist counts
   - [x] 20.6 Artist management (`/admin/artists`) - sortable table; artist detail page with bio, availability, collab history, reviews
   - [x] 20.7 Artist deletion - UI confirmation prompt; API pending
@@ -178,9 +178,9 @@ Implement the Carnatic Artist Portal as a Next.js 14 (App Router) TypeScript PWA
 
 - [x] 21. Home page - built with dummy data; D3 map and daily rotation pending
   - [x] 21.1 Stats (total artists, seeking collab, active collabs), Singer/Instrumentalist of the Day, artist grid, collab list, dev shortcuts
-    - _Requirements: 15.1–15.8_
+    - _Requirements: 15.1-15.8_
   - [ ] 21.2 Daily featured artist rotation (DB cron) pending
-  - [ ] 21.3–21.5 Property tests pending
+  - [ ] 21.3-21.5 Property tests pending
 
 - [ ] 22. Push notifications - pending
 
@@ -201,7 +201,7 @@ Implement the Carnatic Artist Portal as a Next.js 14 (App Router) TypeScript PWA
 - Tasks marked with `*` are optional and can be skipped for a faster MVP
 - Each task references specific requirements for traceability
 - Checkpoints at tasks 6, 9, 14, 19, and 28 ensure incremental validation
-- Property tests (P1–P28) validate universal correctness properties using `fast-check` with ≥100 iterations each
+- Property tests (P1-P28) validate universal correctness properties using `fast-check` with ≥100 iterations each
 - Unit tests validate specific flows (auth, offline behaviour, admin actions, language switcher)
 - Integration tests cover DB migrations, R2 upload/download, Resend email, SSE streaming, and structured search
 - All code is TypeScript; framework is Next.js 14 App Router with Tailwind CSS

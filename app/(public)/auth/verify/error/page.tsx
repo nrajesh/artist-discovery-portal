@@ -8,7 +8,7 @@
 
 import Link from 'next/link';
 
-type Code = 'missing' | 'invalid' | 'expired' | 'unexpected';
+type Code = 'missing' | 'invalid' | 'expired' | 'used' | 'unexpected';
 
 interface ErrorPageProps {
   searchParams: Promise<{ code?: string }>;
@@ -23,6 +23,12 @@ const MESSAGES: Record<Code, { title: string; message: string; showRequestNew: b
   invalid: {
     title: 'Invalid link',
     message: 'This link is invalid or has already been used.',
+    showRequestNew: true,
+  },
+  used: {
+    title: 'Link already used',
+    message:
+      'This sign-in link was already used. Mail apps sometimes open links in the background when you preview them. Request a new login link and use Continue on the next page without only previewing the URL.',
     showRequestNew: true,
   },
   expired: {

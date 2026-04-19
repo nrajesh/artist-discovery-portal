@@ -11,6 +11,7 @@ import {
   type ArtistListing,
   type HomeCollabPreview,
 } from "@/lib/queries/artists";
+import { isArtistCollabsRatingsEnabledServer } from "@/lib/feature-flags-server";
 
 /**
  * Homepage marketing bundle (stats, map inputs, featured artist, collabs, preview grid).
@@ -23,6 +24,8 @@ import {
  * Session/cookies stay outside this module so results stay usable for anonymous visitors.
  */
 export type HomeMarketingBundle = {
+  /** PostHog `artist-collabs-ratings` (or env override). When false, collab/rating marketing is omitted. */
+  collabsRatingsEnabled: boolean;
   totalArtists: number;
   seekingCollab: number;
   totalCollabs: number;
@@ -33,6 +36,30 @@ export type HomeMarketingBundle = {
 };
 
 async function loadHomeMarketingBundle(): Promise<HomeMarketingBundle> {
+  const collabsRatingsEnabled = await isArtistCollabsRatingsEnabledServer();
+
+  if (!collabsRatingsEnabled) {
+    const [totalArtists, featuredArtist, previewArtists, countsByProvince] = await Promise.all([
+      countActiveArtists(),
+      getDailyFeaturedArtistForHome(),
+      listArtistsForDirectory(),
+      countActiveArtistsByProvince(),
+    ]);
+    const featured: FeaturedArtistListing | null = featuredArtist
+      ? { ...featuredArtist, activeCollabs: [] }
+      : null;
+    return {
+      collabsRatingsEnabled: false,
+      totalArtists,
+      seekingCollab: 0,
+      totalCollabs: 0,
+      featuredArtist: featured,
+      homeCollabs: [],
+      previewArtists,
+      countsByProvince,
+    };
+  }
+
   const [
     totalArtists,
     seekingCollab,
@@ -52,6 +79,7 @@ async function loadHomeMarketingBundle(): Promise<HomeMarketingBundle> {
   ]);
 
   return {
+    collabsRatingsEnabled: true,
     totalArtists,
     seekingCollab,
     totalCollabs,

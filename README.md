@@ -1,8 +1,8 @@
-# 🎵 Carnatic Artist Portal
+# 🎵 Artist Discovery Portal
 
-A portfolio and collaboration platform for Carnatic musicians in The Netherlands - built mobile-first as a Progressive Web App with speciality-based colour theming, full Indic script support, and a clean admin moderation layer.
+An artist discovery and portfolio platform for musicians in The Netherlands - built mobile-first as a Progressive Web App with speciality-based colour theming, full Indic script support, and a clean admin moderation layer.
 
-> **Live demo:** visit `/about` after starting the dev server for a full maintainer walkthrough with live examples.  
+> **Live demo:** visit `/about` after starting the dev server for a maintainer walkthrough (colour examples, Unicode, auth flow, PostHog summary, live directory cards).  
 > **Docs index:** see [`docs/README.md`](docs/README.md) (specs, screenshot checklist, copy style).  
 > **Screenshots:** add captures under [`docs/screenshots/`](docs/screenshots/) (see [`docs/screenshots/README.md`](docs/screenshots/README.md)) and link them here for release notes or the GitHub readme.
 
@@ -12,9 +12,9 @@ A portfolio and collaboration platform for Carnatic musicians in The Netherlands
 
 | Audience | Capabilities |
 |---|---|
-| **Visitors** | Browse artist profiles, daily featured vocalist on the home page, bios, collab stats, and reviews |
-| **Artists** | Manage portfolio, mark availability, search collaborators, create group chats (collabs), leave feedback |
-| **Admins** | Approve/reject registrations, moderate chats, manage artists/specialities/collabs |
+| **Visitors** | Discover and browse artist profiles, daily featured vocalist on the home page, bios, collab stats, and reviews |
+| **Artists** | Manage portfolio, mark availability, search collaborators, create group chats (collabs), leave feedback, tune **notification** channels (email / push) on `/profile/notifications` |
+| **Admins** | Approve/reject registrations (with review notes), moderate chats and **collab detail** threads, suspend artists with audit context, manage artists/specialities/collabs |
 
 ---
 
@@ -27,7 +27,7 @@ Every artist profile is visually themed by their **stored** speciality colours (
 Artists can write their bio, chat messages, and reviews in Tamil, Kannada, Telugu, Malayalam, Hindi/Devanagari, or any combination - including mixed-script paragraphs. The Tiptap rich-text editor accepts direct Unicode input. Google Fonts Noto family provides full glyph coverage with `font-display: swap` so rendering is beautiful without hurting performance.
 
 ### 🔒 Magic-link authentication
-No passwords. Artists log in via a signed JWT link sent to their email (valid 72 hours). Sessions are 30-day signed JWTs validated by Edge middleware - no database round-trip on every request. Admin role is granted by listing an email in `ADMIN_EMAILS`.
+No passwords. Artists request a link at `/auth/login`; the email points to `/auth/verify?token=…`, where a **confirm** step (POST) consumes the token so mail-client previews and prefetch GETs cannot invalidate it. Links remain valid 72 hours. Sessions are 30-day signed JWTs validated by Edge middleware - no database round-trip on every request. **Logout** is `POST /api/auth/logout` (CSRF-safe form POST from the header/footer/dashboard). Admin role is granted by listing an email in `ADMIN_EMAILS`.
 
 ### ✨ Home spotlight
 
@@ -44,6 +44,9 @@ Homepage aggregates (totals, featured artist, province map inputs, preview grid)
 
 ### 📱 PWA-ready
 Designed for Lighthouse PWA ≥90, Performance ≥85, Accessibility ≥90 on mobile. All touch targets ≥44×44px. Service Worker, Web App Manifest, and push notifications (VAPID) are in the implementation plan.
+
+### 📊 Privacy-conscious analytics (PostHog)
+Optional [PostHog](https://posthog.com/) integration: explicit events plus **manual** page views, **no autocapture**, `artistId` (not email) as the distinct id on the server, and production traffic through a **same-origin** `/api/ph` proxy. **Session Replay** is env-gated with text masking; **Do Not Track** and `/privacy/opt-out` are honoured. Full operator notes live in `.kiro/specs/posthog-analytics/` and `.kiro/steering/posthog-admin-guide.md`.
 
 ### 🧪 Property-based testing
 28 formal correctness properties verified with `fast-check` (≥100 iterations each) covering auth token expiry, WCAG contrast ratios, search result correctness, feedback uniqueness, Unicode round-trips, and more.
@@ -74,15 +77,15 @@ Designed for Lighthouse PWA ≥90, Performance ≥85, Accessibility ≥90 on mob
 
 ### Prerequisites
 
-- Node.js ≥18
+- Node.js **20+** (recommended for Next.js 16; older LTS may work but is not validated here)
 - npm ≥9
 - A [Neon](https://neon.tech) account (free tier is fine) - or any PostgreSQL instance
 
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/carnatic-artist-portal.git
-cd carnatic-artist-portal
+git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git
+cd YOUR_REPO
 npm install
 ```
 
@@ -103,7 +106,7 @@ DATABASE_URL_UNPOOLED=postgresql://user:password@host/dbname?sslmode=require
 
 # Deployment config (these defaults work for local dev)
 DEPLOYMENT_REGION=NL
-DEPLOYMENT_NAME="Carnatic Artist Portal"
+DEPLOYMENT_NAME="Artist Discovery Portal"
 DEPLOYMENT_LOCALE_PRIMARY=en
 DEPLOYMENT_LOCALE_SECONDARY=nl
 DEPLOYMENT_MAP_GEOJSON_URL=/geo/netherlands-provinces.geojson
@@ -118,6 +121,10 @@ ADMIN_EMAILS=your@email.com
 # App URL (used in magic link emails)
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 
+# PostHog (optional) - see env.example for Session Replay, proxy, and feature-flag vars
+# NEXT_PUBLIC_POSTHOG_KEY=
+# POSTHOG_HOST=https://eu.i.posthog.com
+
 # These can be left as placeholders for local browsing
 # (only needed when the actual features are used)
 RESEND_API_KEY=re_placeholder
@@ -127,7 +134,7 @@ VAPID_SUBJECT=mailto:admin@example.com
 R2_ACCOUNT_ID=placeholder
 R2_ACCESS_KEY_ID=placeholder
 R2_SECRET_ACCESS_KEY=placeholder
-R2_BUCKET_NAME=carnatic-artist-portal
+R2_BUCKET_NAME=artist-discovery-portal
 R2_PUBLIC_URL=https://placeholder.example.com
 KV_REST_API_URL=https://placeholder.example.com
 KV_REST_API_TOKEN=placeholder
@@ -142,7 +149,7 @@ npx prisma generate
 npx prisma migrate dev --name init
 ```
 
-Seed the specialities table (12 Carnatic instruments with WCAG-compliant colours):
+Seed the specialities table (12 instrument specialities with WCAG-compliant colours):
 
 ```bash
 npx prisma db seed
@@ -180,14 +187,17 @@ Since magic-link email requires Resend to be configured, use these shortcuts for
 | `/artists/[slug]` | Artist profile - bio, collab stats, reviews, availability |
 | `/register` | Artist registration  -  required name, email, contact, specialities; optional HTTPS profile/banner image URLs |
 | `/auth/login` | Request magic link |
+| `/auth/verify` | Confirm magic link (token in query; POST consumes token) |
 | `/dashboard` | Artist dashboard (auth required) |
 | `/profile/edit` | Edit profile (auth required) |
+| `/profile/notifications` | Email and push notification preferences (auth required) |
+| `/privacy` | Privacy policy, PostHog disclosure, opt-in / opt-out |
 | `/admin/dashboard` | Admin home (admin role required) |
-| `/admin/registrations` | Review pending registrations |
-| `/admin/artists` | Manage all artists |
-| `/admin/collabs` | Moderate group chats |
+| `/admin/registrations` | Review pending registrations (filters, status toasts, review comments) |
+| `/admin/artists` | Manage all artists (edit profiles, suspension with notes) |
+| `/admin/collabs` | Moderate group chats; open `/admin/collabs/[id]` for thread detail, messaging, and feedback controls |
 | `/admin/specialities` | Manage speciality colour palette |
-| `/about` | Maintainer showcase - USPs, speciality **colour examples** (2 and 3 instruments), Unicode samples, tech stack, live demos |
+| `/about` | Maintainer showcase - USPs, speciality **colour examples** (2 and 3 instruments), Unicode samples, PostHog / privacy, tech stack, live demos |
 
 ---
 
@@ -216,11 +226,11 @@ app/
 │   ├── page.tsx       # Home
 │   ├── artists/       # Directory + [slug] profile
 │   ├── register/      # Registration form
-│   ├── auth/          # Login + verify
+│   ├── auth/          # Login + verify (GET landing + POST consume)
 │   └── about/         # Maintainer showcase
 ├── (artist)/          # Auth-protected artist routes
 │   ├── dashboard/
-│   ├── profile/       # edit + availability
+│   ├── profile/       # edit, availability, notifications
 │   ├── search/
 │   └── collabs/
 ├── (admin)/           # Admin-protected routes
@@ -236,7 +246,9 @@ lib/
 ├── cache/
 │   └── home-marketing.ts # Home page DB bundle + revalidatePath via revalidateHomeMarketing()
 ├── dummy-artists.ts     # Shared dummy data (12 artists)
-└── admin-approval.ts    # Approve/reject + filterRegistrations()
+├── admin-approval.ts    # Approve/reject + filterRegistrations()
+├── analytics-client.ts  # PostHog browser init (proxy, replay, DNT)
+└── analytics-server.ts  # PostHog Node capture for API routes
 
 components/
 ├── artists-province-map.tsx  # NL map, province side panel (empty-state Join CTA)
@@ -299,7 +311,7 @@ To deploy for Belgium or Singapore, only config changes are needed:
 
 ```bash
 DEPLOYMENT_REGION=BE
-DEPLOYMENT_NAME="Carnatic Artist Portal Belgium"
+DEPLOYMENT_NAME="Artist Discovery Portal Belgium"
 DEPLOYMENT_LOCALE_PRIMARY=en
 DEPLOYMENT_LOCALE_SECONDARY=fr   # or nl
 DEPLOYMENT_MAP_GEOJSON_URL=/geo/belgium-provinces.geojson
@@ -311,11 +323,13 @@ Then add `public/geo/belgium-provinces.geojson` with Belgian province boundaries
 
 ## Spec documentation
 
-Full requirements, design, and implementation plan are in `.kiro/specs/carnatic-artist-portal/`:
+Full requirements, design, and implementation plan are in `.kiro/specs/artist-discovery-portal/`:
 
 - `requirements.md` - 19 requirements with EARS-pattern acceptance criteria
 - `design.md` - architecture, ERD, Prisma schema, speciality theming contracts, 28 correctness properties, testing strategy
 - `tasks.md` - 28 implementation tasks with progress tracking
+
+PostHog analytics, proxy behaviour, Session Replay, and privacy contracts: **`.kiro/specs/posthog-analytics/`** (plus **`.kiro/steering/posthog-admin-guide.md`** for operators).
 
 Shorter entry points: [`docs/README.md`](docs/README.md) and in-app **`/about`**.
 

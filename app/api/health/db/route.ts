@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { logSafeError } from "@/lib/safe-log";
 
 /**
  * Minimal DB connectivity check for production debugging.
@@ -11,7 +12,7 @@ export async function GET() {
     await getDb().$queryRaw`SELECT 1`;
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error("[api/health/db]", error);
+    logSafeError("[api/health/db]", error);
     return NextResponse.json({ ok: false }, { status: 503 });
   }
 }

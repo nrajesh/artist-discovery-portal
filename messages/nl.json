@@ -10,8 +10,8 @@
     "collabs": "Samenwerkingen"
   },
   "home": {
-    "title": "Carnatic Artiesten Portaal",
-    "subtitle": "Ontdek Carnatic muzikanten in Nederland",
+    "title": "Artist Discovery Portal",
+    "subtitle": "Ontdek muzikanten en ensembles in Nederland",
     "totalArtists": "{count} artiesten",
     "seekingCollaboration": "{count} zoeken samenwerking",
     "instrumentalistOfTheDay": "Instrumentalist van de dag",

@@ -10,6 +10,7 @@ import {
   updateCollabStatusAction,
   upsertFeedbackAction,
 } from "../actions";
+import { isArtistCollabsRatingsEnabledServer } from "@/lib/feature-flags-server";
 
 interface CollabChatPageProps {
   params: Promise<{ id: string }>;
@@ -21,6 +22,11 @@ export default async function CollabChatPage({ params }: CollabChatPageProps) {
   const session = sessionCookie ? await verifySession(sessionCookie) : null;
   if (!session) redirect("/auth/login");
   if (session.role === "admin") redirect(`/admin/collabs/${id}`);
+
+  const collabsRatingsEnabled = await isArtistCollabsRatingsEnabledServer({
+    distinctId: session.artistId,
+  });
+  if (!collabsRatingsEnabled) redirect("/dashboard");
 
   const collab = await getCollabDetailForArtist(id, session.artistId);
   if (!collab) {

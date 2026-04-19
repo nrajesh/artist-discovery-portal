@@ -7,6 +7,7 @@ import { getDb } from "@/lib/db";
 import { getArtistDashboardView } from "@/lib/queries/artists";
 import { PostHogIdentify } from "@/components/posthog-identify";
 import { DashboardViewTracker, EditProfileLink } from "@/components/dashboard-tracker";
+import { isArtistCollabsRatingsEnabledServer } from "@/lib/feature-flags-server";
 
 export default async function ArtistDashboardPage({
   searchParams,
@@ -21,12 +22,22 @@ export default async function ArtistDashboardPage({
   }
 
   const { ph_identify } = await searchParams;
-  const view = await getArtistDashboardView(session.artistId);
+  const [view, collabsRatingsEnabled] = await Promise.all([
+    getArtistDashboardView(session.artistId),
+    isArtistCollabsRatingsEnabledServer({ distinctId: session.artistId }),
+  ]);
 
   // If the artist row was deleted but the session cookie is still live, drop back to login.
   if (!view) {
     redirect("/auth/login");
   }
+
+  const notificationsForDisplay = collabsRatingsEnabled
+    ? view.notifications
+    : view.notifications.filter(
+        (n) => n.type !== "collab_invite" && n.type !== "feedback" && n.type !== "collab_closed",
+      );
+  const unreadNotificationsInView = notificationsForDisplay.filter((n) => !n.read).length;
 
   let province: string | null = view.province;
   if (ph_identify === "1") {
@@ -51,7 +62,7 @@ export default async function ArtistDashboardPage({
         <DashboardViewTracker />
 
         {/* Header */}
-        <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between mb-8">
           <div>
             <p className="text-sm text-amber-700 mb-1">Welcome back</p>
             <h1 className="text-3xl font-bold text-stone-800">{view.name}</h1>
@@ -65,63 +76,174 @@ export default async function ArtistDashboardPage({
                   {s.name}
                 </span>
               ))}
-              <span className="text-xs text-stone-400">📍 {view.province}</span>
+              {view.province.trim() ? (
+                <span className="text-xs text-stone-400">📍 {view.province}</span>
+              ) : null}
             </div>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <Link
               href={`/artists/${view.slug}`}
-              className="px-4 py-2 text-sm font-semibold text-amber-700 border border-amber-300 bg-white rounded-lg hover:bg-amber-50 transition-colors min-h-[44px] flex items-center"
+              className="px-4 py-2 text-sm font-semibold text-amber-700 border border-amber-300 bg-white rounded-lg hover:bg-amber-50 transition-colors min-h-[44px] flex items-center justify-center"
             >
               View public profile
             </Link>
-            <EditProfileLink className="px-4 py-2 text-sm font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 transition-colors min-h-[44px] flex items-center">
+            <EditProfileLink className="px-4 py-2 text-sm font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 transition-colors min-h-[44px] flex items-center justify-center">
               Edit profile
             </EditProfileLink>
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-4 text-center">
-            <div className="text-2xl font-bold text-stone-800">{activeCollabs.length}</div>
-            <div className="text-xs text-stone-500 mt-0.5">Active collabs</div>
-          </div>
-          <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-4 text-center">
-            <div className="text-2xl font-bold text-stone-800">{completedCollabs.length}</div>
-            <div className="text-xs text-stone-500 mt-0.5">Completed</div>
-          </div>
-          <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-4 text-center">
-            <div className="text-2xl font-bold text-amber-600">
-              {view.avgRating ?? "-"}
-              {view.avgRating && <span className="text-amber-400 text-lg">★</span>}
+        {session.role === "admin" && (
+          <div className="mb-8 rounded-2xl border border-amber-300 bg-gradient-to-br from-amber-50 to-white p-6 shadow-sm">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="text-sm font-bold uppercase tracking-wide text-amber-900">Admin tools</h2>
+                <p className="mt-1 text-sm text-stone-600 max-w-xl">
+                  Jump to moderation: open an artist, then use{" "}
+                  <span className="font-medium text-stone-800">Edit profile</span> for their data and{" "}
+                  <span className="font-medium text-stone-800">Account status</span> to suspend or reactivate.
+                </p>
+              </div>
+              <Link
+                href="/admin/dashboard"
+                className="text-sm font-semibold text-amber-800 underline-offset-2 hover:underline shrink-0"
+              >
+                Admin home →
+              </Link>
             </div>
-            <div className="text-xs text-stone-500 mt-0.5">Avg rating</div>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <Link
+                href="/admin/registrations"
+                className="rounded-xl border border-stone-200 bg-white p-4 transition-colors hover:border-amber-400 hover:shadow-sm"
+              >
+                <p className="text-lg mb-1">📋</p>
+                <p className="text-sm font-semibold text-stone-800">Registration requests</p>
+                <p className="text-xs text-stone-500 mt-0.5">Approve or decline new artists</p>
+              </Link>
+              <Link
+                href="/admin/artists"
+                className="rounded-xl border border-stone-200 bg-white p-4 transition-colors hover:border-amber-400 hover:shadow-sm"
+              >
+                <p className="text-lg mb-1">🎵</p>
+                <p className="text-sm font-semibold text-stone-800">Artists & profiles</p>
+                <p className="text-xs text-stone-500 mt-0.5">Directory, profile edits, account status</p>
+              </Link>
+              <Link
+                href="/admin/specialities"
+                className="rounded-xl border border-stone-200 bg-white p-4 transition-colors hover:border-amber-400 hover:shadow-sm"
+              >
+                <p className="text-lg mb-1">🎨</p>
+                <p className="text-sm font-semibold text-stone-800">Specialities</p>
+                <p className="text-xs text-stone-500 mt-0.5">Instruments and theme colours</p>
+              </Link>
+              {collabsRatingsEnabled ? (
+                <Link
+                  href="/admin/collabs"
+                  className="rounded-xl border border-stone-200 bg-white p-4 transition-colors hover:border-amber-400 hover:shadow-sm"
+                >
+                  <p className="text-lg mb-1">💬</p>
+                  <p className="text-sm font-semibold text-stone-800">Collabs (admin)</p>
+                  <p className="text-xs text-stone-500 mt-0.5">Review and moderate projects</p>
+                </Link>
+              ) : null}
+            </div>
           </div>
-          <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-4 text-center">
-            <div className="text-2xl font-bold text-stone-800">{view.availabilityDates.length}</div>
-            <div className="text-xs text-stone-500 mt-0.5">Availability windows</div>
+        )}
+
+        {session.role === "artist" && (
+          <div className="mb-8 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0 flex-1">
+                <h2 className="text-sm font-bold text-stone-800">Your public bio</h2>
+                <p className="text-xs text-stone-500 mt-1">
+                  This is what visitors read on your profile - keep it current together with your details.
+                </p>
+                {view.hasBio ? (
+                  <p className="mt-3 text-sm text-stone-700 leading-relaxed whitespace-pre-wrap border-l-2 border-amber-200 pl-4">
+                    {view.bioPlainPreview}
+                  </p>
+                ) : (
+                  <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-950">
+                    You have not added a bio yet. A few sentences about your music helps others discover you.
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-col gap-2 shrink-0 w-full sm:w-auto">
+                <Link
+                  href="/profile/edit#profile-bio"
+                  className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-900 hover:bg-amber-100 transition-colors"
+                >
+                  {view.hasBio ? "Edit bio" : "Add bio"}
+                </Link>
+                <EditProfileLink className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-stone-200 bg-white px-4 py-2.5 text-sm font-semibold text-stone-700 hover:border-amber-300 hover:bg-amber-50/50 transition-colors text-center">
+                  All profile fields
+                </EditProfileLink>
+              </div>
+            </div>
           </div>
+        )}
+
+        {/* Stats */}
+        <div
+          className={`grid gap-4 mb-8 ${
+            collabsRatingsEnabled ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-2"
+          }`}
+        >
+          {collabsRatingsEnabled ? (
+            <>
+              <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-4 text-center">
+                <div className="text-2xl font-bold text-stone-800">{activeCollabs.length}</div>
+                <div className="text-xs text-stone-500 mt-0.5">Active collabs</div>
+              </div>
+              <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-4 text-center">
+                <div className="text-2xl font-bold text-stone-800">{completedCollabs.length}</div>
+                <div className="text-xs text-stone-500 mt-0.5">Completed</div>
+              </div>
+              <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-4 text-center">
+                <div className="text-2xl font-bold text-amber-600">
+                  {view.avgRating ?? "-"}
+                  {view.avgRating && <span className="text-amber-400 text-lg">★</span>}
+                </div>
+                <div className="text-xs text-stone-500 mt-0.5">Avg rating</div>
+              </div>
+              <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-4 text-center">
+                <div className="text-2xl font-bold text-stone-800">{view.availabilityDates.length}</div>
+                <div className="text-xs text-stone-500 mt-0.5">Availability windows</div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-4 text-center">
+                <div className="text-2xl font-bold text-stone-800">{view.specialities.length}</div>
+                <div className="text-xs text-stone-500 mt-0.5">Specialities</div>
+              </div>
+              <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-4 text-center">
+                <div className="text-2xl font-bold text-stone-800">{view.availabilityDates.length}</div>
+                <div className="text-xs text-stone-500 mt-0.5">Availability windows</div>
+              </div>
+            </>
+          )}
         </div>
 
-        <div className="grid sm:grid-cols-2 gap-6">
+        <div className="flex flex-col gap-6">
           {/* Notifications */}
           <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-bold text-stone-800">
                 Notifications
-                {view.unreadNotificationCount > 0 && (
+                {unreadNotificationsInView > 0 && (
                   <span className="ml-2 inline-block bg-amber-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                    {view.unreadNotificationCount}
+                    {unreadNotificationsInView}
                   </span>
                 )}
               </h2>
             </div>
-            {view.notifications.length === 0 ? (
+            {notificationsForDisplay.length === 0 ? (
               <p className="text-stone-400 text-sm italic">No notifications yet.</p>
             ) : (
               <div className="flex flex-col gap-3">
-                {view.notifications.map((n) => (
+                {notificationsForDisplay.map((n) => (
                   <Link
                     key={n.id}
                     href={n.href}
@@ -158,54 +280,56 @@ export default async function ArtistDashboardPage({
           </div>
 
           {/* My Collabs */}
-          <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-bold text-stone-800">My Collabs</h2>
-              <Link
-                href="/collabs/new"
-                className="text-xs text-amber-700 hover:text-amber-900 font-medium underline underline-offset-2"
-              >
-                + New collab
-              </Link>
-            </div>
-            {view.collabs.length === 0 ? (
-              <p className="text-stone-400 text-sm italic">
-                You haven&apos;t joined or created any collabs yet.
-              </p>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {view.collabs.map((c) => (
-                  <Link
-                    key={c.id}
-                    href={`/collabs/${c.id}`}
-                    className="flex items-center justify-between gap-3 p-3 rounded-lg border border-stone-100 hover:border-amber-300 hover:bg-amber-50 transition-all"
-                  >
-                    <div>
-                      <p className="text-sm font-semibold text-stone-800">{c.name}</p>
-                      <p className="text-xs text-stone-400 mt-0.5">{c.role}</p>
-                    </div>
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${
-                        c.status === "active"
-                          ? "bg-green-50 text-green-700 border border-green-200"
-                          : c.status === "completed"
-                            ? "bg-blue-50 text-blue-700 border border-blue-200"
-                            : "bg-stone-100 text-stone-500 border border-stone-200"
-                      }`}
-                    >
-                      {c.status === "active"
-                        ? "Active"
-                        : c.status === "completed"
-                          ? "Completed"
-                          : c.status === "completed_other"
-                            ? "Closed"
-                            : "Incomplete"}
-                    </span>
-                  </Link>
-                ))}
+          {collabsRatingsEnabled && (
+            <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-bold text-stone-800">My Collabs</h2>
+                <Link
+                  href="/collabs/new"
+                  className="text-xs text-amber-700 hover:text-amber-900 font-medium underline underline-offset-2"
+                >
+                  + New collab
+                </Link>
               </div>
-            )}
-          </div>
+              {view.collabs.length === 0 ? (
+                <p className="text-stone-400 text-sm italic">
+                  You haven&apos;t joined or created any collabs yet.
+                </p>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {view.collabs.map((c) => (
+                    <Link
+                      key={c.id}
+                      href={`/collabs/${c.id}`}
+                      className="flex items-center justify-between gap-3 p-3 rounded-lg border border-stone-100 hover:border-amber-300 hover:bg-amber-50 transition-all"
+                    >
+                      <div>
+                        <p className="text-sm font-semibold text-stone-800">{c.name}</p>
+                        <p className="text-xs text-stone-400 mt-0.5">{c.role}</p>
+                      </div>
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${
+                          c.status === "active"
+                            ? "bg-green-50 text-green-700 border border-green-200"
+                            : c.status === "completed"
+                              ? "bg-blue-50 text-blue-700 border border-blue-200"
+                              : "bg-stone-100 text-stone-500 border border-stone-200"
+                        }`}
+                      >
+                        {c.status === "active"
+                          ? "Active"
+                          : c.status === "completed"
+                            ? "Completed"
+                            : c.status === "completed_other"
+                              ? "Closed"
+                              : "Incomplete"}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Availability */}
           <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-6">
@@ -247,7 +371,9 @@ export default async function ArtistDashboardPage({
             <div className="grid grid-cols-2 gap-3">
               {[
                 { href: "/search", icon: "🔍", label: "Find artists" },
-                { href: "/collabs", icon: "💬", label: "My collabs" },
+                ...(collabsRatingsEnabled
+                  ? [{ href: "/collabs" as const, icon: "💬", label: "My collabs" }]
+                  : []),
                 { href: "/profile/availability", icon: "📅", label: "Set availability" },
                 { href: "/profile/notifications", icon: "🔔", label: "Notifications" },
               ].map((item) => (

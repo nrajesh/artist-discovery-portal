@@ -1,7 +1,7 @@
 /**
  * Property-based tests for admin approval workflow.
  *
- * Feature: carnatic-artist-portal
+ * Feature: artist-discovery-portal
  *
  * Property 4: Approval creates artist and token  - Validates: Requirements 2.3
  * Property 5: Rejection does not create artist   - Validates: Requirements 2.4
@@ -21,8 +21,11 @@ const mockState = vi.hoisted(() => {
   interface CapturedArtist {
     slug: string;
     fullName: string;
-    email: string;
-    contactNumber: string;
+    email: string | null;
+    emailCipher?: string;
+    emailLookupHash?: string;
+    contactCipher?: string;
+    contactNumber: string | null;
     contactType: string;
     profilePhotoUrl: string;
     backgroundImageUrl?: string;
@@ -217,8 +220,10 @@ describe('Property 4: Approval creates artist and token', () => {
         // Artist has the registration's data
         const artist = mockState.capturedArtistCreate!;
         expect(artist.fullName).toBe(registration.fullName);
-        expect(artist.email).toBe(registration.email);
-        expect(artist.contactNumber).toBe(registration.contactNumber);
+        expect(artist.emailCipher).toBeTruthy();
+        expect(artist.emailLookupHash).toBeTruthy();
+        expect(artist.contactCipher).toBeTruthy();
+        expect(artist.contactNumber).toBeNull();
         expect(artist.contactType).toBe(registration.contactType);
         expect(artist.profilePhotoUrl).toBe(registration.profilePhotoUrl);
 
@@ -392,7 +397,7 @@ describe('Property 7: Registration request filter correctness', () => {
     email: arbEmail,
   });
 
-  // Arbitrary: array of registration records (0–20)
+  // Arbitrary: array of registration records (0-20)
   const arbRegistrationArray = fc.array(arbRegistrationRecord, { minLength: 0, maxLength: 20 });
 
   // Arbitrary: filter (status and/or date range)

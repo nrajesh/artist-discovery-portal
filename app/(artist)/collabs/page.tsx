@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { verifySession } from "@/lib/session-jwt";
 import { listCollabsForArtist } from "@/lib/queries/collabs";
 import { deleteCollabAction, updateCollabStatusAction } from "./actions";
+import { isArtistCollabsRatingsEnabledServer } from "@/lib/feature-flags-server";
 
 export default async function CollabListPage({
   searchParams,
@@ -14,6 +15,10 @@ export default async function CollabListPage({
   const session = sessionCookie ? await verifySession(sessionCookie) : null;
   if (!session) redirect("/auth/login");
   if (session.role === "admin") redirect("/admin/collabs");
+  const collabsRatingsEnabled = await isArtistCollabsRatingsEnabledServer({
+    distinctId: session.artistId,
+  });
+  if (!collabsRatingsEnabled) redirect("/dashboard");
   const { denied } = await searchParams;
 
   const collabs = await listCollabsForArtist(session.artistId);

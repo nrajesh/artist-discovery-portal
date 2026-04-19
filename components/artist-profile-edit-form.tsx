@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, FormEvent, useTransition } from "react";
+import { useState, FormEvent, useMemo, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { usePostHog } from "posthog-js/react";
 import SpecialityPicker from "@/components/speciality-picker";
@@ -27,12 +27,116 @@ import {
   websitePathSuffixFromStored,
   youtubeSuffixFromStored,
 } from "@/lib/registration-input-normalize";
+import { stripHtmlForSearch } from "@/lib/artist-directory-search";
 import type { ArtistEditView } from "@/lib/queries/artists";
 import type { ArtistProfileEditInput } from "@/lib/artist-profile-update-schema";
 import { updateArtistProfile } from "@/app/(artist)/profile/edit/actions";
 import { updateAdminArtistProfile } from "@/app/(admin)/admin/artists/[id]/edit/actions";
 
 type Variant = "artist" | "admin";
+
+type FormFieldsSnapshot = {
+  fullName: string;
+  email: string;
+  contactNumber: string;
+  contactType: "whatsapp" | "mobile";
+  emailVisibility: ArtistProfileEditInput["emailVisibility"];
+  contactVisibility: ArtistProfileEditInput["contactVisibility"];
+  province: string;
+  specialities: string[];
+  openToCollab: boolean;
+  profilePhotoUrl: string;
+  backgroundImageUrl: string;
+  bioRichText: string;
+  websiteUrls: { url: string }[];
+  linkedinUrl: string;
+  instagramUrl: string;
+  facebookUrl: string;
+  twitterUrl: string;
+  youtubeUrl: string;
+};
+
+/** TipTap empty doc is often `<p></p>` while the DB may store `""` - treat both as empty for dirty checks only. */
+function normalizeBioRichTextForFingerprint(html: string | undefined): string {
+  const t = (html ?? "").trim();
+  if (stripHtmlForSearch(t) === "") return "";
+  return t;
+}
+
+function toArtistProfileEditInput(
+  fields: FormFieldsSnapshot,
+  collabsRatingsEnabled: boolean,
+  openToCollabWhenCollabsDisabled: boolean,
+): ArtistProfileEditInput {
+  return {
+    fullName: fields.fullName,
+    email: fields.email,
+    contactNumber: fields.contactNumber,
+    contactType: fields.contactType,
+    emailVisibility: fields.emailVisibility,
+    contactVisibility: fields.contactVisibility,
+    province: fields.province,
+    specialities: fields.specialities,
+    openToCollab: collabsRatingsEnabled ? fields.openToCollab : openToCollabWhenCollabsDisabled,
+    profilePhotoUrl: fields.profilePhotoUrl.trim() || undefined,
+    backgroundImageUrl: fields.backgroundImageUrl.trim() || undefined,
+    bioRichText: fields.bioRichText,
+    websiteUrls: fields.websiteUrls,
+    linkedinUrl: fields.linkedinUrl,
+    instagramUrl: fields.instagramUrl,
+    facebookUrl: fields.facebookUrl,
+    twitterUrl: fields.twitterUrl,
+    youtubeUrl: fields.youtubeUrl,
+  };
+}
+
+function fingerprintArtistProfileInput(p: ArtistProfileEditInput): string {
+  const sites = (p.websiteUrls ?? []).map((r) => r.url.trim()).filter((u) => u.length > 0);
+  return JSON.stringify({
+    fullName: p.fullName.trim(),
+    email: p.email.trim().toLowerCase(),
+    contactNumber: p.contactNumber.trim(),
+    contactType: p.contactType,
+    emailVisibility: p.emailVisibility,
+    contactVisibility: p.contactVisibility,
+    province: p.province.trim(),
+    specialities: [...p.specialities],
+    openToCollab: p.openToCollab,
+    profilePhotoUrl: (p.profilePhotoUrl ?? "").trim(),
+    backgroundImageUrl: (p.backgroundImageUrl ?? "").trim(),
+    bioRichText: normalizeBioRichTextForFingerprint(p.bioRichText),
+    websiteUrls: sites,
+    linkedinUrl: p.linkedinUrl.trim(),
+    instagramUrl: p.instagramUrl.trim(),
+    facebookUrl: p.facebookUrl.trim(),
+    twitterUrl: p.twitterUrl.trim(),
+    youtubeUrl: p.youtubeUrl.trim(),
+  });
+}
+
+function snapshotFromEditView(initial: ArtistEditView): FormFieldsSnapshot {
+  return {
+    fullName: initial.fullName,
+    email: initial.email,
+    contactNumber: initial.contactNumber,
+    contactType: initial.contactType,
+    emailVisibility: initial.emailVisibility,
+    contactVisibility: initial.contactVisibility,
+    province: initial.province,
+    specialities: [...initial.specialities],
+    openToCollab: initial.openToCollab,
+    profilePhotoUrl: initial.profilePhotoUrl,
+    backgroundImageUrl: initial.backgroundImageUrl,
+    bioRichText: initial.bioRichText,
+    websiteUrls:
+      initial.websiteUrls.length > 0 ? initial.websiteUrls.map((w) => ({ url: w.url })) : [{ url: "" }],
+    linkedinUrl: initial.linkedinUrl,
+    instagramUrl: initial.instagramUrl,
+    facebookUrl: initial.facebookUrl,
+    twitterUrl: initial.twitterUrl,
+    youtubeUrl: initial.youtubeUrl,
+  };
+}
 
 type ArtistProfileEditFormProps = {
   variant: Variant;
@@ -41,6 +145,8 @@ type ArtistProfileEditFormProps = {
   provinces: string[];
   /** Admin edits another artist; ignored when variant is artist. */
   targetArtistId?: string;
+  /** PostHog `artist-collabs-ratings`; when false, hide collaboration opt-in UI. */
+  collabsRatingsEnabled?: boolean;
 };
 
 export function ArtistProfileEditForm({
@@ -49,6 +155,7 @@ export function ArtistProfileEditForm({
   allSpecialities,
   provinces,
   targetArtistId,
+  collabsRatingsEnabled = true,
 }: ArtistProfileEditFormProps) {
   const router = useRouter();
   const posthog = usePostHog();
@@ -56,6 +163,8 @@ export function ArtistProfileEditForm({
   const [email, setEmail] = useState(initial.email);
   const [contactNumber, setContactNumber] = useState(initial.contactNumber);
   const [contactType, setContactType] = useState<"whatsapp" | "mobile">(initial.contactType);
+  const [emailVisibility, setEmailVisibility] = useState(initial.emailVisibility);
+  const [contactVisibility, setContactVisibility] = useState(initial.contactVisibility);
   const [province, setProvince] = useState(initial.province);
   const [specialities, setSpecialities] = useState<string[]>(initial.specialities);
   const [openToCollab, setOpenToCollab] = useState(initial.openToCollab);
@@ -76,6 +185,72 @@ export function ArtistProfileEditForm({
   const [serverError, setServerError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  const baselineFingerprint = useMemo(
+    () =>
+      fingerprintArtistProfileInput(
+        toArtistProfileEditInput(
+          snapshotFromEditView(initial),
+          collabsRatingsEnabled,
+          initial.openToCollab,
+        ),
+      ),
+    // `profileRevision` bumps when the server sends a new saved snapshot for this form.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- same revision keeps one logical baseline
+    [initial.profileRevision, collabsRatingsEnabled],
+  );
+
+  const currentFingerprint = useMemo(() => {
+    return fingerprintArtistProfileInput(
+      toArtistProfileEditInput(
+        {
+          fullName,
+          email,
+          contactNumber,
+          contactType,
+          emailVisibility,
+          contactVisibility,
+          province,
+          specialities,
+          openToCollab,
+          profilePhotoUrl,
+          backgroundImageUrl,
+          bioRichText: bioHtml,
+          websiteUrls,
+          linkedinUrl,
+          instagramUrl,
+          facebookUrl,
+          twitterUrl,
+          youtubeUrl,
+        },
+        collabsRatingsEnabled,
+        initial.openToCollab,
+      ),
+    );
+  }, [
+    fullName,
+    email,
+    contactNumber,
+    contactType,
+    emailVisibility,
+    contactVisibility,
+    province,
+    specialities,
+    openToCollab,
+    profilePhotoUrl,
+    backgroundImageUrl,
+    bioHtml,
+    websiteUrls,
+    linkedinUrl,
+    instagramUrl,
+    facebookUrl,
+    twitterUrl,
+    youtubeUrl,
+    collabsRatingsEnabled,
+    initial.openToCollab,
+  ]);
+
+  const isDirty = baselineFingerprint !== currentFingerprint;
+
   const primaryColor =
     allSpecialities.find((s) => s.name === specialities[0])?.color ?? "#92400E";
 
@@ -93,24 +268,30 @@ export function ArtistProfileEditForm({
   }
 
   function buildPayload(): ArtistProfileEditInput {
-    return {
-      fullName,
-      email,
-      contactNumber,
-      contactType,
-      province,
-      specialities,
-      openToCollab,
-      profilePhotoUrl: profilePhotoUrl.trim() || undefined,
-      backgroundImageUrl: backgroundImageUrl.trim() || undefined,
-      bioRichText: bioHtml,
-      websiteUrls,
-      linkedinUrl,
-      instagramUrl,
-      facebookUrl,
-      twitterUrl,
-      youtubeUrl,
-    };
+    return toArtistProfileEditInput(
+      {
+        fullName,
+        email,
+        contactNumber,
+        contactType,
+        emailVisibility,
+        contactVisibility,
+        province,
+        specialities,
+        openToCollab,
+        profilePhotoUrl,
+        backgroundImageUrl,
+        bioRichText: bioHtml,
+        websiteUrls,
+        linkedinUrl,
+        instagramUrl,
+        facebookUrl,
+        twitterUrl,
+        youtubeUrl,
+      },
+      collabsRatingsEnabled,
+      initial.openToCollab,
+    );
   }
 
   function handleSave(e: FormEvent<HTMLFormElement>) {
@@ -187,7 +368,9 @@ export function ArtistProfileEditForm({
                 );
               })}
             </div>
-            <p className="mt-1 text-xs text-stone-400">📍 {province || "Province"}</p>
+            <p className="mt-1 text-xs text-stone-400">
+              {province.trim() ? `📍 ${province}` : "No province listed on your public profile"}
+            </p>
           </div>
         </div>
 
@@ -210,9 +393,10 @@ export function ArtistProfileEditForm({
           </label>
           <input
             type="email"
+            autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className={`min-h-[44px] w-full rounded-lg border border-stone-200 px-3 py-2.5 text-stone-800 focus:outline-none focus:ring-2 ${ring}`}
+            className={`ph-no-capture min-h-[44px] w-full rounded-lg border border-stone-200 px-3 py-2.5 text-stone-800 focus:outline-none focus:ring-2 ${ring}`}
           />
           {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email}</p>}
         </div>
@@ -224,10 +408,11 @@ export function ArtistProfileEditForm({
           <div className="flex flex-col gap-3 sm:flex-row">
             <input
               type="text"
+              autoComplete="tel"
               value={contactNumber}
               onChange={(e) => setContactNumber(e.target.value)}
               placeholder="+31 6 12345678"
-              className={`min-h-[44px] flex-1 rounded-lg border border-stone-200 px-3 py-2.5 text-stone-800 focus:outline-none focus:ring-2 ${ring}`}
+              className={`ph-no-capture min-h-[44px] flex-1 rounded-lg border border-stone-200 px-3 py-2.5 text-stone-800 focus:outline-none focus:ring-2 ${ring}`}
             />
             <div className="flex items-center gap-4">
               <label className="flex min-h-[44px] cursor-pointer items-center gap-2">
@@ -255,16 +440,57 @@ export function ArtistProfileEditForm({
           {errors.contactNumber && <p className="mt-1 text-xs text-red-500">{errors.contactNumber}</p>}
         </div>
 
+        <div className="rounded-xl border border-amber-100 bg-amber-50/80 px-4 py-4 space-y-4">
+          <p className="text-sm font-semibold text-stone-800">Who can see your email & phone</p>
+          <p className="text-xs text-stone-600 leading-relaxed">
+            Login always uses your email privately. These settings only control what other artists and visitors can see.
+          </p>
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-stone-600">Email visibility</label>
+            <select
+              value={emailVisibility}
+              onChange={(e) =>
+                setEmailVisibility(e.target.value as ArtistProfileEditInput["emailVisibility"])
+              }
+              className={`min-h-[44px] w-full rounded-lg border border-stone-200 bg-white px-3 py-2.5 text-sm text-stone-800 focus:outline-none focus:ring-2 ${ring}`}
+            >
+              <option value="PRIVATE">Only you and portal admins</option>
+              <option value="COLLABORATORS_ONLY">Fellow collaborators (shared projects)</option>
+              <option value="PUBLIC_PROFILE">Public on your artist profile & directory</option>
+            </select>
+            {errors.emailVisibility && (
+              <p className="mt-1 text-xs text-red-500">{errors.emailVisibility}</p>
+            )}
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-stone-600">Phone / WhatsApp visibility</label>
+            <select
+              value={contactVisibility}
+              onChange={(e) =>
+                setContactVisibility(e.target.value as ArtistProfileEditInput["contactVisibility"])
+              }
+              className={`min-h-[44px] w-full rounded-lg border border-stone-200 bg-white px-3 py-2.5 text-sm text-stone-800 focus:outline-none focus:ring-2 ${ring}`}
+            >
+              <option value="PRIVATE">Only you and portal admins</option>
+              <option value="COLLABORATORS_ONLY">Fellow collaborators (shared projects)</option>
+              <option value="PUBLIC_PROFILE">Public on your artist profile & directory</option>
+            </select>
+            {errors.contactVisibility && (
+              <p className="mt-1 text-xs text-red-500">{errors.contactVisibility}</p>
+            )}
+          </div>
+        </div>
+
         <div>
           <label className="mb-1 block text-sm font-semibold text-stone-700">
-            Province <span className="text-red-500">*</span>
+            Province <span className="font-normal text-stone-400">(optional)</span>
           </label>
           <select
             value={province}
             onChange={(e) => setProvince(e.target.value)}
             className={`min-h-[44px] w-full rounded-lg border border-stone-200 bg-white px-3 py-2.5 text-stone-800 focus:outline-none focus:ring-2 ${ring}`}
           >
-            <option value="">Select province…</option>
+            <option value="">No province listed</option>
             {provinces.map((p) => (
               <option key={p} value={p}>
                 {p}
@@ -277,7 +503,7 @@ export function ArtistProfileEditForm({
         <div>
           <label className="mb-1 block text-sm font-semibold text-stone-700">
             Specialities <span className="text-red-500">*</span>
-            <span className="ml-1 font-normal text-stone-400">(1–3)</span>
+            <span className="ml-1 font-normal text-stone-400">(1-3)</span>
           </label>
           <SpecialityPicker
             selected={specialities}
@@ -288,24 +514,26 @@ export function ArtistProfileEditForm({
           />
         </div>
 
-        <div className="rounded-xl border border-stone-100 bg-stone-50 px-4 py-4">
-          <label className="flex cursor-pointer items-start gap-3">
-            <input
-              type="checkbox"
-              checked={openToCollab}
-              onChange={(e) => setOpenToCollab(e.target.checked)}
-              className="mt-1 accent-amber-600"
-            />
-            <span>
-              <span className="text-sm font-semibold text-stone-800">Open to collaborations</span>
-              <span className="mt-0.5 block text-xs text-stone-500">
-                When enabled, you appear in “open to collaborate” counts and can be discovered for new
-                projects.
+        {collabsRatingsEnabled && (
+          <div className="rounded-xl border border-stone-100 bg-stone-50 px-4 py-4">
+            <label className="flex cursor-pointer items-start gap-3">
+              <input
+                type="checkbox"
+                checked={openToCollab}
+                onChange={(e) => setOpenToCollab(e.target.checked)}
+                className="mt-1 accent-amber-600"
+              />
+              <span>
+                <span className="text-sm font-semibold text-stone-800">Open to collaborations</span>
+                <span className="mt-0.5 block text-xs text-stone-500">
+                  When enabled, you appear in “open to collaborate” counts and can be discovered for new
+                  projects.
+                </span>
               </span>
-            </span>
-          </label>
-          {errors.openToCollab && <p className="mt-2 text-xs text-red-500">{errors.openToCollab}</p>}
-        </div>
+            </label>
+            {errors.openToCollab && <p className="mt-2 text-xs text-red-500">{errors.openToCollab}</p>}
+          </div>
+        )}
 
         <div>
           <RegistrationPrefixedUrlInput
@@ -343,7 +571,7 @@ export function ArtistProfileEditForm({
           />
         </div>
 
-        <div>
+        <div id="profile-bio" className="scroll-mt-28">
           <label className="mb-1 block text-sm font-semibold text-stone-700">Bio / Musical journey</label>
           <BioRichTextEditor initialHtml={initial.bioRichText} onHtmlChange={setBioHtml} disabled={isPending} />
           {errors.bioRichText && <p className="mt-1 text-xs text-red-500">{errors.bioRichText}</p>}
@@ -358,9 +586,9 @@ export function ArtistProfileEditForm({
               <div key={index} className="min-w-0 max-w-full">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
                   <div
-                    className={`flex w-full min-w-0 max-w-full flex-col rounded-lg border border-stone-200 bg-white focus-within:ring-2 sm:flex-row sm:overflow-hidden ${ring}`}
+                    className={`flex w-full min-w-0 max-w-full flex-col rounded-lg border border-stone-200 bg-white focus-within:ring-2 sm:flex-row sm:items-stretch sm:overflow-hidden ${ring}`}
                   >
-                    <span className="select-none break-all border-b border-stone-200 bg-stone-50 px-2 py-1.5 text-[11px] font-medium leading-snug text-stone-700 sm:border-b-0 sm:border-r sm:py-2 sm:text-xs">
+                    <span className="flex min-h-[48px] shrink-0 select-none items-center break-all border-b border-stone-200 bg-stone-50 px-3 text-sm font-medium leading-normal text-stone-700 sm:min-h-0 sm:border-b-0 sm:border-r">
                       {REGISTRATION_HTTPS_PREFIX}
                     </span>
                     <input
@@ -370,7 +598,7 @@ export function ArtistProfileEditForm({
                       value={websitePathSuffixFromStored(row.url ?? "")}
                       onChange={(e) => setWebsiteUrlAt(index, mergeWebsitePath(e.target.value))}
                       placeholder="yourwebsite.com"
-                      className="min-h-[48px] min-w-0 w-full flex-1 border-0 bg-transparent px-2 py-2 text-base text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-0 sm:min-h-[44px]"
+                      className="min-h-[48px] min-w-0 w-full flex-1 border-0 bg-transparent px-3 py-2 text-sm leading-normal text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-0 sm:min-h-[44px] sm:py-2.5"
                     />
                   </div>
                   <button
@@ -499,20 +727,25 @@ export function ArtistProfileEditForm({
           </div>
         </div>
 
-        <div className="flex gap-3 pt-2">
-          <button
-            type="submit"
-            disabled={isPending}
-            className="min-h-[44px] flex-1 rounded-lg bg-amber-700 py-3 font-semibold text-white transition-colors hover:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {isPending ? "Saving…" : "Save changes"}
-          </button>
-          <Link
-            href={variant === "artist" ? "/dashboard" : `/admin/artists/${initial.id}`}
-            className="flex min-h-[44px] items-center rounded-lg border border-stone-200 px-6 py-3 font-semibold text-stone-600 transition-colors hover:bg-stone-50"
-          >
-            Cancel
-          </Link>
+        <div className="space-y-2 pt-2">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
+            <button
+              type="submit"
+              disabled={isPending || !isDirty}
+              className="min-h-[44px] flex-1 rounded-lg bg-amber-700 py-3 font-semibold text-white transition-colors hover:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isPending ? "Submitting…" : "Submit"}
+            </button>
+            <Link
+              href={variant === "artist" ? "/dashboard" : `/admin/artists/${initial.id}`}
+              className="flex min-h-[44px] items-center justify-center rounded-lg border border-stone-200 px-6 py-3 font-semibold text-stone-600 transition-colors hover:bg-stone-50 sm:px-8"
+            >
+              Cancel
+            </Link>
+          </div>
+          {!isDirty && !isPending && (
+            <p className="text-xs text-stone-400">Make a change above to enable submit.</p>
+          )}
         </div>
       </form>
     </>

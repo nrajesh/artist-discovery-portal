@@ -7,6 +7,9 @@ import { getDb } from "@/lib/db";
 import { verifySession } from "@/lib/session-jwt";
 import { artistProfileEditSchema, type ArtistProfileEditInput } from "@/lib/artist-profile-update-schema";
 import { buildExternalLinkRows } from "@/lib/artist-profile-links";
+import { isArtistCollabsRatingsEnabledServer } from "@/lib/feature-flags-server";
+import { buildEncryptedArtistPiiPayload } from "@/lib/artist-pii";
+import { emailLookupHash, normalizeEmailForLookup } from "@/lib/pii-crypto";
 
 export type AdminUpdateProfileResult =
   | { ok: true }
@@ -57,6 +60,18 @@ export async function updateAdminArtistProfile(
   const data = parsed.data;
   const db = getDb();
 
+  const collabsRatingsEnabled = await isArtistCollabsRatingsEnabledServer({
+    distinctId: session.artistId,
+  });
+  let openToCollab = data.openToCollab;
+  if (!collabsRatingsEnabled) {
+    const existing = await db.artist.findUnique({
+      where: { id: targetArtistId },
+      select: { openToCollab: true },
+    });
+    openToCollab = existing?.openToCollab ?? data.openToCollab;
+  }
+
   const target = await db.artist.findUnique({
     where: { id: targetArtistId },
     select: { id: true, slug: true },
@@ -66,7 +81,10 @@ export async function updateAdminArtistProfile(
   }
 
   const conflictingArtist = await db.artist.findFirst({
-    where: { email: data.email, NOT: { id: targetArtistId } },
+    where: {
+      emailLookupHash: emailLookupHash(normalizeEmailForLookup(data.email)),
+      NOT: { id: targetArtistId },
+    },
     select: { id: true },
   });
   if (conflictingArtist) {
@@ -93,16 +111,23 @@ export async function updateAdminArtistProfile(
   const bioTrim = data.bioRichText?.trim() ?? "";
   const bioRichText = bioTrim.length > 0 ? data.bioRichText! : null;
 
+  const pii = buildEncryptedArtistPiiPayload(targetArtistId, data.email, data.contactNumber);
+
   await db.$transaction(async (tx) => {
     await tx.artist.update({
       where: { id: targetArtistId },
       data: {
         fullName: data.fullName,
-        email: data.email,
-        contactNumber: data.contactNumber,
+        email: pii.emailPlaceholder,
+        contactNumber: null,
+        emailCipher: pii.emailCipher,
+        emailLookupHash: pii.emailLookupHash,
+        contactCipher: pii.contactCipher,
+        emailVisibility: data.emailVisibility,
+        contactVisibility: data.contactVisibility,
         contactType: data.contactType,
         province: data.province,
-        openToCollab: data.openToCollab,
+        openToCollab,
         profilePhotoUrl: data.profilePhotoUrl ?? null,
         backgroundImageUrl: data.backgroundImageUrl ?? null,
         bioRichText,

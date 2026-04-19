@@ -1,7 +1,7 @@
 /**
  * Property-based tests for registration feature.
  *
- * Feature: carnatic-artist-portal
+ * Feature: artist-discovery-portal
  *
  * Property 1: Registration mandatory-field validation - Validates: Requirements 1.2, 1.7
  * Property 2: Registration data round-trip           - Validates: Requirements 1.6, 1.8
@@ -136,7 +136,7 @@ const arbEmail = fc
 // Valid contact type
 const arbContactType = fc.constantFrom('whatsapp' as const, 'mobile' as const);
 
-// Valid specialities array (1–3 items)
+// Valid specialities array (1-3 items)
 const arbSpecialities = fc
   .array(
     fc.constantFrom('Vocal', 'Violin', 'Mridangam', 'Veena', 'Flute', 'Ghatam'),
@@ -150,7 +150,7 @@ const arbProfilePhotoUrl = fc.webUrl().map((u) =>
   u.startsWith('http://') ? u.replace('http://', 'https://') : u.startsWith('https://') ? u : `https://${u}`,
 );
 
-/** 7–15 digits, optional leading + */
+/** 7-15 digits, optional leading + */
 const arbContactNumber = fc.stringMatching(/^\+?\d{7,15}$/);
 
 const arbValidPayload = fc.record({
@@ -320,7 +320,7 @@ describe('Property 2: Registration data round-trip', () => {
     );
   });
 
-  it('stores specialities array with 1–3 items without loss', async () => {
+  it('stores specialities array with 1-3 items without loss', async () => {
     await fc.assert(
       fc.asyncProperty(arbSpecialities, async (specialities) => {
         resetState();
@@ -369,7 +369,7 @@ describe('Property 3: Admin notification on registration', () => {
   });
 
   it('creates exactly one notification per admin when a registration is submitted', async () => {
-    // Generate random admin counts (1–5)
+    // Generate random admin counts (1-5)
     await fc.assert(
       fc.asyncProperty(
         fc.integer({ min: 1, max: 5 }),

@@ -5,6 +5,7 @@ import { verifySession } from "@/lib/session-jwt";
 import { getArtistForEdit, listSpecialities } from "@/lib/queries/artists";
 import { NL_DEFAULT_PROVINCES } from "@/lib/geo/nl-default-provinces";
 import { EditProfileForm } from "./edit-profile-form";
+import { isArtistCollabsRatingsEnabledServer } from "@/lib/feature-flags-server";
 
 const NL_PROVINCES = [...NL_DEFAULT_PROVINCES];
 
@@ -13,9 +14,10 @@ export default async function EditProfilePage() {
   const session = sessionCookie ? await verifySession(sessionCookie) : null;
   if (!session) redirect("/auth/login");
 
-  const [artist, allSpecialities] = await Promise.all([
+  const [artist, allSpecialities, collabsRatingsEnabled] = await Promise.all([
     getArtistForEdit(session.artistId),
     listSpecialities(),
+    isArtistCollabsRatingsEnabledServer({ distinctId: session.artistId }),
   ]);
   if (!artist) redirect("/auth/login");
 
@@ -38,6 +40,7 @@ export default async function EditProfilePage() {
           initial={artist}
           allSpecialities={allSpecialities}
           provinces={NL_PROVINCES}
+          collabsRatingsEnabled={collabsRatingsEnabled}
         />
       </div>
     </main>

@@ -25,7 +25,7 @@ const SEEDED_SPECIALITIES = [
   { name: 'Kanjira',           primaryColor: '#BE185D', textColor: '#FFFFFF' },
   { name: 'Thavil',            primaryColor: '#7E22CE', textColor: '#FFFFFF' },
   { name: 'Nadaswaram',        primaryColor: '#C2410C', textColor: '#FFFFFF' },
-  { name: 'Violin (Carnatic)', primaryColor: '#A16207', textColor: '#FFFFFF' },
+  { name: 'Violin (South Indian)', primaryColor: '#A16207', textColor: '#FFFFFF' },
   { name: 'Morsing',           primaryColor: '#065F46', textColor: '#FFFFFF' },
   { name: 'Tavil',             primaryColor: '#1D4ED8', textColor: '#FFFFFF' },
 ];
@@ -35,7 +35,7 @@ const SEEDED_SPECIALITIES = [
 // ---------------------------------------------------------------------------
 
 /**
- * Convert a single 8-bit sRGB channel value (0–255) to its linear-light
+ * Convert a single 8-bit sRGB channel value (0-255) to its linear-light
  * contribution as defined by the WCAG 2.1 relative luminance formula.
  */
 function linearise(channel8bit: number): number {

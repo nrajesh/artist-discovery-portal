@@ -23,6 +23,7 @@ export default async function HomePage({
   const { ph_reset } = await searchParams;
   const deployment = getDeploymentConfig();
   const {
+    collabsRatingsEnabled,
     totalArtists,
     seekingCollab,
     totalCollabs,
@@ -31,6 +32,7 @@ export default async function HomePage({
     previewArtists,
     countsByProvince,
   } = await getCachedHomeMarketingData();
+  const provincesWithArtists = Object.values(countsByProvince).filter((n) => n > 0).length;
   const featuredTheme = featuredArtist
     ? getThemeFromArtistSpecialities(featuredArtist.specialities)
     : null;
@@ -50,7 +52,7 @@ export default async function HomePage({
       slug: a.slug,
       name: a.name,
       province: a.province,
-      profilePhotoUrl: a.profilePhotoUrl,
+      profilePhotoUrl: a.profilePhotoUrl ?? undefined,
       specialities: a.specialities,
     });
   }
@@ -61,9 +63,11 @@ export default async function HomePage({
 
       <div className="bg-gradient-to-br from-amber-900 via-amber-800 to-amber-700 text-white px-6 py-20 text-center">
         <div className="text-5xl mb-4">🎵</div>
-        <h1 className="text-4xl sm:text-5xl font-bold mb-4 tracking-tight">Carnatic Artist Portal</h1>
+        <h1 className="text-4xl sm:text-5xl font-bold mb-4 tracking-tight">Artist Discovery Portal</h1>
         <p className="text-amber-200 text-lg sm:text-xl max-w-xl mx-auto mb-8">
-          Your stage in the Netherlands - get discovered, find collaborators, and grow with a community that lives Carnatic music.
+          {collabsRatingsEnabled
+            ? "Browse artists in the Netherlands - discover profiles, find collaborators, and grow your musical network."
+            : "Browse artists in the Netherlands - discover profiles and connect with talented musicians."}
         </p>
         <div className="flex flex-wrap justify-center gap-4">
           <JoinCtaButton />
@@ -76,19 +80,32 @@ export default async function HomePage({
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-12 grid grid-cols-3 gap-4 sm:gap-6 text-center">
+      <div
+        className={`max-w-4xl mx-auto px-6 py-12 grid gap-4 sm:gap-6 text-center ${
+          collabsRatingsEnabled ? "grid-cols-3" : "grid-cols-2"
+        }`}
+      >
         <div className="bg-white rounded-2xl border border-amber-200 shadow-sm p-5 sm:p-6">
           <div className="text-3xl font-bold text-amber-800">{totalArtists}</div>
           <div className="text-xs sm:text-sm text-amber-600 mt-1">Musicians on the portal</div>
         </div>
-        <div className="bg-white rounded-2xl border border-amber-200 shadow-sm p-5 sm:p-6">
-          <div className="text-3xl font-bold text-amber-800">{seekingCollab}</div>
-          <div className="text-xs sm:text-sm text-amber-600 mt-1">Open to collaborate</div>
-        </div>
-        <div className="bg-white rounded-2xl border border-amber-200 shadow-sm p-5 sm:p-6">
-          <div className="text-3xl font-bold text-amber-800">{totalCollabs}</div>
-          <div className="text-xs sm:text-sm text-amber-600 mt-1">Collaborations live</div>
-        </div>
+        {collabsRatingsEnabled ? (
+          <>
+            <div className="bg-white rounded-2xl border border-amber-200 shadow-sm p-5 sm:p-6">
+              <div className="text-3xl font-bold text-amber-800">{seekingCollab}</div>
+              <div className="text-xs sm:text-sm text-amber-600 mt-1">Open to collaborate</div>
+            </div>
+            <div className="bg-white rounded-2xl border border-amber-200 shadow-sm p-5 sm:p-6">
+              <div className="text-3xl font-bold text-amber-800">{totalCollabs}</div>
+              <div className="text-xs sm:text-sm text-amber-600 mt-1">Collaborations live</div>
+            </div>
+          </>
+        ) : (
+          <div className="bg-white rounded-2xl border border-amber-200 shadow-sm p-5 sm:p-6">
+            <div className="text-3xl font-bold text-amber-800">{provincesWithArtists}</div>
+            <div className="text-xs sm:text-sm text-amber-600 mt-1">Provinces represented</div>
+          </div>
+        )}
       </div>
 
       {featuredArtist && (
@@ -129,9 +146,13 @@ export default async function HomePage({
               </Link>
               <aside className="flex flex-col justify-center border-t border-amber-100 bg-gradient-to-br from-amber-50/90 to-amber-50/30 px-5 py-5 sm:border-l sm:border-t-0 sm:px-6">
                 <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-amber-700">
-                  Happening now
+                  {collabsRatingsEnabled ? "Happening now" : "Discovery"}
                 </p>
-                {featuredArtist.activeCollabs.length === 0 ? (
+                {!collabsRatingsEnabled ? (
+                  <p className="text-xs leading-relaxed text-stone-500">
+                    Browse the directory and map to find musicians by speciality and province.
+                  </p>
+                ) : featuredArtist.activeCollabs.length === 0 ? (
                   <p className="text-xs leading-relaxed text-stone-500">
                     They&apos;re between projects - say hello or start something new together.
                   </p>
@@ -175,30 +196,32 @@ export default async function HomePage({
         </div>
       </section>
 
-      <div className="max-w-4xl mx-auto px-6 pb-16">
-        <div className="mb-1 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-stone-800">Collaborations in motion</h2>
-          <Link href={collabsIndexHref} className="text-sm text-amber-700 hover:text-amber-900 font-medium underline underline-offset-2">
-            View all →
-          </Link>
-        </div>
-        <p className="mb-4 text-sm text-stone-600">Real projects you can browse - or list your own when you&apos;re part of the portal.</p>
-        <div className="flex flex-col gap-3">
-          {homeCollabs.map((c) => (
-            <Link
-              key={c.slug}
-              href={session?.role === "admin" ? `/admin/collabs/${c.slug}` : `/collabs/${c.slug}`}
-              className="flex items-center justify-between bg-white rounded-xl border border-stone-200 px-5 py-4 hover:border-amber-400 hover:shadow-md transition-all"
-            >
-              <div>
-                <p className="font-semibold text-stone-800">{c.name}</p>
-                <p className="text-xs text-stone-400 mt-0.5">{c.members} members · {c.status}</p>
-              </div>
-              <span className="text-amber-600 text-sm font-medium">→</span>
+      {collabsRatingsEnabled && (
+        <div className="max-w-4xl mx-auto px-6 pb-16">
+          <div className="mb-1 flex items-center justify-between">
+            <h2 className="text-lg font-bold text-stone-800">Collaborations in motion</h2>
+            <Link href={collabsIndexHref} className="text-sm text-amber-700 hover:text-amber-900 font-medium underline underline-offset-2">
+              View all →
             </Link>
-          ))}
+          </div>
+          <p className="mb-4 text-sm text-stone-600">Real projects you can browse - or list your own when you&apos;re part of the portal.</p>
+          <div className="flex flex-col gap-3">
+            {homeCollabs.map((c) => (
+              <Link
+                key={c.slug}
+                href={session?.role === "admin" ? `/admin/collabs/${c.slug}` : `/collabs/${c.slug}`}
+                className="flex items-center justify-between bg-white rounded-xl border border-stone-200 px-5 py-4 hover:border-amber-400 hover:shadow-md transition-all"
+              >
+                <div>
+                  <p className="font-semibold text-stone-800">{c.name}</p>
+                  <p className="text-xs text-stone-400 mt-0.5">{c.members} members · {c.status}</p>
+                </div>
+                <span className="text-amber-600 text-sm font-medium">→</span>
+              </Link>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </main>
   );
 }

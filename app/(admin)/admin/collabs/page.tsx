@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { listCollabsForAdmin } from "@/lib/queries/collabs";
 import { verifySession } from "@/lib/session-jwt";
+import { isArtistCollabsRatingsEnabledServer } from "@/lib/feature-flags-server";
 
 const STATUS_STYLES: Record<string, string> = {
   active: "bg-green-50 text-green-700 border border-green-200",
@@ -13,7 +15,12 @@ const STATUS_STYLES: Record<string, string> = {
 export default async function AdminCollabsPage() {
   const sessionCookie = (await cookies()).get("session")?.value ?? null;
   const session = sessionCookie ? await verifySession(sessionCookie) : null;
-  const collabs = await listCollabsForAdmin(session?.artistId);
+  if (!session?.artistId) redirect("/auth/login");
+  const collabsRatingsEnabled = await isArtistCollabsRatingsEnabledServer({
+    distinctId: session.artistId,
+  });
+  if (!collabsRatingsEnabled) redirect("/admin/dashboard");
+  const collabs = await listCollabsForAdmin(session.artistId);
   const activeCount = collabs.filter((c) => c.status === "active").length;
   return (
     <main className="min-h-screen bg-stone-50 px-4 py-8 sm:px-8">

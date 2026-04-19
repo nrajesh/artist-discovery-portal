@@ -5,6 +5,10 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [tsconfigPaths(), react()],
   test: {
+    env: {
+      /** Deterministic test key - 32-byte zero buffer base64 */
+      PII_ENCRYPTION_KEY: Buffer.alloc(32, 11).toString("base64"),
+    },
     environment: "node",
     globals: true,
     include: ["**/*.test.ts", "**/*.test.tsx"],

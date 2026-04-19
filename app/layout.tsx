@@ -12,8 +12,8 @@ import { verifySession } from "@/lib/session-jwt";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Carnatic Artist Portal",
-  description: "A portal for Carnatic musicians based in The Netherlands",
+  title: "Artist Discovery Portal",
+  description: "Discover artists and portfolios based in The Netherlands",
 };
 
 export default async function RootLayout({

@@ -10,8 +10,8 @@
     "collabs": "Collabs"
   },
   "home": {
-    "title": "Carnatic Artist Portal",
-    "subtitle": "Discover Carnatic musicians based in The Netherlands",
+    "title": "Artist Discovery Portal",
+    "subtitle": "Discover musicians and ensembles based in The Netherlands",
     "totalArtists": "{count} artists",
     "seekingCollaboration": "{count} seeking collaboration",
     "instrumentalistOfTheDay": "Instrumentalist of the Day",

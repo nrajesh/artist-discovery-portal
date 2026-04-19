@@ -3,11 +3,17 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { verifySession } from "@/lib/session-jwt";
 import { createCollabAction } from "../actions";
+import { isArtistCollabsRatingsEnabledServer } from "@/lib/feature-flags-server";
 
 export default async function NewCollabPage() {
   const sessionCookie = (await cookies()).get("session")?.value ?? null;
   const session = sessionCookie ? await verifySession(sessionCookie) : null;
   if (!session) redirect("/auth/login");
+
+  const collabsRatingsEnabled = await isArtistCollabsRatingsEnabledServer({
+    distinctId: session.artistId,
+  });
+  if (!collabsRatingsEnabled) redirect("/dashboard");
 
   return (
     <main className="min-h-screen bg-amber-50 px-4 py-8 sm:px-8">

@@ -30,6 +30,8 @@ const websiteRowUrlSchema = z.preprocess(
   z.union([z.literal(""), z.string().url("Must be a valid URL")]),
 );
 
+const piiVisibilitySchema = z.enum(["PRIVATE", "COLLABORATORS_ONLY", "PUBLIC_PROFILE"]);
+
 /** Shared validation for artist self-edit and admin edit of another artist. */
 export const artistProfileEditSchema = z.object({
   fullName: z.string().trim().min(1, "Full name is required").max(120),
@@ -41,11 +43,14 @@ export const artistProfileEditSchema = z.object({
       .min(1, "Contact number is required")
       .refine(
         isPlausibleContactNumber,
-        "Enter 7–15 digits; optional + only at the start (no spaces or other symbols)",
+        "Enter 7-15 digits; optional + only at the start (no spaces or other symbols)",
       ),
   ),
   contactType: z.enum(["whatsapp", "mobile"]),
-  province: z.string().trim().min(1, "Province is required"),
+  emailVisibility: piiVisibilitySchema,
+  contactVisibility: piiVisibilitySchema,
+  /** Empty string means the artist chose not to list a province (allowed in DB). */
+  province: z.string().trim().max(120),
   specialities: z
     .array(z.string().trim().min(1))
     .min(1, "At least one speciality is required")

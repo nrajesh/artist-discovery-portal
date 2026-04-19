@@ -67,7 +67,16 @@ export function initPostHog(): void {
     autocapture: false,
     mask_all_text: true,
     persistence: 'localStorage+cookie',
-    ...(recordingOff ? { disable_session_recording: true } : {}),
+    ...(recordingOff
+      ? { disable_session_recording: true }
+      : {
+          session_recording: {
+            maskAllInputs: true,
+            maskInputOptions: { password: true, textarea: true, select: true },
+            /** rrweb: elements with this class are not captured (email/phone fields use `ph-no-capture`). */
+            ignoreClass: 'ph-no-capture',
+          },
+        }),
     // Session replay depends on the same remote config + flags pipeline as feature flags.
     // Setting `advanced_disable_feature_flags` leaves recording stuck waiting for a "flags response".
     disable_surveys: true,

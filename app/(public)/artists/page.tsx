@@ -3,8 +3,10 @@ import { Suspense } from "react";
 import ArtistsSearch from "./artists-search";
 import { ArtistListingTracker } from "./artist-listing-tracker";
 import { FeaturedArtistPhoto } from "@/components/featured-artist-photo";
+import { artistMatchesDirectoryQuery } from "@/lib/artist-directory-search";
 import { listArtistsForDirectory } from "@/lib/queries/artists";
 import { getThemeFromArtistSpecialities } from "@/lib/speciality-theme";
+import { isArtistCollabsRatingsEnabledServer } from "@/lib/feature-flags-server";
 
 export const dynamic = "force-dynamic";
 
@@ -14,17 +16,20 @@ interface PageProps {
 
 export default async function ArtistsPage({ searchParams }: PageProps) {
   const { q = "", speciality = "", province = "" } = await searchParams;
-  const allArtists = await listArtistsForDirectory();
+  const [allArtists, collabsRatingsEnabled] = await Promise.all([
+    listArtistsForDirectory(),
+    isArtistCollabsRatingsEnabledServer(),
+  ]);
   const PROVINCES = Array.from(new Set(allArtists.map((a) => a.province))).sort();
   const SPECIALITY_NAMES = Array.from(
     new Set(allArtists.flatMap((a) => a.specialities.map((s) => s.name))),
   ).sort();
 
   const filtered = allArtists.filter((a) => {
-    const matchesName = !q || a.name.toLowerCase().includes(q.toLowerCase());
+    const matchesText = !q || artistMatchesDirectoryQuery(a.keywordHaystack, q);
     const matchesSpeciality = !speciality || a.specialities.some((s) => s.name === speciality);
     const matchesProvince = !province || a.province === province;
-    return matchesName && matchesSpeciality && matchesProvince;
+    return matchesText && matchesSpeciality && matchesProvince;
   });
 
   return (
@@ -36,7 +41,7 @@ export default async function ArtistsPage({ searchParams }: PageProps) {
             ← Home
           </Link>
           <h1 className="text-3xl font-bold text-stone-800">Artists</h1>
-          <p className="text-stone-500 mt-1">{allArtists.length} Carnatic musicians in The Netherlands</p>
+          <p className="text-stone-500 mt-1">{allArtists.length} artists in The Netherlands</p>
         </div>
 
         <Suspense>
@@ -100,13 +105,15 @@ export default async function ArtistsPage({ searchParams }: PageProps) {
                       {s.name}
                     </span>
                   ))}
-                  {artist.openToCollab && (
+                  {collabsRatingsEnabled && artist.openToCollab && (
                     <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-green-50 text-green-700 border border-green-200">
                       Open to collab
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-stone-400 mt-2">📍 {artist.province}</p>
+                {artist.province.trim() ? (
+                  <p className="text-xs text-stone-400 mt-2">📍 {artist.province}</p>
+                ) : null}
               </div>
             </Link>
             );

@@ -7,8 +7,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getDb } from '@/lib/db';
+import { encryptPiiField, emailLookupHash, isPiiCryptoConfigured, normalizeEmailForLookup } from '@/lib/pii-crypto';
 import { notifyAdminRegistrationEvent } from '@/lib/notifications';
 import { normalizeSpecialityList } from '@/lib/speciality-catalog';
+import { logSafeError } from '@/lib/safe-log';
 import {
   mergeFacebookUrl,
   mergeInstagramUrl,
@@ -50,7 +52,7 @@ export const registrationServerSchema = z.object({
       .min(1, 'Contact number is required')
       .refine(
         isPlausibleContactNumber,
-        'Use 7–15 digits only; optional + at the start for country code (no spaces or other symbols)',
+        'Use 7-15 digits only; optional + at the start for country code (no spaces or other symbols)',
       ),
   ),
   contactType: z.enum(['whatsapp', 'mobile']),
@@ -131,6 +133,42 @@ export async function POST(request: NextRequest) {
 
   const validated = parseResult.data;
 
+  if (!isPiiCryptoConfigured()) {
+    return NextResponse.json(
+      { error: 'SERVER_ERROR', message: 'Registration is temporarily unavailable.' },
+      { status: 503 },
+    );
+  }
+
+  const normalizedEmail = normalizeEmailForLookup(validated.email);
+  const emailHash = emailLookupHash(normalizedEmail);
+  const db = getDb();
+  const existingArtist = await db.artist.findFirst({
+    where: {
+      OR: [{ emailLookupHash: emailHash }, { email: normalizedEmail }],
+    },
+    select: { id: true },
+  });
+  if (existingArtist) {
+    return NextResponse.json(
+      { error: 'DUPLICATE_EMAIL', message: 'An artist account already uses this email.' },
+      { status: 409 },
+    );
+  }
+  const pendingRegistration = await db.registrationRequest.findFirst({
+    where: {
+      status: 'pending',
+      OR: [{ emailLookupHash: emailHash }, { email: normalizedEmail }],
+    },
+    select: { id: true },
+  });
+  if (pendingRegistration) {
+    return NextResponse.json(
+      { error: 'DUPLICATE_REGISTRATION', message: 'A pending registration already exists for this email.' },
+      { status: 409 },
+    );
+  }
+
   const registrationId = crypto.randomUUID();
   const profilePhotoUrl = validated.profilePhotoUrl;
   const backgroundImageUrl = validated.backgroundImageUrl;
@@ -149,12 +187,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Create RegistrationRequest + related records in a transaction
-    await getDb().registrationRequest.create({
+    await db.registrationRequest.create({
       data: {
         id: registrationId,
         fullName: validated.fullName,
-        email: validated.email,
-        contactNumber: validated.contactNumber,
+        email: null,
+        contactNumber: null,
+        emailCipher: encryptPiiField(normalizedEmail),
+        emailLookupHash: emailHash,
+        contactCipher: encryptPiiField(validated.contactNumber),
         contactType: validated.contactType as 'whatsapp' | 'mobile',
         // Empty string when omitted: works before/after DB migration (NOT NULL legacy + optional URL).
         profilePhotoUrl: profilePhotoUrl ?? '',
@@ -179,7 +220,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error('Registration persistence failed:', err);
+    logSafeError('[api/registrations] Registration persistence failed', err);
     return NextResponse.json(
       { error: 'SERVER_ERROR', message: 'Failed to save registration. Please try again.' },
       { status: 500 },

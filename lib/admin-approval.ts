@@ -5,6 +5,8 @@
  * Requirements: 2.3, 2.4
  */
 
+import { randomUUID } from 'crypto';
+import { buildEncryptedArtistPiiPayload, decryptRegistrationStoredContact } from '@/lib/artist-pii';
 import { getDb } from './db';
 import { issueMagicLink } from './auth';
 import { REGISTRATION_APPROVE_DEFAULT_COMMENT } from './admin-review-comment';
@@ -85,13 +87,21 @@ export async function approveRegistration(
   const now = new Date();
   const slug = await generateSlug(registration.fullName);
 
+  const plain = decryptRegistrationStoredContact(registration);
+  const artistId = randomUUID();
+  const pii = buildEncryptedArtistPiiPayload(artistId, plain.email, plain.contactNumber);
+
   // Create Artist
   const artist = await getDb().artist.create({
     data: {
+      id: artistId,
       slug,
       fullName: registration.fullName,
-      email: registration.email,
-      contactNumber: registration.contactNumber,
+      email: pii.emailPlaceholder,
+      contactNumber: null,
+      emailCipher: pii.emailCipher,
+      emailLookupHash: pii.emailLookupHash,
+      contactCipher: pii.contactCipher,
       contactType: registration.contactType,
       profilePhotoUrl: registration.profilePhotoUrl ?? '',
       backgroundImageUrl: registration.backgroundImageUrl ?? undefined,
@@ -126,8 +136,7 @@ export async function approveRegistration(
     });
   }
 
-  // Issue magic link
-  await issueMagicLink(registration.email);
+  await issueMagicLink(plain.email);
 
   // Mark as approved
   await getDb().registrationRequest.update({

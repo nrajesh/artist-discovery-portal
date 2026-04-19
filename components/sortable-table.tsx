@@ -13,11 +13,19 @@ export type Column<T> = {
 
 type SortDir = "asc" | "desc";
 
+export type TableSelectionHandlers = {
+  selectedIds: ReadonlySet<string>;
+  onToggle: (id: string) => void;
+  /** Toggle all rows currently shown (after sort/filter in the table). */
+  onToggleAllVisible: (visibleRowIds: string[]) => void;
+};
+
 interface SortableTableProps<T> {
   columns: Column<T>[];
   rows: T[];
   rowKey: (row: T) => string;
   emptyMessage?: string;
+  selection?: TableSelectionHandlers;
 }
 
 function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
@@ -29,7 +37,13 @@ function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
   );
 }
 
-export default function SortableTable<T>({ columns, rows, rowKey, emptyMessage = "No data." }: SortableTableProps<T>) {
+export default function SortableTable<T>({
+  columns,
+  rows,
+  rowKey,
+  emptyMessage = "No data.",
+  selection,
+}: SortableTableProps<T>) {
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
 
@@ -60,11 +74,32 @@ export default function SortableTable<T>({ columns, rows, rowKey, emptyMessage =
     });
   }, [rows, sortKey, sortDir, columns]);
 
+  const visibleIds = sorted.map((row) => rowKey(row));
+  const selectedInView = visibleIds.filter((id) => selection?.selectedIds.has(id));
+  const allVisibleSelected =
+    selection && visibleIds.length > 0 && selectedInView.length === visibleIds.length;
+  const someVisibleSelected =
+    selection && selectedInView.length > 0 && selectedInView.length < visibleIds.length;
+
   return (
     <div className="bg-white rounded-xl border border-stone-200 shadow-sm overflow-x-auto">
       <table className="w-full text-sm">
         <thead className="bg-stone-50 border-b border-stone-200">
           <tr>
+            {selection ? (
+              <th className="w-10 px-3 py-3">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-stone-300 text-amber-600 focus:ring-amber-500"
+                  checked={allVisibleSelected}
+                  ref={(el) => {
+                    if (el) el.indeterminate = someVisibleSelected ?? false;
+                  }}
+                  onChange={() => selection.onToggleAllVisible(visibleIds)}
+                  aria-label="Select all rows"
+                />
+              </th>
+            ) : null}
             {columns.map((col) => (
               <th
                 key={String(col.key)}
@@ -82,18 +117,35 @@ export default function SortableTable<T>({ columns, rows, rowKey, emptyMessage =
         <tbody className="divide-y divide-stone-100">
           {sorted.length === 0 ? (
             <tr>
-              <td colSpan={columns.length} className="px-5 py-12 text-center text-stone-400">{emptyMessage}</td>
+              <td colSpan={columns.length + (selection ? 1 : 0)} className="px-5 py-12 text-center text-stone-400">
+                {emptyMessage}
+              </td>
             </tr>
           ) : (
-            sorted.map((row) => (
-              <tr key={rowKey(row)} className="hover:bg-stone-50 transition-colors">
-                {columns.map((col) => (
-                  <td key={String(col.key)} className={`px-5 py-4 ${col.className ?? ""}`}>
-                    {col.render ? col.render(row) : String((row as Record<string, unknown>)[String(col.key)] ?? "")}
-                  </td>
-                ))}
-              </tr>
-            ))
+            sorted.map((row) => {
+              const id = rowKey(row);
+              return (
+                <tr key={id} className="hover:bg-stone-50 transition-colors">
+                  {selection ? (
+                    <td className="w-10 px-3 py-4 align-middle">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-stone-300 text-amber-600 focus:ring-amber-500"
+                        checked={selection.selectedIds.has(id)}
+                        onChange={() => selection.onToggle(id)}
+                        onClick={(e) => e.stopPropagation()}
+                        aria-label={`Select row ${id}`}
+                      />
+                    </td>
+                  ) : null}
+                  {columns.map((col) => (
+                    <td key={String(col.key)} className={`px-5 py-4 ${col.className ?? ""}`}>
+                      {col.render ? col.render(row) : String((row as Record<string, unknown>)[String(col.key)] ?? "")}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })
           )}
         </tbody>
       </table>

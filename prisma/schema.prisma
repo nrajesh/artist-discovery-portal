@@ -1,4 +1,4 @@
-// Carnatic Artist Portal - Prisma Schema
+// Artist Discovery Portal - Prisma Schema
 // Runtime adapter: @neondatabase/serverless (see lib/db.ts)
 // Use pooled DATABASE_URL for serverless functions; set DIRECT_DATABASE_URL for migrations.
 
@@ -21,6 +21,13 @@ enum ContactType {
   mobile
 }
 
+/** Who may see decrypted email / phone on profiles, directory, and collab tools. */
+enum PiiVisibility {
+  PRIVATE
+  COLLABORATORS_ONLY
+  PUBLIC_PROFILE
+}
+
 // ---------------------------------------------------------------------------
 // Artist
 // ---------------------------------------------------------------------------
@@ -29,8 +36,16 @@ model Artist {
   id                 String             @id @default(uuid())
   slug               String             @unique
   fullName           String
-  email              String             @unique
-  contactNumber      String
+  /** Legacy login column; replaced by encrypted PII + emailLookupHash. Optional during migration. */
+  email              String?            @unique
+  contactNumber      String?
+  /** AES-256-GCM ciphertext (base64); use lib/pii-crypto to decrypt. */
+  emailCipher        String?
+  /** HMAC-SHA256 of normalized email for login and uniqueness; not reversible. */
+  emailLookupHash    String?            @unique
+  contactCipher      String?
+  emailVisibility    PiiVisibility      @default(PRIVATE)
+  contactVisibility  PiiVisibility      @default(COLLABORATORS_ONLY)
   contactType        ContactType
   profilePhotoUrl    String?
   backgroundImageUrl String?
@@ -73,7 +88,7 @@ model Speciality {
 
 // ---------------------------------------------------------------------------
 // ArtistSpeciality (join table)
-// 1–3 per artist enforced at the application layer.
+// 1-3 per artist enforced at the application layer.
 // ---------------------------------------------------------------------------
 
 model ArtistSpeciality {
@@ -107,8 +122,12 @@ model ExternalLink {
 model RegistrationRequest {
   id                 String    @id @default(uuid())
   fullName           String
-  email              String
-  contactNumber      String
+  /** Deprecated: use ciphertext fields; nullable during migration from plaintext. */
+  email              String?
+  contactNumber      String?
+  emailCipher        String?
+  emailLookupHash    String?
+  contactCipher      String?
   contactType        ContactType
   profilePhotoUrl    String?
   backgroundImageUrl String?
@@ -254,7 +273,7 @@ model Feedback {
   collabId    String
   reviewerId  String
   revieweeId  String
-  starRating  Int       // mandatory, NOT NULL, range 1–5 enforced at app layer
+  starRating  Int       // mandatory, NOT NULL, range 1-5 enforced at app layer
   comment     String?
   submittedAt DateTime  @default(now())
   editedAt    DateTime?

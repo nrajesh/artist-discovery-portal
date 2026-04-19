@@ -3,6 +3,11 @@ import {
   formatDeploymentDate,
   formatDeploymentDateNumericDay,
 } from "@/lib/format-deployment-datetime";
+import {
+  canRevealEmail,
+  decryptArtistStoredContact,
+  type ProfileViewerContext,
+} from "@/lib/artist-pii";
 import { getDb } from "@/lib/db";
 
 export type CollabListItem = {
@@ -95,7 +100,19 @@ export async function getCollabDetailForArtist(
       members: {
         where: { leftAt: null },
         include: {
-          artist: { select: { id: true, fullName: true, slug: true, email: true } },
+          artist: {
+            select: {
+              id: true,
+              fullName: true,
+              slug: true,
+              email: true,
+              contactNumber: true,
+              emailCipher: true,
+              contactCipher: true,
+              emailVisibility: true,
+              contactVisibility: true,
+            },
+          },
         },
       },
       messages: {
@@ -123,13 +140,22 @@ export async function getCollabDetailForArtist(
     status: collab.status,
     ownerId: collab.ownerId,
     isOwner: collab.ownerId === artistId,
-    members: collab.members.map((m) => ({
-      artistId: m.artist.id,
-      fullName: m.artist.fullName,
-      slug: m.artist.slug,
-      email: m.artist.email,
-      isOwner: m.artist.id === collab.ownerId,
-    })),
+    members: collab.members.map((m) => {
+      const decrypted = decryptArtistStoredContact(m.artist);
+      const ctx: ProfileViewerContext = {
+        viewerArtistId: artistId,
+        viewerRole: "artist",
+        profileOwnerId: m.artist.id,
+      };
+      const revealEmail = canRevealEmail(m.artist.emailVisibility, ctx, true);
+      return {
+        artistId: m.artist.id,
+        fullName: m.artist.fullName,
+        slug: m.artist.slug,
+        email: revealEmail ? decrypted.email : "",
+        isOwner: m.artist.id === collab.ownerId,
+      };
+    }),
     messages: collab.messages.map((msg) => ({
       id: msg.id,
       senderId: msg.sender.id,

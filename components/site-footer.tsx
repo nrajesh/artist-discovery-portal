@@ -60,7 +60,7 @@ export async function SiteFooter() {
         </nav>
         <AnalyticsOptOutFooterNote />
         <p className="mt-6 text-center text-xs text-stone-500">
-          Carnatic Artist Portal - connecting musicians in the Netherlands
+          Artist Discovery Portal - connecting musicians in the Netherlands
         </p>
       </div>
     </footer>

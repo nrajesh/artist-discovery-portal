@@ -306,7 +306,7 @@ export function ArtistsProvinceMap({
           {selectedArtists.length === 0 ? (
             <div className="mt-4 space-y-2 text-sm text-stone-600">
               <p>
-                No one from this province is listed yet - you can be the first, and help fellow musicians nearby discover
+                No one from this province is listed yet - you can be the first, and help talented musicians nearby discover
                 each other.
               </p>
               <p className="text-xs text-stone-500">
@@ -387,7 +387,7 @@ export function ArtistsProvinceMap({
         <span>
           Warmer colours mean more musicians listed there (scale on this screen:{" "}
           <strong className="font-medium text-stone-700">0</strong>
-          –
+          -
           <strong className="font-medium text-stone-700">{topCount}</strong>). Zoom with +/− or scroll.
         </span>
         <span className="flex items-center gap-1.5">

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This design integrates PostHog analytics into the Carnatic Artist Portal - a Next.js App Router application with three route groups (`/(public)/*`, `/(artist)/*`, `/(admin)/*`). The integration is split across two SDK layers:
+This design integrates PostHog analytics into Artist Discovery Portal - a Next.js App Router application with three route groups (`/(public)/*`, `/(artist)/*`, `/(admin)/*`). The integration is split across two SDK layers:
 
 - **Client-side** (`posthog-js`): initialised once in the root layout via a React Provider, captures page views on every App Router navigation, fires explicit events for user interactions, and may enable **Session Replay** when not opted out via env (replays use `mask_all_text: true`; local `next dev` disables replay by default unless overridden).
 - **Server-side** (`posthog-node`): used inside Next.js API route handlers to capture backend events (login, logout, registration approvals/rejections, artist suspension) with the actor's `artistId` as the PostHog `distinctId`.
@@ -378,16 +378,16 @@ Property test file locations:
 Unit tests cover:
 - `PostHogProvider` renders without error and calls `posthog.init()` once with correct options (Requirements 1.1, 1.2, 1.5, 9.1, 9.2, 9.4, 10.4).
 - Missing API key skips init and logs warning (Requirement 1.4).
-- `DevAdminBadge` renders in development with a valid path, renders "not set" message when path is absent, and renders nothing in production (Requirements 11.1–11.5).
+- `DevAdminBadge` renders in development with a valid path, renders "not set" message when path is absent, and renders nothing in production (Requirements 11.1-11.5).
 - Proxy route returns 503 when `POSTHOG_HOST` is absent (Requirement 7.4).
 - Privacy policy page renders and contains required disclosure text (Requirement 12).
-- Specific event captures for dashboard, profile edit, collab creation, admin dashboard (Requirements 5.1–5.4, 6.4).
+- Specific event captures for dashboard, profile edit, collab creation, admin dashboard (Requirements 5.1-5.4, 6.4).
 
 ### Integration Tests (manual / deployment)
 
 The following requirements are verified manually or via deployment checks:
 - PostHog backend reachable from the deployment (Cloud project or self-hosted) and not accidentally exposed on an unintended public port (Requirement 8.1, interpreted for the operator’s topology).
-- Reverse-proxy rewrite maps `POSTHOG_ADMIN_PATH` to PostHog internal address (Requirement 8.2–8.5).
+- Reverse-proxy rewrite maps `POSTHOG_ADMIN_PATH` to PostHog internal address (Requirement 8.2-8.5).
 - `POSTHOG_ADMIN_PATH` not committed to version control (Requirement 8.6).
 - `env.example` documents all three PostHog variables (Requirement 10.5).
 - `.gitignore` includes `.env.local` and `.env` (Requirement 10.6).

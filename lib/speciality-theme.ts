@@ -1,7 +1,7 @@
 /**
  * Speciality Theming Service
  *
- * Provides colour theme data for Carnatic music specialities.
+ * Provides colour theme data for artist speciality labels (admin-seeded palette).
  * Used to apply speciality-based visual theming to artist profile cards
  * and profile pages throughout the portal.
  *
@@ -25,7 +25,7 @@ export const SPECIALITY_PALETTE: Record<
   Kanjira:            { primaryColor: '#BE185D', textColor: '#FFFFFF' },
   Thavil:             { primaryColor: '#7E22CE', textColor: '#FFFFFF' },
   Nadaswaram:         { primaryColor: '#C2410C', textColor: '#FFFFFF' },
-  'Violin (Carnatic)':{ primaryColor: '#A16207', textColor: '#FFFFFF' },
+  'Violin (South Indian)': { primaryColor: '#A16207', textColor: '#FFFFFF' },
   Morsing:            { primaryColor: '#065F46', textColor: '#FFFFFF' },
   Tavil:              { primaryColor: '#1D4ED8', textColor: '#FFFFFF' },
 };

@@ -6,6 +6,7 @@ import { formatDeploymentCalendarDate } from "@/lib/format-deployment-datetime";
 import { verifySession } from "@/lib/session-jwt";
 import { getThemeFromArtistSpecialities } from "@/lib/speciality-theme";
 import { getArtistBySlug } from "@/lib/queries/artists";
+import { isArtistCollabsRatingsEnabledServer } from "@/lib/feature-flags-server";
 import { ArtistProfileTracker } from "./artist-profile-tracker";
 
 export const dynamic = "force-dynamic";
@@ -39,13 +40,20 @@ interface PageProps {
 export default async function ArtistProfilePage({ params, searchParams }: PageProps) {
   const { slug } = await params;
   const searchParamsResolved = await searchParams;
-  const artist = await getArtistBySlug(slug);
-  if (!artist) notFound();
-
   const sessionCookie = (await cookies()).get("session")?.value ?? null;
   const session = sessionCookie ? await verifySession(sessionCookie) : null;
+
+  const artist = await getArtistBySlug(
+    slug,
+    session ? { artistId: session.artistId, role: session.role } : null,
+  );
+  if (!artist) notFound();
   const isLoggedIn = !!session;
   const currentArtistId = session?.artistId ?? null;
+
+  const collabsRatingsEnabled = await isArtistCollabsRatingsEnabledServer({
+    distinctId: session?.artistId ?? "anonymous",
+  });
 
   const avgRating = artist.reviews.length
     ? (artist.reviews.reduce((s, r) => s + r.rating, 0) / artist.reviews.length).toFixed(1)
@@ -64,11 +72,13 @@ export default async function ArtistProfilePage({ params, searchParams }: PagePr
 
   // Pagination
   const reviewPage = Math.max(1, parseInt(searchParamsResolved.reviewPage ?? "1", 10));
-  const totalPages = Math.ceil(artist.reviews.length / REVIEWS_PER_PAGE);
-  const pagedReviews = artist.reviews.slice(
-    (reviewPage - 1) * REVIEWS_PER_PAGE,
-    reviewPage * REVIEWS_PER_PAGE
-  );
+  const totalPages = collabsRatingsEnabled ? Math.ceil(artist.reviews.length / REVIEWS_PER_PAGE) : 0;
+  const pagedReviews = collabsRatingsEnabled
+    ? artist.reviews.slice(
+        (reviewPage - 1) * REVIEWS_PER_PAGE,
+        reviewPage * REVIEWS_PER_PAGE,
+      )
+    : [];
 
   return (
     <main className="min-h-screen bg-amber-50">
@@ -111,13 +121,15 @@ export default async function ArtistProfilePage({ params, searchParams }: PagePr
                   {s.name}
                 </span>
               ))}
-              {artist.availableForCollab && (
+              {collabsRatingsEnabled && artist.availableForCollab && (
                 <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-green-400/30 text-white border border-green-300/40">
                   Open to collab
                 </span>
               )}
             </div>
-            <p className="text-white/70 mt-1 text-sm">📍 {artist.province}</p>
+            {artist.province.trim() ? (
+              <p className="text-white/70 mt-1 text-sm">📍 {artist.province}</p>
+            ) : null}
           </div>
         </div>
       </div>
@@ -125,26 +137,28 @@ export default async function ArtistProfilePage({ params, searchParams }: PagePr
       <div className="max-w-3xl mx-auto px-6 -mt-10 pb-16">
 
         {/* Quick stats */}
-        <div className="grid grid-cols-3 gap-3 mb-6">
-          <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-4 text-center">
-            <div className="text-2xl font-bold text-stone-800">{activeCollabs.length}</div>
-            <div className="text-xs text-stone-500 mt-0.5">Active collabs</div>
-          </div>
-          <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-4 text-center">
-            <div className="text-2xl font-bold text-stone-800">{completedCollabs.length}</div>
-            <div className="text-xs text-stone-500 mt-0.5">Completed collabs</div>
-          </div>
-          <Link href="#reviews"
-            className="bg-white rounded-xl border border-stone-200 shadow-sm p-4 text-center hover:border-amber-400 transition-colors">
-            <div className="text-2xl font-bold text-amber-600">
-              {avgRating ?? "-"}
-              {avgRating && <span className="text-amber-400 text-lg ml-0.5">★</span>}
+        {collabsRatingsEnabled && (
+          <div className="grid grid-cols-3 gap-3 mb-6">
+            <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-4 text-center">
+              <div className="text-2xl font-bold text-stone-800">{activeCollabs.length}</div>
+              <div className="text-xs text-stone-500 mt-0.5">Active collabs</div>
             </div>
-            <div className="text-xs text-stone-500 mt-0.5">
-              {artist.reviews.length > 0 ? `${artist.reviews.length} review${artist.reviews.length > 1 ? "s" : ""}` : "No reviews yet"}
+            <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-4 text-center">
+              <div className="text-2xl font-bold text-stone-800">{completedCollabs.length}</div>
+              <div className="text-xs text-stone-500 mt-0.5">Completed collabs</div>
             </div>
-          </Link>
-        </div>
+            <Link href="#reviews"
+              className="bg-white rounded-xl border border-stone-200 shadow-sm p-4 text-center hover:border-amber-400 transition-colors">
+              <div className="text-2xl font-bold text-amber-600">
+                {avgRating ?? "-"}
+                {avgRating && <span className="text-amber-400 text-lg ml-0.5">★</span>}
+              </div>
+              <div className="text-xs text-stone-500 mt-0.5">
+                {artist.reviews.length > 0 ? `${artist.reviews.length} review${artist.reviews.length > 1 ? "s" : ""}` : "No reviews yet"}
+              </div>
+            </Link>
+          </div>
+        )}
 
         {/* Bio */}
         <SectionCard title="About">
@@ -153,34 +167,36 @@ export default async function ArtistProfilePage({ params, searchParams }: PagePr
         </SectionCard>
 
         {/* Collab history */}
-        <SectionCard title={`Collab History (${artist.collabs.length})`}>
-          {artist.collabs.length === 0 ? (
-            <p className="text-stone-400 text-sm italic">No collabs yet.</p>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {artist.collabs.map(c => (
-                <div key={c.id} className="flex items-center justify-between gap-3 border border-stone-100 rounded-lg px-4 py-3">
-                  <div>
-                    <p className="text-sm font-semibold text-stone-800">{c.name}</p>
-                    <p className="text-xs text-stone-400 mt-0.5">
-                      {c.role}{c.closedAt && ` · Closed ${c.closedAt}`}
-                    </p>
+        {collabsRatingsEnabled && (
+          <SectionCard title={`Collab History (${artist.collabs.length})`}>
+            {artist.collabs.length === 0 ? (
+              <p className="text-stone-400 text-sm italic">No collabs yet.</p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {artist.collabs.map(c => (
+                  <div key={c.id} className="flex items-center justify-between gap-3 border border-stone-100 rounded-lg px-4 py-3">
+                    <div>
+                      <p className="text-sm font-semibold text-stone-800">{c.name}</p>
+                      <p className="text-xs text-stone-400 mt-0.5">
+                        {c.role}{c.closedAt && ` · Closed ${c.closedAt}`}
+                      </p>
+                    </div>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${
+                      c.status === "active"    ? "bg-green-50 text-green-700 border border-green-200" :
+                      c.status === "completed" ? "bg-blue-50 text-blue-700 border border-blue-200" :
+                      "bg-stone-100 text-stone-500 border border-stone-200"
+                    }`}>
+                      {c.status === "active" ? "Active" : c.status === "completed" ? "Completed" : "Incomplete"}
+                    </span>
                   </div>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${
-                    c.status === "active"    ? "bg-green-50 text-green-700 border border-green-200" :
-                    c.status === "completed" ? "bg-blue-50 text-blue-700 border border-blue-200" :
-                    "bg-stone-100 text-stone-500 border border-stone-200"
-                  }`}>
-                    {c.status === "active" ? "Active" : c.status === "completed" ? "Completed" : "Incomplete"}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </SectionCard>
+                ))}
+              </div>
+            )}
+          </SectionCard>
+        )}
 
         {/* Availability - gated */}
-        <SectionCard title="Availability for Collabs">
+        <SectionCard title={collabsRatingsEnabled ? "Availability for Collabs" : "Availability"}>
           {isLoggedIn ? (
             artist.availabilityDates.length === 0 ? (
               <p className="text-stone-400 text-sm italic">No availability marked yet.</p>
@@ -207,7 +223,9 @@ export default async function ArtistProfilePage({ params, searchParams }: PagePr
                   : "Availability calendar"}
               </p>
               <p className="text-xs text-amber-600 mb-4">
-                Log in as a registered artist to view exact dates and initiate a collab.
+                {collabsRatingsEnabled
+                  ? "Log in as a registered artist to view exact dates and initiate a collab."
+                  : "Log in as a registered artist to view exact dates for planning meetups."}
               </p>
               <Link href="/auth/login"
                 className="inline-block px-5 py-2 bg-amber-700 text-white text-sm font-semibold rounded-lg hover:bg-amber-800 transition-colors">
@@ -218,6 +236,7 @@ export default async function ArtistProfilePage({ params, searchParams }: PagePr
         </SectionCard>
 
         {/* Reviews - paginated, with anchors */}
+        {collabsRatingsEnabled && (
         <div id="reviews" className="bg-white rounded-2xl border border-stone-200 shadow-sm p-6 mb-5 scroll-mt-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-widest">
@@ -311,6 +330,7 @@ export default async function ArtistProfilePage({ params, searchParams }: PagePr
             </>
           )}
         </div>
+        )}
 
         {/* External links */}
         {artist.links.length > 0 && (

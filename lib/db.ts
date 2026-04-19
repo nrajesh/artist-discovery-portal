@@ -10,6 +10,8 @@
  * acceptable for Neon serverless at moderate traffic).
  *
  * @see https://opennext.js.org/cloudflare/howtos/db
+ *
+ * Postgres audit trails and Neon log streaming for operators are summarized in `lib/db-audit-ops.ts`.
  */
 
 import * as React from "react";

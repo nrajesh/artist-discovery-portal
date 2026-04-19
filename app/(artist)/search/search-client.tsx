@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { usePostHog } from "posthog-js/react";
+import { artistMatchesDirectoryQuery } from "@/lib/artist-directory-search";
 import type { ArtistListing } from "@/lib/queries/artists";
 
 export default function ArtistSearchClient({ artists }: { artists: ArtistListing[] }) {
@@ -12,11 +13,7 @@ export default function ArtistSearchClient({ artists }: { artists: ArtistListing
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
-    const filtered = artists.filter(
-      (a) =>
-        a.name.toLowerCase().includes(query.toLowerCase()) ||
-        a.specialities.some((s) => s.name.toLowerCase().includes(query.toLowerCase())),
-    );
+    const filtered = artists.filter((a) => artistMatchesDirectoryQuery(a.keywordHaystack, query));
     setResults(filtered);
     setSearched(true);
     posthog.capture("artist_search_performed", { result_count: filtered.length });
@@ -31,7 +28,7 @@ export default function ArtistSearchClient({ artists }: { artists: ArtistListing
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by name or speciality…"
+            placeholder="Name, speciality, bio keywords, or social handle in URL…"
             className="flex-1 border border-stone-200 rounded-lg px-3 py-2.5 text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-400 min-h-[44px]"
           />
           <button

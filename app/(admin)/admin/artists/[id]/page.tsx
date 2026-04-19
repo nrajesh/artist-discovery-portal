@@ -1,7 +1,10 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { formatDeploymentCalendarDate, formatDeploymentDate } from "@/lib/format-deployment-datetime";
 import { getArtistProfileForAdmin } from "@/lib/queries/admin-artists";
+import { verifySession } from "@/lib/session-jwt";
+import { isArtistCollabsRatingsEnabledServer } from "@/lib/feature-flags-server";
 
 function StarRating({ rating }: { rating: number }) {
   return (
@@ -41,8 +44,14 @@ function collabBadgeLabel(status: string) {
 
 export default async function AdminArtistDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const sessionCookie = (await cookies()).get("session")?.value ?? null;
+  const session = sessionCookie ? await verifySession(sessionCookie) : null;
   const artist = await getArtistProfileForAdmin(id);
   if (!artist) notFound();
+
+  const collabsRatingsEnabled = await isArtistCollabsRatingsEnabledServer({
+    distinctId: session?.artistId ?? "anonymous",
+  });
 
   const completedCollabs = artist.collabs.filter((c) => c.status === "completed" || c.status === "completed_other");
   const activeCollabs = artist.collabs.filter((c) => c.status === "active");
@@ -89,7 +98,7 @@ export default async function AdminArtistDetailPage({ params }: { params: Promis
                   </span>
                 </p>
                 <p className="mt-1 text-xs text-stone-400">
-                  📍 {artist.province} · Joined {joinedLabel}
+                  {artist.province.trim() ? `📍 ${artist.province} · ` : ""}Joined {joinedLabel}
                 </p>
               </div>
               <div className="flex flex-col items-end gap-2">
@@ -123,22 +132,24 @@ export default async function AdminArtistDetailPage({ params }: { params: Promis
               ))}
             </div>
 
-            <div className="mt-5 grid grid-cols-3 gap-3">
-              <div className="rounded-lg bg-stone-50 p-3 text-center">
-                <div className="text-xl font-bold text-stone-800">{activeCollabs.length}</div>
-                <div className="mt-0.5 text-xs text-stone-500">Active collabs</div>
-              </div>
-              <div className="rounded-lg bg-stone-50 p-3 text-center">
-                <div className="text-xl font-bold text-stone-800">{completedCollabs.length}</div>
-                <div className="mt-0.5 text-xs text-stone-500">Completed collabs</div>
-              </div>
-              <div className="rounded-lg bg-stone-50 p-3 text-center">
-                <div className="text-xl font-bold text-amber-600">{avgRating ?? "-"}</div>
-                <div className="mt-0.5 text-xs text-stone-500">
-                  Avg rating {artist.reviews.length > 0 && `(${artist.reviews.length})`}
+            {collabsRatingsEnabled && (
+              <div className="mt-5 grid grid-cols-3 gap-3">
+                <div className="rounded-lg bg-stone-50 p-3 text-center">
+                  <div className="text-xl font-bold text-stone-800">{activeCollabs.length}</div>
+                  <div className="mt-0.5 text-xs text-stone-500">Active collabs</div>
+                </div>
+                <div className="rounded-lg bg-stone-50 p-3 text-center">
+                  <div className="text-xl font-bold text-stone-800">{completedCollabs.length}</div>
+                  <div className="mt-0.5 text-xs text-stone-500">Completed collabs</div>
+                </div>
+                <div className="rounded-lg bg-stone-50 p-3 text-center">
+                  <div className="text-xl font-bold text-amber-600">{avgRating ?? "-"}</div>
+                  <div className="mt-0.5 text-xs text-stone-500">
+                    Avg rating {artist.reviews.length > 0 && `(${artist.reviews.length})`}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
@@ -173,40 +184,43 @@ export default async function AdminArtistDetailPage({ params }: { params: Promis
           )}
         </SectionCard>
 
-        <SectionCard title={`Collabs (${artist.collabs.length})`}>
-          {artist.collabs.length === 0 ? (
-            <p className="text-sm italic text-stone-400">No collabs yet.</p>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {artist.collabs.map((c) => (
-                <div
-                  key={c.id}
-                  className="flex items-center justify-between gap-3 rounded-lg border border-stone-100 px-4 py-3 transition-colors hover:bg-stone-50"
-                >
-                  <div>
-                    <p className="text-sm font-semibold text-stone-800">{c.name}</p>
-                    <p className="mt-0.5 text-xs text-stone-400">
-                      {c.role}
-                      {c.closedAt ? ` · Closed ${c.closedAt}` : ""}
-                    </p>
+        {collabsRatingsEnabled && (
+          <SectionCard title={`Collabs (${artist.collabs.length})`}>
+            {artist.collabs.length === 0 ? (
+              <p className="text-sm italic text-stone-400">No collabs yet.</p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {artist.collabs.map((c) => (
+                  <div
+                    key={c.id}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-stone-100 px-4 py-3 transition-colors hover:bg-stone-50"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-stone-800">{c.name}</p>
+                      <p className="mt-0.5 text-xs text-stone-400">
+                        {c.role}
+                        {c.closedAt ? ` · Closed ${c.closedAt}` : ""}
+                      </p>
+                    </div>
+                    <div className="flex flex-shrink-0 items-center gap-3">
+                      <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${collabBadgeClass(c.status)}`}>
+                        {collabBadgeLabel(c.status)}
+                      </span>
+                      <Link
+                        href={`/admin/collabs/${c.id}`}
+                        className="text-xs font-medium text-amber-700 underline underline-offset-2 hover:text-amber-900"
+                      >
+                        View
+                      </Link>
+                    </div>
                   </div>
-                  <div className="flex flex-shrink-0 items-center gap-3">
-                    <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${collabBadgeClass(c.status)}`}>
-                      {collabBadgeLabel(c.status)}
-                    </span>
-                    <Link
-                      href={`/admin/collabs/${c.id}`}
-                      className="text-xs font-medium text-amber-700 underline underline-offset-2 hover:text-amber-900"
-                    >
-                      View
-                    </Link>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </SectionCard>
+                ))}
+              </div>
+            )}
+          </SectionCard>
+        )}
 
+        {collabsRatingsEnabled && (
         <SectionCard title={`Reviews received (${artist.reviews.length})`}>
           {artist.reviews.length === 0 ? (
             <p className="text-sm italic text-stone-400">No reviews yet.</p>
@@ -231,6 +245,7 @@ export default async function AdminArtistDetailPage({ params }: { params: Promis
             </div>
           )}
         </SectionCard>
+        )}
 
         {artist.links.length > 0 ? (
           <SectionCard title="External Links">

@@ -25,7 +25,7 @@ export async function SiteHeader() {
         <div className="flex items-center gap-3">
           <BackNavButton />
           <Link href="/" className="text-sm font-semibold text-stone-800 hover:text-amber-900">
-            Carnatic Artist Portal
+            Artist Discovery Portal
           </Link>
         </div>
         <nav className="flex items-center gap-4">

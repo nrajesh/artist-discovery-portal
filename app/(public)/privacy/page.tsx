@@ -48,7 +48,7 @@ export default async function PrivacyPage({
         <div className="mb-4 text-4xl">🔒</div>
         <h1 className="mb-3 text-3xl font-bold tracking-tight sm:text-4xl">Privacy Policy</h1>
         <p className="mx-auto max-w-xl text-base text-amber-200 sm:text-lg">
-          How the Carnatic Artist Portal collects and uses analytics and related product telemetry.
+          How Artist Discovery Portal handles account contact details, analytics, and related product telemetry.
         </p>
         <div className="mt-6">
           <Link
@@ -94,15 +94,47 @@ export default async function PrivacyPage({
           </div>
         ) : null}
 
-        {/* 1. Analytics usage */}
+        {/* 1. Account contact (email & phone) */}
+        <section aria-labelledby="account-contact-details">
+          <h2 id="account-contact-details" className="mb-3 text-xl font-bold text-stone-800">
+            1. Email and phone number (artist accounts)
+          </h2>
+          <div className="space-y-3 rounded-2xl border border-amber-200 bg-white p-6 leading-relaxed text-stone-700 shadow-sm">
+            <p>
+              When you register or update your artist profile, the portal asks for a <strong className="text-stone-900">
+              working email address</strong> and <strong className="text-stone-900">phone or WhatsApp number</strong>.
+              These are collected only where they are needed to run the service, not for resale or unrelated marketing.
+            </p>
+            <p>
+              <strong className="text-stone-900">Why we need them:</strong> to create and secure your account, to
+              prevent duplicate registrations (using a one-way hash of your normalised email for lookup), so the
+              portal operator and systems can reach you about your listing (for example approvals or abuse reports),
+              and so other users can contact you <em>according to the visibility you choose</em> in your profile (for
+              example only you and admins, collaborators you work with, or visitors when you set a field to public).
+            </p>
+            <p>
+              <strong className="text-stone-900">How they are stored:</strong> email and phone values are stored using
+              application-level encryption for the sensitive fields; a non-identifying placeholder may remain in legacy
+              columns for database compatibility. Your choices for &quot;email visibility&quot; and &quot;phone
+              visibility&quot; control how widely each value is shown outside admin tools.
+            </p>
+            <p className="text-sm text-stone-600">
+              This section describes the behaviour implemented in the application. The portal operator remains
+              responsible for the legal basis, retention periods, and any data processing agreements that apply in
+              their jurisdiction.
+            </p>
+          </div>
+        </section>
+
+        {/* 2. Analytics usage */}
         <section aria-labelledby="analytics-usage">
           <h2 id="analytics-usage" className="mb-3 text-xl font-bold text-stone-800">
-            1. Product analytics (events)
+            2. Product analytics (events)
           </h2>
           <div className="space-y-3 rounded-2xl border border-amber-200 bg-white p-6 leading-relaxed text-stone-700 shadow-sm">
             <p>
               This portal uses <strong className="text-stone-900">PostHog</strong> to understand how the site is
-              used and to improve it for Carnatic musicians and visitors. The integration records{" "}
+              used and to improve it for musicians and visitors. The integration records{" "}
               <strong className="text-stone-900">named events and page views</strong> you trigger while browsing or
               using logged-in areas (for example: which pages you open, when you save your profile, or when you
               update availability). <strong className="text-stone-900">Automatic “click everything” capture
@@ -117,10 +149,10 @@ export default async function PrivacyPage({
           </div>
         </section>
 
-        {/* 2. Session replay */}
+        {/* 3. Session replay */}
         <section aria-labelledby="session-replay">
           <h2 id="session-replay" className="mb-3 text-xl font-bold text-stone-800">
-            2. Session replay (optional)
+            3. Session replay (optional)
           </h2>
           <div className="space-y-3 rounded-2xl border border-amber-200 bg-white p-6 leading-relaxed text-stone-700 shadow-sm">
             <p>
@@ -153,10 +185,10 @@ export default async function PrivacyPage({
           </div>
         </section>
 
-        {/* 3. No PII in event properties */}
+        {/* 4. No PII in event properties */}
         <section aria-labelledby="no-pii">
           <h2 id="no-pii" className="mb-3 text-xl font-bold text-stone-800">
-            3. Personal data in analytics <em>properties</em>
+            4. Personal data in analytics <em>properties</em>
           </h2>
           <div className="space-y-3 rounded-2xl border border-amber-200 bg-white p-6 leading-relaxed text-stone-700 shadow-sm">
             <p>
@@ -171,15 +203,15 @@ export default async function PrivacyPage({
             <p className="text-sm text-stone-600">
               Session replay is a separate surface from “event properties”: it may reflect what appears on screen
               subject to masking and PostHog settings. If you need to avoid replay entirely, use the opt-out mechanisms
-              in section 5 or ask the operator to disable recording for the deployment.
+              in section 6 or ask the operator to disable recording for the deployment.
             </p>
           </div>
         </section>
 
-        {/* 4. Data retention */}
+        {/* 5. Data retention */}
         <section aria-labelledby="data-retention">
           <h2 id="data-retention" className="mb-3 text-xl font-bold text-stone-800">
-            4. Data retention
+            5. Data retention
           </h2>
           <div className="rounded-2xl border border-amber-200 bg-white p-6 leading-relaxed text-stone-700 shadow-sm">
             <p>
@@ -194,10 +226,10 @@ export default async function PrivacyPage({
           </div>
         </section>
 
-        {/* 5. Opt-out */}
+        {/* 6. Opt-out */}
         <section aria-labelledby="opt-out">
           <h2 id="opt-out" className="mb-3 text-xl font-bold text-stone-800">
-            5. Opting out
+            6. Opting out
           </h2>
           <div className="space-y-4 rounded-2xl border border-amber-200 bg-white p-6 leading-relaxed text-stone-700 shadow-sm">
             <p>
@@ -245,10 +277,10 @@ export default async function PrivacyPage({
           </div>
         </section>
 
-        {/* 6. Infrastructure */}
+        {/* 7. Infrastructure */}
         <section aria-labelledby="infrastructure">
           <h2 id="infrastructure" className="mb-3 text-xl font-bold text-stone-800">
-            6. Where data is processed
+            7. Where data is processed
           </h2>
           <div className="space-y-3 rounded-2xl border border-amber-200 bg-white p-6 leading-relaxed text-stone-700 shadow-sm">
             <p>
@@ -269,10 +301,10 @@ export default async function PrivacyPage({
           </div>
         </section>
 
-        {/* 7. Contact */}
+        {/* 8. Contact */}
         <section aria-labelledby="contact">
           <h2 id="contact" className="mb-3 text-xl font-bold text-stone-800">
-            7. Questions
+            8. Questions
           </h2>
           <div className="rounded-2xl border border-amber-200 bg-white p-6 leading-relaxed text-stone-700 shadow-sm">
             <p>
@@ -290,8 +322,8 @@ export default async function PrivacyPage({
         </section>
 
         <p className="border-t border-amber-100 pt-4 text-center text-xs text-stone-400">
-          This policy covers analytics and optional session replay as implemented in the open-source codebase. Last
-          reviewed by the portal operator.
+          This policy covers account contact data, analytics, and optional session replay as implemented in the
+          open-source codebase. Last reviewed by the portal operator.
         </p>
       </div>
 

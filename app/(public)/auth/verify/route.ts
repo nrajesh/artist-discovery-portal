@@ -1,14 +1,8 @@
 /**
- * GET /auth/verify?token=...
+ * POST /auth/verify - completes magic-link sign-in (consumes token, sets session cookie).
  *
- * Route Handler - not a Server Component - because Next.js 16 only allows
- * cookie mutation inside Server Actions, Route Handlers, and Middleware.
- *
- * Verifies the magic-link token, creates a session JWT, sets the `session`
- * cookie on the redirect response, and sends the user to the dashboard.
- *
- * On failure, redirects to /auth/verify/error?code=... so the error UI
- * lives on a dedicated page.
+ * GET is handled by `page.tsx`, which shows a confirmation step. That prevents email
+ * clients and link-preview crawlers from burning single-use tokens via prefetch GETs.
  *
  * Requirements: 2.6, 2.7, 4.4, 12.3
  */
@@ -17,8 +11,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { AuthError, verifyMagicLink } from '@/lib/auth';
 import { signSession } from '@/lib/session-jwt';
 import { analyticsServer } from '@/lib/analytics-server';
+import { logSafeError } from '@/lib/safe-log';
 
-type ErrorCode = 'missing' | 'invalid' | 'expired' | 'unexpected';
+type ErrorCode = 'missing' | 'invalid' | 'expired' | 'used' | 'unexpected';
 
 function redirectToError(request: NextRequest, code: ErrorCode): NextResponse {
   const url = new URL('/auth/verify/error', request.url);
@@ -26,8 +21,16 @@ function redirectToError(request: NextRequest, code: ErrorCode): NextResponse {
   return NextResponse.redirect(url);
 }
 
-export async function GET(request: NextRequest): Promise<NextResponse> {
-  const token = request.nextUrl.searchParams.get('token');
+export async function POST(request: NextRequest): Promise<NextResponse> {
+  let token: string | null = null;
+  try {
+    const formData = await request.formData();
+    const raw = formData.get('token');
+    token = typeof raw === 'string' && raw.trim() ? raw.trim() : null;
+  } catch {
+    token = null;
+  }
+
   if (!token) {
     return redirectToError(request, 'missing');
   }
@@ -36,8 +39,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const session = await verifyMagicLink(token);
     const jwt = await signSession(session);
 
-    // Admins land on the admin dashboard; artists land on their own dashboard
-    // with the PostHog identity-stitching flag.
     const destination =
       session.role === 'admin'
         ? new URL('/admin/dashboard', request.url)
@@ -68,12 +69,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       if (err.code === 'LINK_EXPIRED') {
         return redirectToError(request, 'expired');
       }
+      if (err.code === 'LINK_USED') {
+        return redirectToError(request, 'used');
+      }
       return redirectToError(request, 'invalid');
     }
 
-    const message = err instanceof Error ? err.message : String(err);
-    const stack = err instanceof Error ? err.stack : undefined;
-    console.error('[auth/verify] unexpected error', { message, stack });
+    logSafeError('[auth/verify] unexpected error', err);
     return redirectToError(request, 'unexpected');
   }
 }

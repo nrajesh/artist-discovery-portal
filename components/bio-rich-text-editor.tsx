@@ -83,7 +83,8 @@ type BioRichTextEditorProps = {
 export function BioRichTextEditor({ initialHtml, onHtmlChange, disabled }: BioRichTextEditorProps) {
   const prevInitialRef = useRef(initialHtml);
   const onHtmlChangeRef = useRef(onHtmlChange);
-  const htmlDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Coalesce TipTap updates to one rAF so undo/redo and fast typing stay in sync with React state (no 300ms dirty lag). */
+  const htmlRafRef = useRef<number | null>(null);
 
   const editorRef = useRef<ReturnType<typeof useEditor>>(null);
   const editor = useEditor({
@@ -102,11 +103,11 @@ export function BioRichTextEditor({ initialHtml, onHtmlChange, disabled }: BioRi
       },
     },
     onUpdate: ({ editor: ed }) => {
-      if (htmlDebounceRef.current) clearTimeout(htmlDebounceRef.current);
-      htmlDebounceRef.current = setTimeout(() => {
-        htmlDebounceRef.current = null;
+      if (htmlRafRef.current != null) cancelAnimationFrame(htmlRafRef.current);
+      htmlRafRef.current = requestAnimationFrame(() => {
+        htmlRafRef.current = null;
         onHtmlChangeRef.current(ed.getHTML());
-      }, 300);
+      });
     },
   });
 
@@ -124,7 +125,7 @@ export function BioRichTextEditor({ initialHtml, onHtmlChange, disabled }: BioRi
 
   useEffect(() => {
     return () => {
-      if (htmlDebounceRef.current) clearTimeout(htmlDebounceRef.current);
+      if (htmlRafRef.current != null) cancelAnimationFrame(htmlRafRef.current);
       const ed = editorRef.current;
       if (ed) onHtmlChangeRef.current(ed.getHTML());
     };

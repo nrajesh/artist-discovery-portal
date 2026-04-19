@@ -2,15 +2,15 @@
 
 ## Introduction
 
-The Carnatic Artist Portal is a web-based portfolio platform for Carnatic musicians (singers and instrumentalists) based in The Netherlands. The portal enables artists to create and manage rich biographical portfolios, discover and connect with fellow artists for collaborations, and communicate through moderated group chats. Visitors can browse artist profiles publicly, while registered and approved artists gain access to collaboration tools, an availability calendar, and a structured artist search. The platform is built mobile-first with Progressive Web App (PWA) capabilities, and presents each artist's profile with speciality-based visual theming to create an appealing, clutter-free experience.
+Artist Discovery Portal is a web-based artist discovery and portfolio platform for musicians (singers and instrumentalists) based in The Netherlands. The portal enables artists to create and manage rich biographical portfolios, discover and connect with fellow artists for collaborations, and communicate through moderated group chats. Visitors can browse artist profiles publicly, while registered and approved artists gain access to collaboration tools, an availability calendar, and a structured artist search. The platform is built mobile-first with Progressive Web App (PWA) capabilities, and presents each artist's profile with speciality-based visual theming to create an appealing, clutter-free experience.
 
 ---
 
 ## Glossary
 
-- **Portal**: The Carnatic Artist Portal web application.
+- **Portal**: The Artist Discovery Portal web application.
 - **Visitor**: An unauthenticated user browsing the Portal.
-- **Artist**: A Carnatic musician (singer or instrumentalist) who has been approved and holds a Portal account.
+- **Artist**: A musician (singer or instrumentalist) who has been approved and holds a Portal account.
 - **Applicant**: A person who has submitted a registration request but has not yet been approved.
 - **Admin**: A privileged Portal user responsible for approving Applicants and moderating content.
 - **Profile**: The publicly visible portfolio page of an Artist, including bio, photos, video links, and speciality information.
@@ -46,7 +46,7 @@ The Carnatic Artist Portal is a web-based portfolio platform for Carnatic musici
 
 ### Requirement 2: Admin Approval Workflow
 
-**User Story:** As an Admin, I want to review and approve or reject Registration Requests, so that only genuine Carnatic artists are admitted to the Portal.
+**User Story:** As an Admin, I want to review and approve or reject Registration Requests, so that only genuine artists are admitted to the Portal.
 
 #### Acceptance Criteria
 
@@ -80,7 +80,7 @@ The Carnatic Artist Portal is a web-based portfolio platform for Carnatic musici
 
 ### Requirement 4: Public Artist Portfolio Browsing
 
-**User Story:** As a Visitor, I want to browse artist profiles, so that I can discover Carnatic musicians based in The Netherlands.
+**User Story:** As a Visitor, I want to browse artist profiles, so that I can discover musicians based in The Netherlands.
 
 #### Acceptance Criteria
 
@@ -198,7 +198,7 @@ The Carnatic Artist Portal is a web-based portfolio platform for Carnatic musici
 
 #### Acceptance Criteria
 
-1. WHEN a Collab is closed with status Completed or Completed via Other Channels, THE Portal SHALL allow each Collab member to submit Feedback for each other member of that Collab. The Feedback form SHALL require a star rating (1–5 stars, mandatory) and SHALL optionally accept a written comment (rich text, not required).
+1. WHEN a Collab is closed with status Completed or Completed via Other Channels, THE Portal SHALL allow each Collab member to submit Feedback for each other member of that Collab. The Feedback form SHALL require a star rating (1-5 stars, mandatory) and SHALL optionally accept a written comment (rich text, not required).
 2. THE Feedback form SHALL require a star rating of 1 to 5 stars (mandatory). A written comment SHALL be optional (rich text field, may be left blank).
 3. WHEN an Artist submits Feedback, THE Portal SHALL associate the Feedback with both the reviewer Artist and the reviewed Artist, and with the originating Collab.
 4. THE Portal SHALL display received Feedback on the reviewed Artist's public Profile page.
@@ -346,7 +346,7 @@ The Carnatic Artist Portal is a web-based portfolio platform for Carnatic musici
 
 **Artist management:**
 6. THE Admin Dashboard SHALL provide an Artist management interface listing all approved Artists with their name, email, province, specialities, and account status (active or suspended).
-7. THE Admin Dashboard SHALL allow an Admin to edit any field on an Artist's profile, subject to the same mandatory-field and speciality-count (1–3) validation rules that apply to artist self-editing.
+7. THE Admin Dashboard SHALL allow an Admin to edit any field on an Artist's profile, subject to the same mandatory-field and speciality-count (1-3) validation rules that apply to artist self-editing.
 8. THE Admin Dashboard SHALL allow an Admin to delete an Artist account, which SHALL also delete all associated availability entries, external links, and speciality associations. Collabs owned by the deleted Artist SHALL be transferred to Admin ownership or closed as Incomplete.
 9. WHEN an Admin deletes an Artist account, THE Portal SHALL display a confirmation prompt before proceeding.
 

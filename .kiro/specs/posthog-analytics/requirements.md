@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This feature integrates PostHog analytics into the Carnatic Artist Portal (Next.js App Router application). The integration covers:
+This feature integrates PostHog analytics into Artist Discovery Portal (Next.js App Router application). The integration covers:
 
 - **Client-side event tracking** via the PostHog JavaScript SDK, initialised once in the root layout and available across all route groups (public, artist, admin).
 - **Server-side / API event capture** for backend actions (registrations, approvals, logins) using the PostHog Node SDK.

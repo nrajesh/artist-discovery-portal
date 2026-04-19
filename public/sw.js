@@ -7,7 +7,7 @@ self.addEventListener("push", (event) => {
     payload = { title: "Notification", body: event.data.text() };
   }
 
-  const title = payload.title || "Carnatic Artist Portal";
+  const title = payload.title || "Artist Discovery Portal";
   const options = {
     body: payload.body || "You have a new notification.",
     data: { url: payload.url || "/" },

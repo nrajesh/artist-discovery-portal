@@ -1,7 +1,7 @@
 /**
  * Property-based tests for lib/auth.ts
  *
- * Feature: carnatic-artist-portal
+ * Feature: artist-discovery-portal
  *
  * Property 6:  Magic link token expiry invariant   - Validates: Requirements 2.5
  * Property 20: Magic link invalidation on re-issue - Validates: Requirements 12.2
@@ -175,7 +175,7 @@ describe('Property 20: Magic link invalidation on re-issue', () => {
   });
 
   it('all prior unused tokens have usedAt set after issueMagicLink is called', async () => {
-    // Generate a random count of prior tokens (1–5)
+    // Generate a random count of prior tokens (1-5)
     const arbPriorTokenCount = fc.integer({ min: 1, max: 5 });
 
     await fc.assert(
