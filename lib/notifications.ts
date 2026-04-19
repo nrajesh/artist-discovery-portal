@@ -208,6 +208,7 @@ function buildAdminRegistrationMessage(input: {
   applicantName: string;
   applicantEmail: string;
   reviewedByName?: string;
+  reviewComment?: string;
 }): { title: string; text: string; emailSubject: string } {
   if (input.event === "new_registration") {
     return {
@@ -219,17 +220,24 @@ function buildAdminRegistrationMessage(input: {
 
   if (input.event === "registration_approved") {
     const byText = input.reviewedByName ? ` by ${input.reviewedByName}` : "";
+    const note =
+      input.reviewComment && input.reviewComment.trim()
+        ? ` Review note: ${input.reviewComment.trim()}`
+        : "";
     return {
       title: "Registration approved",
-      text: `Registration for ${input.applicantName} was approved${byText}.`,
+      text: `Registration for ${input.applicantName} was approved${byText}.${note}`,
       emailSubject: "Registration approved",
     };
   }
 
   const byText = input.reviewedByName ? ` by ${input.reviewedByName}` : "";
+  const reason = input.reviewComment?.trim()
+    ? ` Reason: ${input.reviewComment.trim()}`
+    : "";
   return {
     title: "Registration rejected",
-    text: `Registration for ${input.applicantName} was rejected${byText}.`,
+    text: `Registration for ${input.applicantName} was rejected${byText}.${reason}`,
     emailSubject: "Registration rejected",
   };
 }
@@ -240,6 +248,8 @@ export async function notifyAdminRegistrationEvent(input: {
   applicantName: string;
   applicantEmail: string;
   reviewedByName?: string;
+  /** Stored admin review text (reject: required; approve: optional, may be default “Approved”). */
+  reviewComment?: string;
 }): Promise<void> {
   const adminEmails = getAdminEmails();
   if (adminEmails.length === 0) return;
@@ -300,6 +310,9 @@ export async function notifyAdminRegistrationEvent(input: {
           registrationId: input.registrationId,
           applicantName: input.applicantName,
           applicantEmail: input.applicantEmail,
+          ...(input.reviewComment != null && input.reviewComment !== ""
+            ? { reviewComment: input.reviewComment }
+            : {}),
         },
         isRead: false,
       };

@@ -15,6 +15,7 @@ import { isBrowserDocumentNavigation, redirectPublicPath } from '@/lib/http/docu
 import { getDb } from '@/lib/db';
 import { analyticsServer } from '@/lib/analytics-server';
 import { notifyAdminRegistrationEvent } from '@/lib/notifications';
+import { parseRegistrationReviewComment } from '@/lib/admin-review-comment';
 
 export async function POST(
   request: NextRequest,
@@ -43,6 +44,13 @@ export async function POST(
     );
   }
 
+  const parsedComment = await parseRegistrationReviewComment(request, 'reject');
+  if (!parsedComment.ok) {
+    if (html) return redirectPublicPath(request, `/admin/registrations/${id}?error=reject_comment_required`);
+    return NextResponse.json({ error: parsedComment.error }, { status: parsedComment.status });
+  }
+  const reviewComment = parsedComment.comment;
+
   const now = new Date();
 
   // 2. Update status to "rejected"
@@ -52,6 +60,7 @@ export async function POST(
       status: 'rejected',
       reviewedAt: now,
       reviewedBy: reviewerId ?? undefined,
+      reviewComment,
     },
   });
 
@@ -69,6 +78,7 @@ export async function POST(
     applicantName: registration.fullName,
     applicantEmail: registration.email,
     reviewedByName: reviewer?.fullName,
+    reviewComment,
   });
 
   // Capture analytics event

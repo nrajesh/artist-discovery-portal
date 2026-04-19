@@ -39,6 +39,7 @@ export async function listArtistsForAdmin(): Promise<AdminArtistListRow[]> {
 
 export type AdminArtistProfileView = ArtistProfileView & {
   isSuspended: boolean;
+  suspensionComment: string | null;
   createdAt: Date;
 };
 
@@ -137,6 +138,7 @@ export async function getArtistProfileForAdmin(idOrSlug: string): Promise<AdminA
       url: l.url,
     })),
     isSuspended: artist.isSuspended,
+    suspensionComment: artist.suspensionComment ?? null,
     createdAt: artist.createdAt,
   };
 }

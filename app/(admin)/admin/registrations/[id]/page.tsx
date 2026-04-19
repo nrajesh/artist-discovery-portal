@@ -62,6 +62,16 @@ export default async function ReviewRegistrationPage({
           This request was already reviewed; nothing was changed.
         </div>
       ) : null}
+      {queryError === "reject_comment_required" ? (
+        <div className="mx-auto mb-6 max-w-3xl rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-950">
+          Rejection requires a comment. Please explain why this application is being rejected.
+        </div>
+      ) : null}
+      {queryError === "invalid_comment" ? (
+        <div className="mx-auto mb-6 max-w-3xl rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-950">
+          The review comment could not be saved (too long or invalid). Please try again.
+        </div>
+      ) : null}
 
       <div className="mx-auto max-w-3xl">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
@@ -164,17 +174,55 @@ export default async function ReviewRegistrationPage({
 
         {/* Actions */}
         {!isProcessed ? (
-          <div className="flex flex-wrap gap-4">
-            <form action={`/api/admin/registrations/${reg.id}/approve`} method="POST">
-              <button type="submit" className="rounded-lg bg-green-600 px-6 py-3 text-sm font-semibold text-white hover:bg-green-700 min-w-[120px]">Approve</button>
+          <div className="space-y-8">
+            <form action={`/api/admin/registrations/${reg.id}/approve`} method="POST" className="rounded-xl border border-green-200 bg-white p-5 shadow-sm">
+              <h2 className="mb-3 text-sm font-semibold text-stone-800">Approve</h2>
+              <label htmlFor="approve-comment" className="mb-1 block text-xs font-semibold uppercase tracking-wide text-stone-500">
+                Review note <span className="font-normal normal-case text-stone-400">(optional)</span>
+              </label>
+              <textarea
+                id="approve-comment"
+                name="comment"
+                rows={3}
+                maxLength={2000}
+                placeholder="Leave blank to store as “Approved”, or add a short internal note."
+                className="mb-4 w-full max-w-xl rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
+              <button type="submit" className="rounded-lg bg-green-600 px-6 py-3 text-sm font-semibold text-white hover:bg-green-700 min-h-[44px]">
+                Approve application
+              </button>
             </form>
-            <form action={`/api/admin/registrations/${reg.id}/reject`} method="POST">
-              <button type="submit" className="rounded-lg bg-red-600 px-6 py-3 text-sm font-semibold text-white hover:bg-red-700 min-w-[120px]">Reject</button>
+            <form action={`/api/admin/registrations/${reg.id}/reject`} method="POST" className="rounded-xl border border-red-200 bg-white p-5 shadow-sm">
+              <h2 className="mb-3 text-sm font-semibold text-stone-800">Reject</h2>
+              <label htmlFor="reject-comment" className="mb-1 block text-xs font-semibold uppercase tracking-wide text-stone-500">
+                Reason for rejection <span className="text-red-600">*</span>
+              </label>
+              <textarea
+                id="reject-comment"
+                name="comment"
+                required
+                rows={4}
+                maxLength={2000}
+                placeholder="Explain why this application is being rejected (visible in admin history and notification emails)."
+                className="mb-4 w-full max-w-xl rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+              <button type="submit" className="rounded-lg bg-red-600 px-6 py-3 text-sm font-semibold text-white hover:bg-red-700 min-h-[44px]">
+                Reject application
+              </button>
             </form>
           </div>
         ) : (
-          <div className="rounded-lg border border-stone-200 bg-stone-50 px-5 py-4 text-stone-500 text-sm">
-            This request has already been <strong className="text-stone-700">{reg.status}</strong>. No further actions available.
+          <div className="rounded-lg border border-stone-200 bg-stone-50 px-5 py-4 text-stone-600 text-sm space-y-2">
+            <p>
+              This request has already been <strong className="text-stone-800">{reg.status}</strong>. No further actions
+              available.
+            </p>
+            {reg.reviewComment ? (
+              <div className="border-t border-stone-200 pt-3 mt-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-1">Review comment</p>
+                <p className="text-stone-800 whitespace-pre-wrap">{reg.reviewComment}</p>
+              </div>
+            ) : null}
           </div>
         )}
       </div>

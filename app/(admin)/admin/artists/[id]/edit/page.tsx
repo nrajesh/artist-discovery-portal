@@ -69,7 +69,11 @@ export default async function EditArtistPage({ params }: { params: Promise<{ id:
 
           <div className="border-t border-stone-100 pt-4">
             <h2 className="mb-2 text-sm font-semibold text-stone-700">Moderation</h2>
-            <SuspendControls artistId={artist.id} initialSuspended={artist.isSuspended} />
+            <SuspendControls
+              artistId={artist.id}
+              initialSuspended={artist.isSuspended}
+              initialSuspensionComment={artist.suspensionComment}
+            />
           </div>
         </div>
       </div>

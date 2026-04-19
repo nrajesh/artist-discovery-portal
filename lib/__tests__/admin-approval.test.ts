@@ -39,7 +39,7 @@ const mockState = vi.hoisted(() => {
 
   interface CapturedRegistrationUpdate {
     where: { id: string };
-    data: { status: string; reviewedAt: Date };
+    data: { status: string; reviewedAt: Date; reviewComment?: string };
   }
 
   const state = {
@@ -230,6 +230,7 @@ describe('Property 4: Approval creates artist and token', () => {
         expect(mockState.capturedRegistrationUpdate).not.toBeNull();
         expect(mockState.capturedRegistrationUpdate!.data.status).toBe('approved');
         expect(mockState.capturedRegistrationUpdate!.data.reviewedAt).toBeInstanceOf(Date);
+        expect(mockState.capturedRegistrationUpdate!.data.reviewComment).toBe('Approved');
       }),
       { numRuns: 100 },
     );
@@ -243,6 +244,25 @@ describe('Property 4: Approval creates artist and token', () => {
     expect(result).toEqual({ error: 'NOT_FOUND' });
     expect(mockState.artistCreateCallCount).toBe(0);
     expect(mockState.issueMagicLinkCallCount).toBe(0);
+  });
+
+  it('persists a custom review comment when approving', async () => {
+    resetState();
+    mockState.mockRegistration = {
+      id: 'r-custom',
+      status: 'pending',
+      fullName: 'Custom',
+      email: 'custom@example.com',
+      contactNumber: '+31612345678',
+      contactType: 'whatsapp',
+      profilePhotoUrl: 'https://cdn.example.com/photo.jpg',
+      specialities: [],
+      links: [],
+    };
+
+    const result = await approveRegistration('r-custom', 'Verified portfolio manually');
+    expect(result).toHaveProperty('success', true);
+    expect(mockState.capturedRegistrationUpdate!.data.reviewComment).toBe('Verified portfolio manually');
   });
 
   it('returns ALREADY_PROCESSED for an already-approved registration', async () => {
@@ -278,12 +298,12 @@ describe('Property 5: Rejection does not create artist', () => {
 
   it('sets status to "rejected" and does NOT create an Artist for any pending registration', async () => {
     await fc.assert(
-      fc.asyncProperty(arbPendingRegistration, async (registration) => {
+      fc.asyncProperty(arbPendingRegistration, arbNonEmptyString, async (registration, rejectReason) => {
         resetState();
 
         mockState.mockRegistration = registration as unknown as Record<string, unknown>;
 
-        const result = await rejectRegistration(registration.id);
+        const result = await rejectRegistration(registration.id, rejectReason);
 
         // Must succeed
         expect(result).toHaveProperty('success', true);
@@ -299,16 +319,35 @@ describe('Property 5: Rejection does not create artist', () => {
         expect(mockState.capturedRegistrationUpdate).not.toBeNull();
         expect(mockState.capturedRegistrationUpdate!.data.status).toBe('rejected');
         expect(mockState.capturedRegistrationUpdate!.data.reviewedAt).toBeInstanceOf(Date);
+        expect(mockState.capturedRegistrationUpdate!.data.reviewComment).toBe(rejectReason.trim());
       }),
       { numRuns: 100 },
     );
+  });
+
+  it('returns COMMENT_REQUIRED when rejection comment is empty', async () => {
+    resetState();
+    mockState.mockRegistration = {
+      id: 'reg-1',
+      status: 'pending',
+      fullName: 'Test',
+      email: 'test@example.com',
+      contactNumber: '123',
+      contactType: 'whatsapp',
+      profilePhotoUrl: 'https://cdn.example.com/photo.jpg',
+      specialities: [],
+      links: [],
+    };
+
+    const result = await rejectRegistration('reg-1', '   ');
+    expect(result).toEqual({ error: 'COMMENT_REQUIRED' });
   });
 
   it('returns NOT_FOUND for a non-existent registration', async () => {
     resetState();
     mockState.mockRegistration = null;
 
-    const result = await rejectRegistration('non-existent-id');
+    const result = await rejectRegistration('non-existent-id', 'Not a fit');
     expect(result).toEqual({ error: 'NOT_FOUND' });
     expect(mockState.artistCreateCallCount).toBe(0);
   });
@@ -325,7 +364,7 @@ describe('Property 5: Rejection does not create artist', () => {
       profilePhotoUrl: 'https://cdn.example.com/photo.jpg',
     };
 
-    const result = await rejectRegistration('reg-1');
+    const result = await rejectRegistration('reg-1', 'Still not pending');
     expect(result).toEqual({ error: 'ALREADY_PROCESSED' });
     expect(mockState.artistCreateCallCount).toBe(0);
   });

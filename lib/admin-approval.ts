@@ -7,6 +7,7 @@
 
 import { getDb } from './db';
 import { issueMagicLink } from './auth';
+import { REGISTRATION_APPROVE_DEFAULT_COMMENT } from './admin-review-comment';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -28,7 +29,8 @@ export type ApprovalError =
 
 export type RejectionError =
   | { error: 'NOT_FOUND' }
-  | { error: 'ALREADY_PROCESSED' };
+  | { error: 'ALREADY_PROCESSED' }
+  | { error: 'COMMENT_REQUIRED' };
 
 // ---------------------------------------------------------------------------
 // Slug generation
@@ -70,6 +72,7 @@ export async function generateSlug(fullName: string): Promise<string> {
  */
 export async function approveRegistration(
   registrationId: string,
+  reviewComment: string = REGISTRATION_APPROVE_DEFAULT_COMMENT,
 ): Promise<ApprovalResult | ApprovalError> {
   const registration = await getDb().registrationRequest.findUnique({
     where: { id: registrationId },
@@ -129,7 +132,7 @@ export async function approveRegistration(
   // Mark as approved
   await getDb().registrationRequest.update({
     where: { id: registrationId },
-    data: { status: 'approved', reviewedAt: now },
+    data: { status: 'approved', reviewedAt: now, reviewComment },
   });
 
   return { success: true, artistId: artist.id, slug };
@@ -145,6 +148,7 @@ export async function approveRegistration(
  */
 export async function rejectRegistration(
   registrationId: string,
+  reviewComment: string,
 ): Promise<RejectionResult | RejectionError> {
   const registration = await getDb().registrationRequest.findUnique({
     where: { id: registrationId },
@@ -153,11 +157,14 @@ export async function rejectRegistration(
   if (!registration) return { error: 'NOT_FOUND' };
   if (registration.status !== 'pending') return { error: 'ALREADY_PROCESSED' };
 
+  const trimmed = reviewComment.trim();
+  if (!trimmed) return { error: 'COMMENT_REQUIRED' };
+
   const now = new Date();
 
   await getDb().registrationRequest.update({
     where: { id: registrationId },
-    data: { status: 'rejected', reviewedAt: now },
+    data: { status: 'rejected', reviewedAt: now, reviewComment: trimmed },
   });
 
   return { success: true };

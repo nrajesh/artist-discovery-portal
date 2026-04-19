@@ -21,15 +21,23 @@ export async function POST(
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }
 
-  let body: { suspended?: boolean };
+  let body: { suspended?: boolean; comment?: unknown };
   try {
-    body = (await request.json()) as { suspended?: boolean };
+    body = (await request.json()) as { suspended?: boolean; comment?: unknown };
   } catch {
     return NextResponse.json({ error: "INVALID_JSON" }, { status: 400 });
   }
 
   if (typeof body.suspended !== "boolean") {
     return NextResponse.json({ error: "VALIDATION_ERROR" }, { status: 400 });
+  }
+
+  const commentRaw = typeof body.comment === "string" ? body.comment.trim() : "";
+  if (body.suspended && commentRaw.length === 0) {
+    return NextResponse.json({ error: "COMMENT_REQUIRED" }, { status: 400 });
+  }
+  if (commentRaw.length > 2000) {
+    return NextResponse.json({ error: "COMMENT_TOO_LONG" }, { status: 400 });
   }
 
   const target = await getDb().artist.findUnique({ where: { id }, select: { id: true } });
@@ -44,7 +52,10 @@ export async function POST(
 
   await getDb().artist.update({
     where: { id },
-    data: { isSuspended: body.suspended },
+    data: {
+      isSuspended: body.suspended,
+      suspensionComment: body.suspended ? commentRaw : null,
+    },
   });
 
   revalidateHomeMarketing();

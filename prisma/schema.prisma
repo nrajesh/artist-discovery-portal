@@ -38,6 +38,7 @@ model Artist {
   province           String
   openToCollab       Boolean            @default(true)
   isSuspended        Boolean            @default(false)
+  suspensionComment  String?
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 
@@ -113,6 +114,7 @@ model RegistrationRequest {
   backgroundImageUrl String?
   bioRichText        String?
   status             String    @default("pending") // "pending" | "approved" | "rejected"
+  reviewComment      String?
   submittedAt        DateTime  @default(now())
   reviewedAt         DateTime?
   reviewedBy         String?
