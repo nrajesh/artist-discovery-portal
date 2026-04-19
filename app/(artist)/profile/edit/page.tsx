@@ -33,6 +33,8 @@ export default async function EditProfilePage() {
         </div>
 
         <EditProfileForm
+          key={artist.profileRevision}
+          variant="artist"
           initial={artist}
           allSpecialities={allSpecialities}
           provinces={NL_PROVINCES}

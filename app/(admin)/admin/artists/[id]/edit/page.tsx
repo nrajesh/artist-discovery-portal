@@ -1,12 +1,26 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
-import { getArtistProfileForAdmin } from "@/lib/queries/admin-artists";
-import { SuspendControls } from "./suspend-controls";
+import { verifySession } from "@/lib/session-jwt";
+import { getArtistForEdit, listSpecialities } from "@/lib/queries/artists";
+import { NL_DEFAULT_PROVINCES } from "@/lib/geo/nl-default-provinces";
+import { ArtistProfileEditForm } from "@/components/artist-profile-edit-form";
+import { AdminModerationPanel } from "./admin-moderation-panel";
+
+const NL_PROVINCES = [...NL_DEFAULT_PROVINCES];
 
 export default async function EditArtistPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const artist = await getArtistProfileForAdmin(id);
+  const sessionCookie = (await cookies()).get("session")?.value ?? null;
+  const session = sessionCookie ? await verifySession(sessionCookie) : null;
+
+  const [artist, allSpecialities] = await Promise.all([
+    getArtistForEdit(id),
+    listSpecialities(),
+  ]);
   if (!artist) notFound();
+
+  const isSelf = session?.role === "admin" && session.artistId === artist.id;
 
   return (
     <main className="min-h-screen bg-stone-50 px-4 py-8 sm:px-8">
@@ -16,65 +30,49 @@ export default async function EditArtistPage({ params }: { params: Promise<{ id:
       >
         ← Back to artist
       </Link>
-      <div className="mx-auto max-w-xl">
-        <h1 className="mb-6 text-2xl font-bold text-stone-800">Edit: {artist.name}</h1>
+      <div className="mx-auto max-w-2xl">
+        <h1 className="mb-2 text-2xl font-bold text-stone-800">Edit: {artist.fullName}</h1>
+        <p className="mb-6 text-sm text-stone-500">
+          Same fields as the artist profile editor. Changes apply to their public profile immediately.
+        </p>
 
-        <div className="space-y-5 rounded-xl border border-stone-200 bg-white p-6 shadow-sm">
-          <div>
-            <label className="mb-1 block text-sm font-semibold text-stone-700">Full name</label>
-            <p className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-800">
-              {artist.name}
-            </p>
-            <p className="mt-1 text-xs text-stone-400">Name changes are not available in admin yet.</p>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-semibold text-stone-700">Email</label>
-            <p className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-800">
-              {artist.email}
-            </p>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-semibold text-stone-700">Province</label>
-            <p className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-800">
-              {artist.province}
-            </p>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-semibold text-stone-700">Specialities</label>
-            <div className="flex flex-wrap gap-2">
-              {artist.specialities.map((s) => (
-                <span
-                  key={s.name}
-                  className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700"
-                >
-                  {s.name}
-                </span>
-              ))}
-            </div>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-semibold text-stone-700">Account status</label>
-            <div className="flex items-center gap-2">
+        <div className="mb-8 space-y-6">
+          <div className="rounded-xl border border-stone-200 bg-stone-50 px-5 py-4 text-sm text-stone-700">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wide text-stone-500">
+                Collaboration listing
+              </span>
               <span
                 className={`inline-block rounded-full border px-3 py-1 text-xs font-semibold ${
-                  artist.isSuspended
-                    ? "border-red-200 bg-red-50 text-red-700"
-                    : "border-green-200 bg-green-50 text-green-700"
+                  artist.openToCollab
+                    ? "border-green-200 bg-green-50 text-green-800"
+                    : "border-stone-200 bg-stone-100 text-stone-600"
                 }`}
               >
-                {artist.isSuspended ? "Suspended" : "Active"}
+                {artist.openToCollab ? "Open to collaborate" : "Not open"}
               </span>
             </div>
+            <p className="mt-2 text-xs text-stone-500">
+              Use <span className="font-medium text-stone-700">Open to collaborations</span> in the form
+              below to change whether they appear in collaboration discovery.
+            </p>
           </div>
 
-          <div className="border-t border-stone-100 pt-4">
-            <h2 className="mb-2 text-sm font-semibold text-stone-700">Moderation</h2>
-            <SuspendControls
-              artistId={artist.id}
-              initialSuspended={artist.isSuspended}
-              initialSuspensionComment={artist.suspensionComment}
-            />
-          </div>
+          <ArtistProfileEditForm
+            key={artist.profileRevision}
+            variant="admin"
+            initial={artist}
+            allSpecialities={allSpecialities}
+            provinces={NL_PROVINCES}
+            targetArtistId={artist.id}
+          />
+
+          <AdminModerationPanel
+            artistId={artist.id}
+            isSuspended={artist.isSuspended}
+            suspensionComment={artist.suspensionComment}
+            isSelf={isSelf}
+          />
         </div>
       </div>
     </main>

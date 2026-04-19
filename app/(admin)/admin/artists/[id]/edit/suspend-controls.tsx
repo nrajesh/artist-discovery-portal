@@ -7,12 +7,15 @@ type SuspendControlsProps = {
   artistId: string;
   initialSuspended: boolean;
   initialSuspensionComment: string | null;
+  /** When true, hide suspend controls while active (API also blocks self-suspend). */
+  isSelf?: boolean;
 };
 
 export function SuspendControls({
   artistId,
   initialSuspended,
   initialSuspensionComment,
+  isSelf = false,
 }: SuspendControlsProps) {
   const router = useRouter();
   const [suspended, setSuspended] = useState(initialSuspended);
@@ -34,6 +37,8 @@ export function SuspendControls({
       if (!res.ok) {
         if (data.error === "COMMENT_REQUIRED") {
           setMessage("A suspension reason is required.");
+        } else if (data.error === "CANNOT_SUSPEND_SELF") {
+          setMessage("You cannot suspend your own account.");
         } else {
           setMessage(data.error ?? "Request failed.");
         }
@@ -44,6 +49,17 @@ export function SuspendControls({
       if (!next) setCommentDraft("");
       router.refresh();
     });
+  }
+
+  if (isSelf && !suspended) {
+    return (
+      <div className="space-y-3">
+        {message ? <p className="text-sm text-red-600">{message}</p> : null}
+        <p className="text-sm text-stone-600">
+          You cannot suspend your own account. Ask another admin if this account should be suspended.
+        </p>
+      </div>
+    );
   }
 
   return (

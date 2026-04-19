@@ -8,7 +8,7 @@ import { verifySession } from "@/lib/session-jwt";
 import { artistProfileEditSchema, type ArtistProfileEditInput } from "@/lib/artist-profile-update-schema";
 import { buildExternalLinkRows } from "@/lib/artist-profile-links";
 
-export type UpdateProfileResult =
+export type AdminUpdateProfileResult =
   | { ok: true }
   | {
       ok: false;
@@ -35,14 +35,14 @@ function fieldErrorsFromZod(
   return fieldErrors;
 }
 
-/**
- * Update the logged-in artist's profile (same fields as registration + open-to-collab).
- */
-export async function updateArtistProfile(input: ArtistProfileEditInput): Promise<UpdateProfileResult> {
+export async function updateAdminArtistProfile(
+  targetArtistId: string,
+  input: ArtistProfileEditInput,
+): Promise<AdminUpdateProfileResult> {
   const sessionCookie = (await cookies()).get("session")?.value ?? null;
   const session = sessionCookie ? await verifySession(sessionCookie) : null;
-  if (!session) {
-    return { ok: false, error: "Not signed in." };
+  if (!session || session.role !== "admin") {
+    return { ok: false, error: "Not authorized." };
   }
 
   const parsed = artistProfileEditSchema.safeParse(input);
@@ -56,10 +56,17 @@ export async function updateArtistProfile(input: ArtistProfileEditInput): Promis
 
   const data = parsed.data;
   const db = getDb();
-  const artistId = session.artistId;
+
+  const target = await db.artist.findUnique({
+    where: { id: targetArtistId },
+    select: { id: true, slug: true },
+  });
+  if (!target) {
+    return { ok: false, error: "Artist not found." };
+  }
 
   const conflictingArtist = await db.artist.findFirst({
-    where: { email: data.email, NOT: { id: artistId } },
+    where: { email: data.email, NOT: { id: targetArtistId } },
     select: { id: true },
   });
   if (conflictingArtist) {
@@ -88,7 +95,7 @@ export async function updateArtistProfile(input: ArtistProfileEditInput): Promis
 
   await db.$transaction(async (tx) => {
     await tx.artist.update({
-      where: { id: artistId },
+      where: { id: targetArtistId },
       data: {
         fullName: data.fullName,
         email: data.email,
@@ -102,17 +109,17 @@ export async function updateArtistProfile(input: ArtistProfileEditInput): Promis
       },
     });
 
-    await tx.artistSpeciality.deleteMany({ where: { artistId } });
+    await tx.artistSpeciality.deleteMany({ where: { artistId: targetArtistId } });
     await tx.artistSpeciality.createMany({
       data: data.specialities.map((name, index) => ({
-        artistId,
+        artistId: targetArtistId,
         specialityId: specIdByName.get(name)!,
         displayOrder: index,
       })),
     });
 
-    await tx.externalLink.deleteMany({ where: { artistId } });
-    const linkRows = buildExternalLinkRows(artistId, {
+    await tx.externalLink.deleteMany({ where: { artistId: targetArtistId } });
+    const linkRows = buildExternalLinkRows(targetArtistId, {
       linkedinUrl: data.linkedinUrl,
       instagramUrl: data.instagramUrl,
       facebookUrl: data.facebookUrl,
@@ -125,17 +132,13 @@ export async function updateArtistProfile(input: ArtistProfileEditInput): Promis
     }
   });
 
-  const slugRow = await db.artist.findUnique({
-    where: { id: artistId },
-    select: { slug: true },
-  });
-
-  revalidatePath("/dashboard");
-  revalidatePath("/profile/edit");
-  revalidatePath(`/artists/${artistId}`);
-  if (slugRow?.slug) {
-    revalidatePath(`/artists/${slugRow.slug}`);
-  }
+  revalidatePath("/admin/artists");
+  revalidatePath(`/admin/artists/${target.id}`);
+  revalidatePath(`/admin/artists/${target.id}/edit`);
+  revalidatePath(`/admin/artists/${target.slug}`);
+  revalidatePath(`/admin/artists/${target.slug}/edit`);
+  revalidatePath(`/artists/${target.id}`);
+  revalidatePath(`/artists/${target.slug}`);
   revalidateHomeMarketing();
   return { ok: true };
 }

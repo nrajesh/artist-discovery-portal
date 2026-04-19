@@ -1,4 +1,5 @@
 import { formatDeploymentDateNumericDay, formatDeploymentMonthYear } from "@/lib/format-deployment-datetime";
+import { profileSocialFromExternalLinks } from "@/lib/artist-profile-links";
 import { getDb } from "@/lib/db";
 import type { Speciality } from "@prisma/client";
 import {
@@ -523,20 +524,36 @@ export type ArtistEditView = {
   province: string;
   specialities: string[];
   availabilityWindowCount: number;
+  openToCollab: boolean;
+  profilePhotoUrl: string;
+  backgroundImageUrl: string;
+  bioRichText: string;
+  linkedinUrl: string;
+  instagramUrl: string;
+  facebookUrl: string;
+  twitterUrl: string;
+  youtubeUrl: string;
+  websiteUrls: { url: string }[];
+  /** Bumps after saves so client forms can remount from fresh server props. */
+  profileRevision: string;
+  isSuspended: boolean;
+  suspensionComment: string | null;
 };
 
-export async function getArtistForEdit(artistId: string): Promise<ArtistEditView | null> {
-  const artist = await getDb().artist.findUnique({
-    where: { id: artistId },
+export async function getArtistForEdit(artistIdOrSlug: string): Promise<ArtistEditView | null> {
+  const artist = await getDb().artist.findFirst({
+    where: { OR: [{ id: artistIdOrSlug }, { slug: artistIdOrSlug }] },
     include: {
       specialities: {
         orderBy: { displayOrder: "asc" },
         include: { speciality: { select: { name: true } } },
       },
+      externalLinks: { select: { linkType: true, url: true } },
       _count: { select: { availabilityEntries: true } },
     },
   });
   if (!artist) return null;
+  const social = profileSocialFromExternalLinks(artist.externalLinks);
   return {
     id: artist.id,
     fullName: artist.fullName,
@@ -546,6 +563,14 @@ export async function getArtistForEdit(artistId: string): Promise<ArtistEditView
     province: artist.province,
     specialities: artist.specialities.map((j) => j.speciality.name),
     availabilityWindowCount: artist._count.availabilityEntries,
+    openToCollab: artist.openToCollab,
+    profilePhotoUrl: artist.profilePhotoUrl ?? "",
+    backgroundImageUrl: artist.backgroundImageUrl ?? "",
+    bioRichText: artist.bioRichText ?? "",
+    ...social,
+    profileRevision: artist.updatedAt.toISOString(),
+    isSuspended: artist.isSuspended,
+    suspensionComment: artist.suspensionComment ?? null,
   };
 }
 
