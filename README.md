@@ -140,6 +140,23 @@ KV_REST_API_URL=https://placeholder.example.com
 KV_REST_API_TOKEN=placeholder
 ```
 
+#### Generating `SESSION_SECRET`, `PII_ENCRYPTION_KEY`, and VAPID keys
+
+These are **not** issued by an external service — generate them locally and store them in `.env.local` (and in **Cloudflare Worker secrets** for production).
+
+| Variable | Purpose | Command / notes |
+|---|---|---|
+| **`SESSION_SECRET`** | Signs session JWTs (`lib/session-jwt.ts`). | `openssl rand -base64 32` — use a **different** value in production than in dev; rotating it invalidates existing sessions. |
+| **`PII_ENCRYPTION_KEY`** | AES-256-GCM for email/phone at rest (`lib/pii-crypto.ts`). Must decode from base64 to **exactly 32 bytes**. | `openssl rand -base64 32` — **do not rotate** in production without a re-encryption plan; existing ciphertext becomes undecryptable if the key changes. |
+| **`VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`** | Web Push (`web-push`, `lib/notifications.ts`). | `npx web-push generate-vapid-keys` (uses the repo’s `web-push` dependency). |
+| **`VAPID_SUBJECT`** | Contact URI for the push sender (Web Push spec). | Not generated — set to e.g. `mailto:you@example.com` or `https://your-domain.com`. |
+
+Equivalent for **`SESSION_SECRET`** / **`PII_ENCRYPTION_KEY`**:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
+
 ### 3. Set up the database
 
 Generate the Prisma client and run migrations:
@@ -282,7 +299,7 @@ The app is built for production with **Next.js** (`npm run build`, `output: "sta
 5. **Non-production uploads (optional):** e.g. `opennextjs-cloudflare build --skipNextBuild && opennextjs-cloudflare upload` for version uploads / preview pipelines.
 6. Add variables from `env.example` under **Build variables and secrets** for the Next.js build (`NEXT_PUBLIC_*`, etc.).
 7. **`DEPLOYMENT_*` branding:** Netherlands defaults (`DEPLOYMENT_REGION`, `DEPLOYMENT_NAME`, locales, GeoJSON path, logo URL) are declared in **`wrangler.jsonc`** (`vars`) so Workers runtime gets them - Cloudflare does **not** inject your laptop `.env` into the Worker. Override in the dashboard for another country or forked branding.
-8. Under the Worker’s **Variables and secrets** (runtime), set **`DATABASE_URL`** (Neon **pooled** string), `SESSION_SECRET`, and any other secrets the app reads at request time. If runtime `DATABASE_URL` is missing, database-backed routes return **500**. Wrangler deploy without `--keep-vars` can delete dashboard-only secrets - the deploy scripts pass **`--keep-vars`** so re-add secrets once if needed.
+8. Under the Worker’s **Variables and secrets** (runtime), set **`DATABASE_URL`** (Neon **pooled** string), `SESSION_SECRET`, `PII_ENCRYPTION_KEY` (if you use encrypted PII), VAPID keys + `VAPID_SUBJECT` for push, and any other secrets the app reads at request time. See **Generating `SESSION_SECRET`, `PII_ENCRYPTION_KEY`, and VAPID keys** (under [Local setup](#local-setup) → *Configure environment variables*). If runtime `DATABASE_URL` is missing, database-backed routes return **500**. Wrangler deploy without `--keep-vars` can delete dashboard-only secrets - the deploy scripts pass **`--keep-vars`** so re-add secrets once if needed.
 9. **R2 (`lib/storage.ts`):** Registration does **not** upload files; applicants paste optional HTTPS image URLs only. Configure `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL` (plaintext **vars**) and `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` (**Secrets**) on the Worker if you use server-side uploads elsewhere. Put plaintext in **`wrangler.jsonc`** (`vars`) and use `wrangler secret put` for keys. The storage helper reads `process.env` first, then **`cloudflare:workers`** `env`, so secrets work in OpenNext’s Node-compat isolate.
 10. Use the **direct** (non-pooled) URL for `prisma migrate deploy` in CI or locally (`DATABASE_URL_UNPOOLED` / `directUrl` in Prisma).
 11. Ensure Prisma client is generated during install/build (`npx prisma generate` in postinstall or build if needed).
