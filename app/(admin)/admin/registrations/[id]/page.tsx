@@ -20,6 +20,7 @@ export default async function ReviewRegistrationPage({
 }) {
   const { id } = await params;
   const { done, error: queryError } = await searchParams;
+  const commentUpdated = done === "comment_updated";
   const [reg, catalogueRows] = await Promise.all([
     getDb().registrationRequest.findUnique({
       where: { id },
@@ -57,6 +58,11 @@ export default async function ReviewRegistrationPage({
           Registration rejected.
         </div>
       ) : null}
+      {commentUpdated ? (
+        <div className="mx-auto mb-6 max-w-3xl rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-950">
+          Review note saved.
+        </div>
+      ) : null}
       {queryError === "already_processed" ? (
         <div className="mx-auto mb-6 max-w-3xl rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
           This request was already reviewed; nothing was changed.
@@ -70,6 +76,11 @@ export default async function ReviewRegistrationPage({
       {queryError === "invalid_comment" ? (
         <div className="mx-auto mb-6 max-w-3xl rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-950">
           The review comment could not be saved (too long or invalid). Please try again.
+        </div>
+      ) : null}
+      {queryError === "comment_amend_pending" ? (
+        <div className="mx-auto mb-6 max-w-3xl rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          This registration is still pending. Use Approve or Reject below instead of updating the note only.
         </div>
       ) : null}
 
@@ -212,17 +223,53 @@ export default async function ReviewRegistrationPage({
             </form>
           </div>
         ) : (
-          <div className="rounded-lg border border-stone-200 bg-stone-50 px-5 py-4 text-stone-600 text-sm space-y-2">
-            <p>
-              This request has already been <strong className="text-stone-800">{reg.status}</strong>. No further actions
-              available.
-            </p>
-            {reg.reviewComment ? (
-              <div className="border-t border-stone-200 pt-3 mt-2">
+          <div className="space-y-6">
+            <div className="rounded-lg border border-stone-200 bg-stone-50 px-5 py-4 text-stone-600 text-sm space-y-3">
+              <p>
+                This request has already been <strong className="text-stone-800">{reg.status}</strong>. Approve and
+                reject are no longer available.
+              </p>
+              <div className="border-t border-stone-200 pt-3">
                 <p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-1">Review comment</p>
-                <p className="text-stone-800 whitespace-pre-wrap">{reg.reviewComment}</p>
+                {reg.reviewComment ? (
+                  <p className="text-stone-800 whitespace-pre-wrap">{reg.reviewComment}</p>
+                ) : (
+                  <p className="text-stone-500 italic">No comment was stored for this decision.</p>
+                )}
               </div>
-            ) : null}
+            </div>
+            <form
+              action={`/api/admin/registrations/${reg.id}/review-comment`}
+              method="POST"
+              className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm"
+            >
+              <h2 className="mb-1 text-sm font-semibold text-stone-800">Update review note</h2>
+              <p className="mb-3 text-xs text-stone-500">
+                Add or edit the internal note shown here. Submit with an empty field to clear the stored comment.
+              </p>
+              <label htmlFor="amend-comment" className="mb-1 block text-xs font-semibold uppercase tracking-wide text-stone-500">
+                Review note
+              </label>
+              <textarea
+                id="amend-comment"
+                name="comment"
+                rows={4}
+                maxLength={2000}
+                defaultValue={reg.reviewComment ?? ""}
+                placeholder={
+                  reg.status === "rejected"
+                    ? "Reason for rejection (for admin records; was missing on this request)."
+                    : "Optional internal note."
+                }
+                className="mb-4 w-full max-w-xl rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              />
+              <button
+                type="submit"
+                className="rounded-lg bg-stone-800 px-6 py-3 text-sm font-semibold text-white hover:bg-stone-900 min-h-[44px]"
+              >
+                Save review note
+              </button>
+            </form>
           </div>
         )}
       </div>
