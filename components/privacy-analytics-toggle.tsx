@@ -1,32 +1,45 @@
 "use client";
 
 import Link from "next/link";
-import { useSyncExternalStore } from "react";
-import { usePathname } from "next/navigation";
-import { hasAnalyticsOptOutCookie } from "@/lib/analytics-opt-out-cookie";
-
-const noopSubscribe = () => () => {};
+import { useCallback, useSyncExternalStore } from "react";
+import { hasBrowserAnalyticsOptOut } from "@/lib/analytics-privacy-signals";
 
 const OPT_OUT_PATH = "/privacy/opt-out";
 const OPT_IN_PATH = "/privacy/opt-in";
 
+function subscribeAnalyticsOptOutSignals(onStoreChange: () => void): () => void {
+  const onStorage = () => onStoreChange();
+  const onVisibility = () => {
+    if (document.visibilityState === "visible") onStoreChange();
+  };
+  window.addEventListener("storage", onStorage);
+  document.addEventListener("visibilitychange", onVisibility);
+  return () => {
+    window.removeEventListener("storage", onStorage);
+    document.removeEventListener("visibilitychange", onVisibility);
+  };
+}
+
 type Props = {
   optOutDisplayUrl: string | null;
   localOptOutSample: string;
+  /** From Server Component (`cookies` + DNT) so the first paint matches the browser without hydration flip. */
+  initialOptedOut?: boolean;
 };
 
 /**
  * One-click opt-out vs opt-in button, driven by `ph_opt_out` cookie presence in the browser.
  */
-export function PrivacyAnalyticsToggle({ optOutDisplayUrl, localOptOutSample }: Props) {
-  const pathname = usePathname();
+export function PrivacyAnalyticsToggle({
+  optOutDisplayUrl,
+  localOptOutSample,
+  initialOptedOut = false,
+}: Props) {
+  const getSnapshot = useCallback(() => hasBrowserAnalyticsOptOut(), []);
   const optedOut = useSyncExternalStore(
-    noopSubscribe,
-    () => {
-      void pathname;
-      return hasAnalyticsOptOutCookie();
-    },
-    () => false,
+    subscribeAnalyticsOptOutSignals,
+    getSnapshot,
+    () => initialOptedOut,
   );
 
   const optInDisplayUrl =

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { PosthogOptInHandler } from "@/components/posthog-opt-in-handler";
 import { PrivacyAnalyticsToggle } from "@/components/privacy-analytics-toggle";
+import { getServerAnalyticsOptOut } from "@/lib/server-analytics-opt-out";
 
 const OPT_OUT_PATH = "/privacy/opt-out";
 const LOCAL_OPT_OUT_SAMPLE = "http://localhost:3000/privacy/opt-out";
@@ -39,6 +40,7 @@ export default async function PrivacyPage({
   const optedOutBanner = analytics === "opted_out";
   const optedInBanner = analytics === "opted_in";
   const optOutDisplayUrl = await resolveOptOutDisplayUrl();
+  const serverAnalyticsOptOut = await getServerAnalyticsOptOut();
 
   return (
     <main className="min-h-screen bg-amber-50">
@@ -259,6 +261,7 @@ export default async function PrivacyPage({
             <PrivacyAnalyticsToggle
               optOutDisplayUrl={optOutDisplayUrl}
               localOptOutSample={LOCAL_OPT_OUT_SAMPLE}
+              initialOptedOut={serverAnalyticsOptOut}
             />
 
             <div className="flex items-start gap-4 border-t border-stone-100 pt-4">
