@@ -46,7 +46,7 @@ Homepage aggregates (totals, featured artist, province map inputs, preview grid)
 Designed for Lighthouse PWA ≥90, Performance ≥85, Accessibility ≥90 on mobile. All touch targets ≥44×44px. Service Worker, Web App Manifest, and push notifications (VAPID) are in the implementation plan.
 
 ### 📊 Privacy-conscious analytics (PostHog)
-Optional [PostHog](https://posthog.com/) integration: explicit events plus **manual** page views, **no autocapture**, `artistId` (not email) as the distinct id on the server, and production traffic through a **same-origin** `/api/ph` proxy. **Session Replay** is env-gated with text masking; **Do Not Track** and `/privacy/opt-out` are honoured. Full operator notes live in `.kiro/specs/posthog-analytics/` and `.kiro/steering/posthog-admin-guide.md`.
+Optional [PostHog](https://posthog.com/) integration: explicit events plus **manual** page views, **no autocapture**, `artistId` (not email) as the distinct id on the server, and production traffic through a **same-origin** `/api/ph` proxy. **Session Replay** is env-gated with text masking; **Do Not Track** and `/privacy/opt-out` are honoured. After sign-in, the first redirect to **`/dashboard`** or **`/admin/dashboard`** includes **`?ph_identify=1`** once so the browser SDK can call **`posthog.identify(artistId, …)`** (the param is removed on the next navigation); that matches the internal id used for server-side flags and analytics. Signed-in users see a **session line** above the site footer with display name and JWT expiry; **admin** accounts show **`Name (admin)`**. Full operator notes live in `.kiro/specs/posthog-analytics/` and `.kiro/steering/posthog-admin-guide.md`.
 
 ### 🧪 Property-based testing
 28 formal correctness properties verified with `fast-check` (≥100 iterations each) covering auth token expiry, WCAG contrast ratios, search result correctness, feedback uniqueness, Unicode round-trips, and more.
@@ -68,7 +68,7 @@ Optional [PostHog](https://posthog.com/) integration: explicit events plus **man
 | Rich text | Tiptap (ProseMirror-based, Unicode-safe) |
 | Maps | D3.js + configurable GeoJSON |
 | i18n | next-intl (JSON locale files) |
-| Analytics | [PostHog](https://posthog.com/)  -  explicit events + manual page views, **no autocapture**; optional **Session Replay** (text masking on; configurable via env); browser traffic uses a **same-origin** `/api/ph` proxy in production; DNT + `ph_opt_out` honoured in the client provider |
+| Analytics | [PostHog](https://posthog.com/)  -  explicit events + manual page views, **no autocapture**; optional **Session Replay** (text masking on; configurable via env); browser traffic uses a **same-origin** `/api/ph` proxy in production; DNT + `ph_opt_out` honoured in the client provider; post-login **`ph_identify=1`** once for client **`identify(artistId)`** (dev login includes it too) |
 | Testing | Vitest + fast-check (property-based) + Playwright (E2E) |
 
 ---

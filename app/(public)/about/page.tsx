@@ -352,7 +352,9 @@ export default async function AboutPage() {
             expire after 72 hours. Successful sign-in sets a 30-day <strong>session cookie</strong> backed by an <strong>HS256 JWT</strong>;
             Edge middleware validates it without a database round-trip on every request. Logout uses{" "}
             <code className="text-amber-950">POST /api/auth/logout</code>. Admin access matches the signed-in email against the{" "}
-            <code className="text-amber-950">ADMIN_EMAILS</code> environment list.
+            <code className="text-amber-950">ADMIN_EMAILS</code> environment list. While signed in, a line <strong>above the
+            site footer</strong> can show your <strong>profile display name</strong>, session expiry, and for admins{" "}
+            <code className="text-amber-950">(admin)</code> after the name.
           </div>
         </Section>
 
@@ -594,6 +596,12 @@ export default async function AboutPage() {
                 <li>Explicit product events plus <strong>manual</strong> page views (autocapture stays off).</li>
                 <li>Browser traffic in production uses a <strong>same-origin</strong> <code className="text-stone-800">/api/ph</code> proxy so ingest hosts are not embedded in the client bundle.</li>
                 <li>Server routes can emit events with <code className="text-stone-800">artistId</code> as the PostHog distinct id - not email.</li>
+                <li>
+                  Post-login redirects add <code className="text-stone-800">?ph_identify=1</code> once to the artist or
+                  admin dashboard URL so the client can <code className="text-stone-800">posthog.identify(artistId, …)</code>{" "}
+                  and align browser analytics with the same id (query param is stripped on the next navigation; local{" "}
+                  <code className="text-stone-800">/api/dev/login</code> does the same in non-production).
+                </li>
               </ul>
             </div>
             <div className="bg-white rounded-xl border border-stone-200 p-6">

@@ -43,11 +43,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const destination =
       session.role === 'admin'
         ? new URL('/admin/dashboard', request.url)
-        : (() => {
-            const url = new URL('/dashboard', request.url);
-            url.searchParams.set('ph_identify', '1');
-            return url;
-          })();
+        : new URL('/dashboard', request.url);
+    destination.searchParams.set('ph_identify', '1');
 
     const response = NextResponse.redirect(destination);
     response.cookies.set('session', jwt, {

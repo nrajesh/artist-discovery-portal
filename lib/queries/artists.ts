@@ -489,6 +489,16 @@ function shapeNotification(n: {
   };
 }
 
+/** Profile display name for session chrome (footer). Uses `Artist.fullName`. */
+export async function getArtistFullNameById(artistId: string): Promise<string | null> {
+  const artist = await getDb().artist.findUnique({
+    where: { id: artistId },
+    select: { fullName: true },
+  });
+  const name = artist?.fullName?.trim();
+  return name && name.length > 0 ? name : null;
+}
+
 export async function getArtistDashboardView(artistId: string): Promise<ArtistDashboardView | null> {
   const db = getDb();
   const artist = await db.artist.findUnique({

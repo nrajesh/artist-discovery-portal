@@ -1,22 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { hasAnalyticsOptOutCookie } from "@/lib/analytics-opt-out-cookie";
+
+const noopSubscribe = () => () => {};
 
 /**
  * Green footer reminder when the analytics opt-out cookie is present.
  */
 export function AnalyticsOptOutFooterNote() {
   const pathname = usePathname();
-  const [optedOut, setOptedOut] = useState(false);
-
-  useEffect(() => {
-    const sync = () => setOptedOut(hasAnalyticsOptOutCookie());
-    sync();
-    window.addEventListener("focus", sync);
-    return () => window.removeEventListener("focus", sync);
-  }, [pathname]);
+  const optedOut = useSyncExternalStore(
+    noopSubscribe,
+    () => {
+      void pathname;
+      return hasAnalyticsOptOutCookie();
+    },
+    () => false,
+  );
 
   if (!optedOut) return null;
 

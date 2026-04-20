@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
   const redirectTo = role === 'admin' ? '/admin/dashboard' : '/dashboard';
   const redirectUrl = request.nextUrl.clone();
   redirectUrl.pathname = redirectTo;
-  redirectUrl.search = '';
+  redirectUrl.searchParams.set('ph_identify', '1');
 
   const response = NextResponse.redirect(redirectUrl);
 

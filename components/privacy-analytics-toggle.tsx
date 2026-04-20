@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { hasAnalyticsOptOutCookie } from "@/lib/analytics-opt-out-cookie";
+
+const noopSubscribe = () => () => {};
 
 const OPT_OUT_PATH = "/privacy/opt-out";
 const OPT_IN_PATH = "/privacy/opt-in";
@@ -18,14 +20,14 @@ type Props = {
  */
 export function PrivacyAnalyticsToggle({ optOutDisplayUrl, localOptOutSample }: Props) {
   const pathname = usePathname();
-  const [optedOut, setOptedOut] = useState(false);
-
-  useEffect(() => {
-    const sync = () => setOptedOut(hasAnalyticsOptOutCookie());
-    sync();
-    window.addEventListener("focus", sync);
-    return () => window.removeEventListener("focus", sync);
-  }, [pathname]);
+  const optedOut = useSyncExternalStore(
+    noopSubscribe,
+    () => {
+      void pathname;
+      return hasAnalyticsOptOutCookie();
+    },
+    () => false,
+  );
 
   const optInDisplayUrl =
     optOutDisplayUrl != null ? optOutDisplayUrl.replace(OPT_OUT_PATH, OPT_IN_PATH) : null;

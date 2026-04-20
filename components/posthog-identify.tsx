@@ -4,10 +4,9 @@
  * PostHogIdentify - client component that stitches the PostHog anonymous
  * identity to the authenticated artist after a successful magic-link login.
  *
- * Mounted on the artist dashboard when the URL contains `?ph_identify=1`.
- * Reads the session to get `artistId` and `province`, calls
- * `posthog.identify(artistId, { role: 'artist', province })`, then removes
- * the query param from the URL so it doesn't persist across refreshes.
+ * Mounted on artist or admin dashboard when the URL contains `?ph_identify=1`
+ * (set on post-login redirect). Calls `posthog.identify` with `artistId` and
+ * person props, then navigates to `replacePath` without the query param.
  *
  * Requirements: 4.1, 4.2
  */
@@ -19,9 +18,18 @@ import { usePostHog } from 'posthog-js/react'
 interface PostHogIdentifyProps {
   artistId: string
   province: string | null
+  /** PostHog person `role` (session role — admins are still identified by artistId). */
+  personRole?: 'artist' | 'admin'
+  /** Path after identify (query stripped). Default `/dashboard`. */
+  replacePath?: string
 }
 
-export function PostHogIdentify({ artistId, province }: PostHogIdentifyProps) {
+export function PostHogIdentify({
+  artistId,
+  province,
+  personRole = 'artist',
+  replacePath = '/dashboard',
+}: PostHogIdentifyProps) {
   const posthog = usePostHog()
   const router = useRouter()
 
@@ -30,16 +38,15 @@ export function PostHogIdentify({ artistId, province }: PostHogIdentifyProps) {
 
     try {
       posthog.identify(artistId, {
-        role: 'artist',
+        role: personRole,
         ...(province ? { province } : {}),
       })
     } catch {
       // Silently ignore analytics errors
     }
 
-    // Remove the ph_identify query param from the URL
-    router.replace('/dashboard')
-  }, [artistId, province, posthog, router])
+    router.replace(replacePath)
+  }, [artistId, province, personRole, posthog, replacePath, router])
 
   return null
 }

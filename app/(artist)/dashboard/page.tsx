@@ -58,7 +58,14 @@ export default async function ArtistDashboardPage({
   return (
     <main className="min-h-screen bg-amber-50 px-4 py-8 sm:px-8">
       <div className="max-w-4xl mx-auto">
-        {ph_identify === "1" && <PostHogIdentify artistId={view.id} province={province} />}
+        {ph_identify === "1" && (
+          <PostHogIdentify
+            artistId={view.id}
+            province={province}
+            personRole={session.role}
+            replacePath="/dashboard"
+          />
+        )}
         <DashboardViewTracker />
 
         {/* Header */}
@@ -403,7 +410,9 @@ export default async function ArtistDashboardPage({
         </div>
 
         <p className="text-xs text-stone-300 text-center mt-8">
-          Logged in as {session.role} · Session expires {formatDeploymentDateTime(session.expiresAt)}
+          Logged in as{" "}
+          {session.role === "admin" ? `${view.name} (admin)` : view.name} · Session expires{" "}
+          {formatDeploymentDateTime(session.expiresAt)}
         </p>
       </div>
     </main>

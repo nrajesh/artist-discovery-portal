@@ -2,13 +2,34 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { AdminDashboardTracker } from "@/components/admin-dashboard-tracker";
+import { PostHogIdentify } from "@/components/posthog-identify";
+import { getDb } from "@/lib/db";
 import { verifySession } from "@/lib/session-jwt";
 import { isArtistCollabsRatingsEnabledServer } from "@/lib/feature-flags-server";
 
-export default async function AdminDashboardPage() {
+export default async function AdminDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ ph_identify?: string }>;
+}) {
   const sessionCookie = (await cookies()).get("session")?.value ?? null;
   const session = sessionCookie ? await verifySession(sessionCookie) : null;
   if (!session?.artistId) redirect("/auth/login");
+  const { ph_identify } = await searchParams;
+
+  let identifyProvince: string | null = null;
+  if (ph_identify === "1") {
+    try {
+      const row = await getDb().artist.findUnique({
+        where: { id: session.artistId },
+        select: { province: true },
+      });
+      identifyProvince = row?.province?.trim() ? row.province : null;
+    } catch {
+      // Analytics only
+    }
+  }
+
   const collabsRatingsEnabled = await isArtistCollabsRatingsEnabledServer({
     distinctId: session.artistId,
   });
@@ -22,6 +43,14 @@ export default async function AdminDashboardPage() {
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-stone-100/80 to-stone-50 px-6 py-10">
+      {ph_identify === "1" && (
+        <PostHogIdentify
+          artistId={session.artistId}
+          province={identifyProvince}
+          personRole="admin"
+          replacePath="/admin/dashboard"
+        />
+      )}
       <AdminDashboardTracker />
       <div className="mx-auto max-w-5xl">
         <div className="mb-10">

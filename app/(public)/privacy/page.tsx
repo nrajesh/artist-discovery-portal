@@ -123,6 +123,14 @@ export default async function PrivacyPage({
               responsible for the legal basis, retention periods, and any data processing agreements that apply in
               their jurisdiction.
             </p>
+            <p>
+              When you are signed in, you may see a short status line <strong className="text-stone-900">above the site
+              footer</strong> with your <strong className="text-stone-900">public display name</strong> (from your artist
+              profile) and when your session cookie expires. Operator accounts with the{" "}
+              <strong className="text-stone-900">admin</strong> role may see{" "}
+              <code className="rounded bg-stone-100 px-1 text-xs">(admin)</code> after the name. This is rendered by the
+              application for your session and is separate from PostHog cookies or third-party advertising.
+            </p>
           </div>
         </section>
 
@@ -145,6 +153,16 @@ export default async function PrivacyPage({
               registration submissions, and key actions in the artist or admin dashboards. Event payloads are kept
               minimal and are described at a high level in this policy; the portal operator configures the exact
               PostHog project.
+            </p>
+            <p>
+              After you sign in, your browser is usually redirected once to{" "}
+              <code className="rounded bg-stone-100 px-1 text-xs">/dashboard?ph_identify=1</code> or{" "}
+              <code className="rounded bg-stone-100 px-1 text-xs">/admin/dashboard?ph_identify=1</code> (including
+              from local <code className="rounded bg-stone-100 px-1 text-xs">/api/dev/login</code> in development).
+              That flag tells the PostHog client to associate this browser with your internal{" "}
+              <strong className="text-stone-900">artist ID</strong> — the same opaque id used for server-side events and
+              optional feature flags — using <code className="rounded bg-stone-100 px-1 text-xs">posthog.identify</code>.
+              The query parameter is removed right away and does not remain in the address bar.
             </p>
           </div>
         </section>
