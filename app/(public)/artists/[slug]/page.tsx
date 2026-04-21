@@ -9,6 +9,9 @@ import { getArtistBySlug } from "@/lib/queries/artists";
 import { isArtistCollabsRatingsEnabledServer } from "@/lib/feature-flags-server";
 import { PortalSectionHeading } from "@/components/portal-section-heading";
 import { normalizeBioHtmlForDisplay } from "@/lib/bio-html-display";
+import { ArtistExternalLinksFeed } from "@/components/artist-external-links-feed";
+import { ArtistProfileShareButton } from "@/components/artist-profile-share-button";
+import { getAbsoluteSiteUrl } from "@/lib/absolute-site-url";
 import { ArtistProfileTracker } from "./artist-profile-tracker";
 
 export const dynamic = "force-dynamic";
@@ -87,6 +90,10 @@ export default async function ArtistProfilePage({ params, searchParams }: PagePr
       )
     : [];
 
+  const profileShareUrl = await getAbsoluteSiteUrl(`/artists/${encodeURIComponent(slug)}`);
+  const shareTitle = `${artist.name} — Artist profile`;
+  const shareText = `Check out ${artist.name} on the artist discovery portal`;
+
   return (
     <main className="min-h-screen bg-amber-50">
       <ArtistProfileTracker artistSlug={slug} />
@@ -104,39 +111,47 @@ export default async function ArtistProfilePage({ params, searchParams }: PagePr
         }
       >
         <Link href="/artists" className="text-white/70 hover:text-white text-sm mb-6 inline-block">← All Artists</Link>
-        <div className="flex items-center gap-5 max-w-3xl mx-auto">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5 max-w-3xl mx-auto">
           <FeaturedArtistPhoto
             photoUrl={artist.profilePhotoUrl ?? ""}
             initial={artist.name[0] ?? "?"}
             accentColor={heroAvatarAccent}
             alt={`${artist.name} profile photo`}
-            sizeClassName="h-20 w-20 text-3xl border-4 border-white/40"
+            sizeClassName="h-20 w-20 shrink-0 text-3xl border-4 border-white/40"
             imgClassName="!ring-white/50 border-4 border-white/40 shadow-lg"
           />
-          <div>
-            <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">{artist.name}</h1>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {artist.specialities.map((s) => (
-                <span
-                  key={s.name}
-                  className="text-xs px-2 py-0.5 rounded-full font-semibold shadow-sm ring-1 ring-white/35"
-                  style={{
-                    backgroundColor: s.color,
-                    color: "#FFFFFF",
-                  }}
-                >
-                  {s.name}
-                </span>
-              ))}
-              {collabsRatingsEnabled && artist.availableForCollab && (
-                <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-green-400/30 text-white border border-green-300/40">
-                  Open to collab
-                </span>
-              )}
+          <div className="min-w-0 flex-1 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+            <div className="min-w-0">
+              <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">{artist.name}</h1>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {artist.specialities.map((s) => (
+                  <span
+                    key={s.name}
+                    className="text-xs px-2 py-0.5 rounded-full font-semibold shadow-sm ring-1 ring-white/35"
+                    style={{
+                      backgroundColor: s.color,
+                      color: "#FFFFFF",
+                    }}
+                  >
+                    {s.name}
+                  </span>
+                ))}
+                {collabsRatingsEnabled && artist.availableForCollab && (
+                  <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-green-400/30 text-white border border-green-300/40">
+                    Open to collab
+                  </span>
+                )}
+              </div>
+              {artist.province.trim() ? (
+                <p className="text-white/70 mt-1 text-sm">📍 {artist.province}</p>
+              ) : null}
             </div>
-            {artist.province.trim() ? (
-              <p className="text-white/70 mt-1 text-sm">📍 {artist.province}</p>
-            ) : null}
+            <ArtistProfileShareButton
+              profileUrl={profileShareUrl}
+              shareTitle={shareTitle}
+              shareText={shareText}
+              className="self-start sm:self-start sm:shrink-0"
+            />
           </div>
         </div>
       </div>
@@ -346,17 +361,10 @@ export default async function ArtistProfilePage({ params, searchParams }: PagePr
         </div>
         )}
 
-        {/* External links */}
+        {/* External links — feed-style cards (web + mobile) */}
         {artist.links.length > 0 && (
-          <SectionCard title="Links">
-            <div className="flex flex-wrap gap-3">
-              {artist.links.map((l, i) => (
-                <a key={i} href={l.url} target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 text-sm font-medium rounded-lg transition-colors">
-                  {l.type} ↗
-                </a>
-              ))}
-            </div>
+          <SectionCard title="Connect">
+            <ArtistExternalLinksFeed links={artist.links} />
           </SectionCard>
         )}
       </div>
