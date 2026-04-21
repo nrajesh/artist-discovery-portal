@@ -79,7 +79,7 @@ export function initPostHog(): void {
         }),
     // Session replay depends on the same remote config + flags pipeline as feature flags.
     // Setting `advanced_disable_feature_flags` leaves recording stuck waiting for a "flags response".
-    disable_surveys: true,
+    disable_surveys: false,
     debug: process.env.NODE_ENV === 'development',
   })
 }
