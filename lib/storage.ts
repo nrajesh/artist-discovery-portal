@@ -1,30 +1,10 @@
-import {
-  S3Client,
-  PutObjectCommand,
-  DeleteObjectCommand,
-  GetObjectCommand,
-} from '@aws-sdk/client-s3';
-import {
-  RequestChecksumCalculation,
-  ResponseChecksumValidation,
-} from '@aws-sdk/middleware-flexible-checksums';
-import { createDefaultUserAgentProvider as createBrowserUserAgentProvider } from '@aws-sdk/util-user-agent-browser';
-import { FetchHttpHandler } from '@smithy/fetch-http-handler';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { AwsClient } from 'aws4fetch';
 
-import s3ClientPackage from '@aws-sdk/client-s3/package.json';
-
-/** Workers / unenv have no real `fs`; default Node HTTP handler can trigger `[unenv] fs.readFile`. */
-const r2RequestHandler = new FetchHttpHandler({});
-
-/**
- * The Node S3 runtime uses `@aws-sdk/util-user-agent-node`, which reads `package.json` via `fs.readFile`
- * for TypeScript version detection  -  that fails on Workers (unenv). Browser UA avoids any filesystem access.
- */
-const r2DefaultUserAgentProvider = createBrowserUserAgentProvider({
-  serviceId: 's3',
-  clientVersion: s3ClientPackage.version,
-});
+/** Path-style R2 URL: `https://<account>.r2.cloudflarestorage.com/<bucket>/<key...>` */
+function r2ObjectUrl(accountId: string, bucket: string, key: string): string {
+  const encodedKey = key.split('/').map(encodeURIComponent).join('/');
+  return `https://${accountId}.r2.cloudflarestorage.com/${encodeURIComponent(bucket)}/${encodedKey}`;
+}
 
 // ---------------------------------------------------------------------------
 // StorageError
@@ -112,14 +92,15 @@ async function resolveR2EnvString(key: string): Promise<string | undefined> {
   return undefined;
 }
 
-// ---------------------------------------------------------------------------
-// R2 S3 client
-// ---------------------------------------------------------------------------
-
-async function getS3Client(): Promise<S3Client> {
+async function getR2AwsContext(): Promise<{
+  aws: AwsClient;
+  accountId: string;
+  bucket: string;
+}> {
   const accountId = await resolveR2EnvString('R2_ACCOUNT_ID');
   const accessKeyId = await resolveR2EnvString('R2_ACCESS_KEY_ID');
   const secretAccessKey = await resolveR2EnvString('R2_SECRET_ACCESS_KEY');
+  const bucket = await resolveR2EnvString('R2_BUCKET_NAME');
 
   if (!accountId || !accessKeyId || !secretAccessKey) {
     throw new StorageError(
@@ -127,31 +108,21 @@ async function getS3Client(): Promise<S3Client> {
       'R2 credentials are not configured',
     );
   }
-
-  return new S3Client({
-    region: 'auto',
-    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-    credentials: {
-      accessKeyId,
-      secretAccessKey,
-    },
-    requestHandler: r2RequestHandler,
-    defaultUserAgentProvider: r2DefaultUserAgentProvider,
-    /** Default `WHEN_SUPPORTED` adds CRC32 and pulls Node zlib/stream paths; R2 does not require it. */
-    requestChecksumCalculation: RequestChecksumCalculation.WHEN_REQUIRED,
-    responseChecksumValidation: ResponseChecksumValidation.WHEN_REQUIRED,
-  });
-}
-
-async function getBucketName(): Promise<string> {
-  const bucket = await resolveR2EnvString('R2_BUCKET_NAME');
   if (!bucket) {
     throw new StorageError(
       'STORAGE_UNAVAILABLE',
       'R2_BUCKET_NAME is not configured',
     );
   }
-  return bucket;
+
+  const aws = new AwsClient({
+    accessKeyId,
+    secretAccessKey,
+    service: 's3',
+    region: 'auto',
+  });
+
+  return { aws, accountId, bucket };
 }
 
 async function getPublicUrl(): Promise<string> {
@@ -198,18 +169,22 @@ export async function uploadFile(params: {
   }
 
   try {
-    const client = await getS3Client();
-    const bucket = await getBucketName();
+    const { aws, accountId, bucket } = await getR2AwsContext();
+    const url = r2ObjectUrl(accountId, bucket, key);
 
-    await client.send(
-      new PutObjectCommand({
-        Bucket: bucket,
-        Key: key,
-        Body: buffer,
-        ContentType: contentType,
-        ContentLength: sizeBytes,
-      }),
-    );
+    const res = await aws.fetch(url, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': contentType,
+        'Content-Length': String(sizeBytes),
+      },
+      body: buffer,
+    });
+
+    if (!res.ok) {
+      const msg = await res.text().catch(() => res.statusText);
+      throw new Error(`R2 PUT failed: ${res.status} ${msg}`);
+    }
 
     const publicUrl = await getPublicUrl();
     return `${publicUrl}/${key}`;
@@ -229,15 +204,15 @@ export async function uploadFile(params: {
  */
 export async function deleteFile(key: string): Promise<void> {
   try {
-    const client = await getS3Client();
-    const bucket = await getBucketName();
+    const { aws, accountId, bucket } = await getR2AwsContext();
+    const url = r2ObjectUrl(accountId, bucket, key);
 
-    await client.send(
-      new DeleteObjectCommand({
-        Bucket: bucket,
-        Key: key,
-      }),
-    );
+    const res = await aws.fetch(url, { method: 'DELETE' });
+
+    if (!res.ok && res.status !== 404) {
+      const msg = await res.text().catch(() => res.statusText);
+      throw new Error(`R2 DELETE failed: ${res.status} ${msg}`);
+    }
   } catch (err) {
     if (err instanceof StorageError) {
       throw err;
@@ -254,15 +229,15 @@ export async function deleteFile(key: string): Promise<void> {
  */
 export async function getPresignedUrl(key: string): Promise<string> {
   try {
-    const client = await getS3Client();
-    const bucket = await getBucketName();
+    const { aws, accountId, bucket } = await getR2AwsContext();
+    const base = r2ObjectUrl(accountId, bucket, key);
+    const withExpiry = `${base}${base.includes('?') ? '&' : '?'}X-Amz-Expires=3600`;
 
-    const command = new GetObjectCommand({
-      Bucket: bucket,
-      Key: key,
+    const signed = await aws.sign(new Request(withExpiry), {
+      aws: { signQuery: true },
     });
 
-    return await getSignedUrl(client, command, { expiresIn: 3600 }); // 1 hour
+    return signed.url;
   } catch (err) {
     if (err instanceof StorageError) {
       throw err;

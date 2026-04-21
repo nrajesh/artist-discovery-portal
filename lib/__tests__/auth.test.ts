@@ -88,13 +88,9 @@ vi.mock('../db', () => {
   };
 });
 
-// Mock Resend so no real emails are sent
-vi.mock('resend', () => ({
-  Resend: vi.fn().mockImplementation(() => ({
-    emails: {
-      send: vi.fn().mockResolvedValue({ id: 'mock-email-id' }),
-    },
-  })),
+// Mock transactional email helper so no real HTTP calls are made
+vi.mock('../resend-email', () => ({
+  sendResendEmail: vi.fn().mockResolvedValue(undefined),
 }));
 
 // ---------------------------------------------------------------------------

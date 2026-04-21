@@ -1,12 +1,8 @@
-import { PostHog } from 'posthog-node'
-
 /**
- * Module-level PostHog Node SDK singleton - initialised once per Node.js process.
+ * Lightweight PostHog server integration (fetch only) — avoids `posthog-node`,
+ * which is too large for the Cloudflare Workers 3 MiB script limit.
  *
- * Returns `null` when either `POSTHOG_HOST` or `NEXT_PUBLIC_POSTHOG_KEY` is absent,
- * so the server starts cleanly in environments where analytics is not configured.
- *
- * Usage pattern at all call sites - analytics errors must never propagate to callers:
+ * Usage at call sites — analytics errors must never propagate to callers:
  *
  *   try {
  *     analyticsServer?.capture({ distinctId: artistId, event: 'artist_login' })
@@ -14,39 +10,77 @@ import { PostHog } from 'posthog-node'
  *     // Silently ignore analytics errors
  *   }
  */
-function createAnalyticsServer(): PostHog | null {
-  const host = process.env.POSTHOG_HOST
-  const key = process.env.NEXT_PUBLIC_POSTHOG_KEY
 
-  if (!host || !key) {
-    return null
-  }
+type CaptureArgs = {
+  distinctId: string;
+  event: string;
+  properties?: Record<string, unknown>;
+};
 
-  return new PostHog(key, { host })
+export type AnalyticsServer = {
+  capture: (args: CaptureArgs) => void;
+  isFeatureEnabled: (key: string, distinctId: string) => Promise<boolean>;
+};
+
+function getHostAndKey(): { host: string; key: string } | null {
+  const host = process.env.POSTHOG_HOST?.replace(/\/+$/, '');
+  const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
+  if (!host || !key) return null;
+  return { host, key };
 }
 
-export const analyticsServer: PostHog | null = createAnalyticsServer()
+function createAnalyticsServer(): AnalyticsServer | null {
+  if (!getHostAndKey()) return null;
+
+  return {
+    capture(args: CaptureArgs) {
+      const cfg = getHostAndKey();
+      if (!cfg) return;
+      const body = JSON.stringify({
+        api_key: cfg.key,
+        event: args.event,
+        distinct_id: args.distinctId,
+        properties: args.properties ?? {},
+      });
+      void fetch(`${cfg.host}/capture/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+      }).catch(() => {
+        //
+      });
+    },
+
+    async isFeatureEnabled(key: string, distinctId: string): Promise<boolean> {
+      const cfg = getHostAndKey();
+      if (!cfg) return false;
+      try {
+        const res = await fetch(`${cfg.host}/decide/?v=3`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            api_key: cfg.key,
+            distinct_id: distinctId,
+          }),
+        });
+        if (!res.ok) return false;
+        const data = (await res.json()) as {
+          featureFlags?: Record<string, string | boolean>;
+        };
+        const raw = data.featureFlags?.[key];
+        return raw === true || raw === 'true';
+      } catch {
+        return false;
+      }
+    },
+  };
+}
+
+export const analyticsServer: AnalyticsServer | null = createAnalyticsServer();
 
 /**
- * Flushes the PostHog event queue and shuts down the SDK gracefully.
- * Called from SIGTERM / SIGINT handlers to avoid losing buffered events
- * when the Node.js process exits.
+ * No in-memory queue with fetch-only capture; kept for API compatibility.
  */
 export async function shutdownAnalytics(): Promise<void> {
-  if (analyticsServer) {
-    await analyticsServer.shutdown()
-  }
+  //
 }
-
-// Flush pending events before the process exits so no data is lost.
-process.on('SIGTERM', () => {
-  shutdownAnalytics().catch(() => {
-    // Ignore shutdown errors - process is exiting anyway
-  })
-})
-
-process.on('SIGINT', () => {
-  shutdownAnalytics().catch(() => {
-    // Ignore shutdown errors - process is exiting anyway
-  })
-})

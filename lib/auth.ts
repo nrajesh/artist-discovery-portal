@@ -11,7 +11,7 @@
 
 import crypto from 'crypto';
 import { getDb } from './db';
-import { Resend } from 'resend';
+import { sendResendEmail } from '@/lib/resend-email';
 import { decryptArtistStoredContact } from '@/lib/artist-pii';
 import {
   getPortalNameForEmail,
@@ -154,7 +154,6 @@ export async function issueMagicLink(email: string, _now?: Date): Promise<void> 
   }
 
   try {
-    const resend = new Resend(resendApiKey);
     const portal = getPortalNameForEmail();
     const magicContent = {
       title: `Sign in to ${portal}`,
@@ -165,7 +164,8 @@ export async function issueMagicLink(email: string, _now?: Date): Promise<void> 
       primaryCta: { href: magicLinkUrl, label: 'Open sign-in page' },
       footnote: 'If you did not request this email, you can ignore it.',
     };
-    await resend.emails.send({
+    await sendResendEmail({
+      apiKey: resendApiKey,
       from: fromEmail,
       to: deliverTo,
       subject: `Your sign-in link · ${portal}`,

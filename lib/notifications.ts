@@ -9,7 +9,7 @@ import {
   transactionalEmailHtml,
   transactionalEmailPlainText,
 } from "@/lib/email-templates";
-import { Resend } from "resend";
+import { sendResendEmail } from "@/lib/resend-email";
 
 export type ReviewNotificationEvent = "added" | "updated" | "deleted";
 export type AdminRegistrationNotificationEvent =
@@ -195,7 +195,6 @@ export async function notifyReviewEvent(input: {
     if (resendApiKey) {
       const fromEmail = process.env.RESEND_FROM_EMAIL ?? "noreply@artist-discovery.example";
       const profileUrl = `${normalizeAppUrl()}${href}`;
-      const resend = new Resend(resendApiKey);
       const portal = getPortalNameForEmail();
       const reviewContent = {
         eyebrow: `Hi ${revieweeRow.fullName},`,
@@ -203,7 +202,8 @@ export async function notifyReviewEvent(input: {
         paragraphs: [message],
         primaryCta: { href: profileUrl, label: "View your reviews" },
       };
-      await resend.emails.send({
+      await sendResendEmail({
+        apiKey: resendApiKey,
         from: fromEmail,
         to: revieweeAddr,
         subject: `Review ${input.action} · ${portal}`,
@@ -363,7 +363,6 @@ export async function notifyAdminRegistrationEvent(input: {
   }
 
   if (resendApiKey) {
-    const resend = new Resend(resendApiKey);
     await Promise.all(
       admins.map(async (admin) => {
         const pref = admin.notificationPreference ?? defaultNotificationPreferences();
@@ -376,7 +375,8 @@ export async function notifyAdminRegistrationEvent(input: {
           paragraphs: [rendered.text],
           primaryCta: { href: fullHref, label: "Open registration request" },
         };
-        await resend.emails.send({
+        await sendResendEmail({
+          apiKey: resendApiKey,
           from: fromEmail,
           to: adminInbox,
           subject: `${rendered.emailSubject} · ${getPortalNameForEmail()}`,
