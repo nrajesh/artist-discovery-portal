@@ -1,0 +1,32 @@
+---
+description: PostHog lifecycle, opt-out cookies, and consent UI — avoid known regressions
+globs: components/posthog-provider.tsx,components/page-view-tracker.tsx,components/analytics-opt-out-footer-note.tsx,components/privacy-notice-banner.tsx,components/privacy-analytics-toggle.tsx,lib/analytics-client.ts,lib/analytics-privacy-signals.ts,lib/analytics-consent-subscribe.ts,lib/analytics-opt-out-cookie.ts,lib/analytics-opt-out-cookies.ts,lib/server-analytics-opt-out.ts,app/(public)/privacy/**/*
+alwaysApply: false
+---
+
+# Analytics consent and PostHog
+
+## Initialisation order (critical)
+
+- **`PostHogProvider` must call `initPostHog()` before `syncPosthogPrivacySignals()`** in the same `useEffect` (or otherwise guarantee `posthog.__loaded` is true before sync).
+- **Reason:** Parent effects run before child effects. Moving `initPostHog()` only into `PageViewTracker` (or any child) causes `syncPosthogPrivacySignals()` to no-op on first load because `__loaded` is still false — opt-in/opt-out from cookies and DNT stops applying until a `visibilitychange` event.
+- **`PageViewTracker` may still call `initPostHog()`** before `$pageview`; `initPostHog` is idempotent.
+
+## `useSyncExternalStore` and cookies
+
+- **Do not use `useSyncExternalStore(() => () => {}, getSnapshot, …)` (noop subscribe)** for UI that reflects `document.cookie` or consent state. React will not be notified when cookies change after navigation on the same pathname (e.g. `/privacy` → `/privacy?analytics=opted_in`).
+- **Use `subscribeDocumentConsentSignals` from `lib/analytics-consent-subscribe.ts`** (storage + visibility), and include **`useSearchParams()`** (with a **`Suspense` boundary**) when query changes matter without a pathname change.
+- Applies to patterns like the footer opt-out note and privacy banner.
+
+## Cookie vs browser signals (UI vs capture)
+
+- **Green “opted out / cookie” UI** (privacy toggle section A, footer note) must follow **cookie-only** detection via `hasAnalyticsOptOutCookie()` and server `getServerCookieAnalyticsOptOut()` — not combined DNT/GPC, so copy stays truthful and CDN/header noise does not flip the card.
+- **`PostHogProvider` / capture gating** may use **`hasBrowserAnalyticsOptOut()`** (cookie **or** DNT **or** `navigator.globalPrivacyControl`).
+
+## Opt-out cookie names
+
+- Prefer **`adp_analytics_opt_out`**; keep reading legacy **`ph_opt_out`** until fully migrated. Routes **`/privacy/opt-in`** and **`/privacy/opt-out`** must clear/set using the shared constants in `lib/analytics-opt-out-cookies.ts`.
+
+## Verification
+
+- After changing any of the files in this rule’s globs, run **`npm test`** — contract tests under `lib/__tests__/posthog-consent-contract.test.ts` guard init/sync order and forbidden noop-store patterns.
