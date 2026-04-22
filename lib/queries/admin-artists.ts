@@ -36,7 +36,7 @@ export async function listArtistsForAdmin(filters?: {
         include: { speciality: true },
       },
     },
-    orderBy: { fullName: "asc" },
+    orderBy: [{ isSuspended: "asc" }, { fullName: "asc" }],
   });
 
   return rows.map((a) => ({

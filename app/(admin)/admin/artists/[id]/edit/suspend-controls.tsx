@@ -22,10 +22,12 @@ export function SuspendControls({
   const [suspensionComment, setSuspensionComment] = useState(initialSuspensionComment);
   const [commentDraft, setCommentDraft] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  const [successNotice, setSuccessNotice] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function setStatus(next: boolean, comment: string) {
     setMessage(null);
+    setSuccessNotice(null);
     startTransition(async () => {
       const res = await fetch(`/api/admin/artists/${artistId}/suspend`, {
         method: "POST",
@@ -47,6 +49,7 @@ export function SuspendControls({
       setSuspended(next);
       setSuspensionComment(next ? comment.trim() : null);
       if (!next) setCommentDraft("");
+      setSuccessNotice(next ? "Account suspended." : "Account reactivated.");
       router.refresh();
     });
   }
@@ -64,6 +67,9 @@ export function SuspendControls({
 
   return (
     <div className="space-y-3">
+      {successNotice ? (
+        <p className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-950">{successNotice}</p>
+      ) : null}
       {message ? <p className="text-sm text-red-600">{message}</p> : null}
       {suspended ? (
         <>
@@ -105,6 +111,7 @@ export function SuspendControls({
               const t = commentDraft.trim();
               if (!t) {
                 setMessage("A suspension reason is required.");
+                setSuccessNotice(null);
                 return;
               }
               setStatus(true, t);

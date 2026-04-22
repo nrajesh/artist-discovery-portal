@@ -97,7 +97,7 @@ const closedConfirm: ConfirmPanel = {
 export function AdminArtistsTable({ rows }: { rows: AdminArtistListRow[] }) {
   const router = useRouter();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
-  const [banner, setBanner] = useState<{ type: "error" | "info"; text: string } | null>(null);
+  const [banner, setBanner] = useState<{ type: "error" | "info" | "success"; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
   const [confirm, setConfirm] = useState<ConfirmPanel>(closedConfirm);
   const pendingConfirmAction = useRef<(() => void) | null>(null);
@@ -175,13 +175,16 @@ export function AdminArtistsTable({ rows }: { rows: AdminArtistListRow[] }) {
           return;
         }
         const { updated, skipped } = result;
+        const actionLabel = nextSuspended
+          ? `Suspended ${updated} artist account${updated === 1 ? "" : "s"}.`
+          : `Marked ${updated} artist account${updated === 1 ? "" : "s"} as Active.`;
         if (skipped > 0) {
           setBanner({
             type: "info",
-            text: `Updated ${updated}. Skipped ${skipped} (not found${nextSuspended ? ", or cannot suspend your own account" : ""}).`,
+            text: `${actionLabel} Skipped ${skipped} (not found${nextSuspended ? ", or cannot suspend your own account" : ""}).`,
           });
         } else {
-          setBanner(null);
+          setBanner({ type: "success", text: actionLabel });
         }
         setSelectedIds(new Set());
         router.refresh();
@@ -224,7 +227,9 @@ export function AdminArtistsTable({ rows }: { rows: AdminArtistListRow[] }) {
           className={`rounded-lg border px-4 py-2 text-sm ${
             banner.type === "error"
               ? "border-red-200 bg-red-50 text-red-900"
-              : "border-amber-200 bg-amber-50 text-amber-950"
+              : banner.type === "success"
+                ? "border-green-200 bg-green-50 text-green-950"
+                : "border-amber-200 bg-amber-50 text-amber-950"
           }`}
         >
           {banner.text}
