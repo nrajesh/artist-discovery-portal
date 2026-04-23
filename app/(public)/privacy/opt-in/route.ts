@@ -8,6 +8,8 @@ import { requestIsHttpsForCookies } from "@/lib/https-from-request";
 /**
  * GET /privacy/opt-in - clears opt-out cookie(s), then redirects to /privacy
  * with a flag so the client can call `posthog.opt_in_capturing()` (SDK may persist opt-out in storage).
+ *
+ * **Do not link here with Next.js `<Link prefetch>`** — prefetch issues a GET and clears cookies without a click.
  */
 export async function GET(request: NextRequest) {
   const redirectUrl = request.nextUrl.clone();

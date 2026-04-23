@@ -90,6 +90,7 @@ export function PrivacyAnalyticsToggle({
         </p>
         <p className="mt-3">
           <Link
+            prefetch={false}
             href={OPT_IN_PATH}
             className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-green-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-green-800"
           >
@@ -138,6 +139,7 @@ export function PrivacyAnalyticsToggle({
       </ul>
       <p className="mt-3">
         <Link
+          prefetch={false}
           href={OPT_OUT_PATH}
           className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-amber-800 px-5 py-2.5 text-sm font-semibold text-white hover:bg-amber-900"
         >

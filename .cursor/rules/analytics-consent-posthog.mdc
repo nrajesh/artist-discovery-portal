@@ -28,6 +28,10 @@ alwaysApply: false
 
 - Prefer **`adp_analytics_opt_out`**; keep reading legacy **`ph_opt_out`** until fully migrated. Routes **`/privacy/opt-in`** and **`/privacy/opt-out`** must clear/set using the shared constants in `lib/analytics-opt-out-cookies.ts`.
 
+## Next.js `<Link>` and GET mutators
+
+- **`/privacy/opt-in` and `/privacy/opt-out` change cookies on GET.** Any `<Link href="…">` to those paths **must use `prefetch={false}`** (or a plain `<a>`), otherwise App Router prefetch can fire the GET while the user is still on `/privacy` and mutate cookies without a click.
+
 ## Verification
 
 - After changing any of the files in this rule’s globs, run **`npm test`** — contract tests under `lib/__tests__/posthog-consent-contract.test.ts` guard init/sync order and forbidden noop-store patterns.

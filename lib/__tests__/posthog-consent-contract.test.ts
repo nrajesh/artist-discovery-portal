@@ -47,4 +47,12 @@ describe("PostHog consent contracts (source)", () => {
       expect(s, p).not.toMatch(/noopSubscribe/);
     }
   });
+
+  it("Next.js Links to /privacy/opt-in and /privacy/opt-out use prefetch={false} (GET mutates cookies)", () => {
+    const toggle = read("components/privacy-analytics-toggle.tsx");
+    expect(toggle).toMatch(/<Link\s+prefetch=\{false\}\s+href=\{OPT_IN_PATH\}/);
+    expect(toggle).toMatch(/<Link\s+prefetch=\{false\}\s+href=\{OPT_OUT_PATH\}/);
+    const banner = read("components/privacy-notice-banner.tsx");
+    expect(banner).toMatch(/<Link\s+prefetch=\{false\}\s+href="\/privacy\/opt-out"/);
+  });
 });

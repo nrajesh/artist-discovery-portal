@@ -8,6 +8,8 @@ import { requestIsHttpsForCookies } from "@/lib/https-from-request";
 /**
  * GET /privacy/opt-out - sets first-party opt-out cookie(s) read by `PostHogProvider` and `/privacy`,
  * then redirects to /privacy with a confirmation flag.
+ *
+ * **Do not link here with Next.js `<Link prefetch>`** — prefetch issues a GET and sets cookies without a click.
  */
 export async function GET(request: NextRequest) {
   const redirectUrl = request.nextUrl.clone();

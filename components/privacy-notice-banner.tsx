@@ -65,6 +65,7 @@ function PrivacyNoticeBannerInner() {
         </p>
         <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
           <Link
+            prefetch={false}
             href="/privacy/opt-out"
             className="inline-flex min-h-[40px] items-center justify-center rounded-lg bg-amber-900 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-950"
           >
