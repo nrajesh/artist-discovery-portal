@@ -144,7 +144,7 @@ async function main() {
         contactNumber?: string | null;
         emailCipher?: string;
         emailLookupHash?: string;
-        contactCipher?: string;
+        contactCipher?: string | null;
       } = {};
 
       if (needsEmailMigration && legacyEmail) {

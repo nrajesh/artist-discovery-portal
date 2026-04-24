@@ -42,20 +42,19 @@ function optionalMergedSocial(merge: (s: string) => string) {
 // Server-side Zod validation schema
 // ---------------------------------------------------------------------------
 
-export const registrationServerSchema = z.object({
+export const registrationServerSchema = z
+  .object({
   fullName: z.string().min(1, 'Full name is required'),
   email: z.string().email('Valid email address is required'),
   contactNumber: z.preprocess(
     (v: unknown) => (typeof v === 'string' ? sanitizeContactNumberInput(v) : ''),
-    z
-      .string()
-      .min(1, 'Contact number is required')
-      .refine(
-        isPlausibleContactNumber,
-        'Use 7-15 digits only; optional + at the start for country code (no spaces or other symbols)',
-      ),
+    z.string(),
   ),
-  contactType: z.enum(['whatsapp', 'mobile']),
+  contactType: z.preprocess((v: unknown) => {
+    if (v === null || v === undefined) return '';
+    if (typeof v !== 'string') return '';
+    return v.trim();
+  }, z.union([z.literal(''), z.enum(['whatsapp', 'mobile'])])),
   profilePhotoUrl: optionalHttpsPhotoUrl,
   backgroundImageUrl: optionalHttpsPhotoUrl,
   specialities: z
@@ -78,7 +77,26 @@ export const registrationServerSchema = z.object({
     },
     z.array(z.string().url('Must be a valid URL')).optional(),
   ),
-});
+})
+  .superRefine((data, ctx) => {
+    const phone = data.contactNumber.trim();
+    if (!phone) return;
+    if (!isPlausibleContactNumber(phone)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          'Use 7-15 digits only; optional + at the start for country code (no spaces or other symbols)',
+        path: ['contactNumber'],
+      });
+    }
+    if (data.contactType !== 'whatsapp' && data.contactType !== 'mobile') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Select WhatsApp or mobile for your contact number.',
+        path: ['contactType'],
+      });
+    }
+  });
 
 export type RegistrationServerData = z.infer<typeof registrationServerSchema>;
 
@@ -187,6 +205,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Create RegistrationRequest + related records in a transaction
+    const phoneTrim = validated.contactNumber.trim();
+    const hasPhone = phoneTrim.length > 0;
     await db.registrationRequest.create({
       data: {
         id: registrationId,
@@ -195,8 +215,8 @@ export async function POST(request: NextRequest) {
         contactNumber: null,
         emailCipher: encryptPiiField(normalizedEmail),
         emailLookupHash: emailHash,
-        contactCipher: encryptPiiField(validated.contactNumber),
-        contactType: validated.contactType as 'whatsapp' | 'mobile',
+        contactCipher: hasPhone ? encryptPiiField(phoneTrim) : null,
+        contactType: hasPhone ? (validated.contactType as 'whatsapp' | 'mobile') : null,
         // Empty string when omitted: works before/after DB migration (NOT NULL legacy + optional URL).
         profilePhotoUrl: profilePhotoUrl ?? '',
         backgroundImageUrl: backgroundImageUrl ?? undefined,

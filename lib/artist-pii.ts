@@ -30,8 +30,9 @@ export function decryptArtistStoredContact(row: Pick<Artist, "emailCipher" | "co
   }
 
   let contactNumber = "";
-  if (row.contactCipher) {
-    contactNumber = decryptPiiField(row.contactCipher);
+  const cipher = row.contactCipher?.trim();
+  if (cipher) {
+    contactNumber = decryptPiiField(cipher);
   } else if (row.contactNumber) {
     contactNumber = row.contactNumber;
   }
@@ -50,8 +51,9 @@ export function decryptRegistrationStoredContact(
   }
 
   let contactNumber = "";
-  if (row.contactCipher) {
-    contactNumber = decryptPiiField(row.contactCipher);
+  const regCipher = row.contactCipher?.trim();
+  if (regCipher) {
+    contactNumber = decryptPiiField(regCipher);
   } else if (row.contactNumber) {
     contactNumber = row.contactNumber;
   }
@@ -62,7 +64,7 @@ export function decryptRegistrationStoredContact(
 export type EncryptedArtistPiiPayload = {
   emailCipher: string;
   emailLookupHash: string;
-  contactCipher: string;
+  contactCipher: string | null;
   emailPlaceholder: string;
 };
 
@@ -72,10 +74,11 @@ export function buildEncryptedArtistPiiPayload(
   plainContact: string,
 ): EncryptedArtistPiiPayload {
   const normalized = normalizeEmailForLookup(plainEmail);
+  const trimmedContact = plainContact.trim();
   return {
     emailCipher: encryptPiiField(normalized),
     emailLookupHash: emailLookupHash(normalized),
-    contactCipher: encryptPiiField(plainContact),
+    contactCipher: trimmedContact ? encryptPiiField(trimmedContact) : null,
     emailPlaceholder: placeholderLegacyEmailColumn(artistId),
   };
 }

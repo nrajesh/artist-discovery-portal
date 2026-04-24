@@ -5,6 +5,7 @@ import { decryptRegistrationStoredContact } from "@/lib/artist-pii";
 import { getDb } from "@/lib/db";
 import { PortalSectionHeading } from "@/components/portal-section-heading";
 import { normalizeBioHtmlForDisplay } from "@/lib/bio-html-display";
+import { ArtistPhoneContactInline } from "@/components/artist-visible-phone-contact";
 
 const LINK_LABELS: Record<string, string> = { linkedin: "LinkedIn", instagram: "Instagram", facebook: "Facebook", twitter: "Twitter/X", youtube: "YouTube", website: "Website" };
 
@@ -175,7 +176,19 @@ export default async function ReviewRegistrationPage({
         <div className="rounded-xl border border-stone-200 bg-white p-6 shadow-sm mb-6">
           <dl className="grid gap-4 sm:grid-cols-2">
             <div><dt className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-1">Email</dt><dd className="text-stone-800">{regContact.email}</dd></div>
-            <div><dt className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-1">Contact</dt><dd className="text-stone-800">{regContact.contactNumber} <span className="text-xs text-stone-400">({reg.contactType === "whatsapp" ? "WhatsApp" : "Mobile only"})</span></dd></div>
+            <div>
+              <dt className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-1">Contact</dt>
+              <dd className="text-stone-800">
+                {regContact.contactNumber.trim() ? (
+                  <ArtistPhoneContactInline
+                    contactNumber={regContact.contactNumber}
+                    contactType={reg.contactType}
+                  />
+                ) : (
+                  <span className="text-stone-400">Not provided</span>
+                )}
+              </dd>
+            </div>
             <div className="sm:col-span-2">
               <dt className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-1">Specialities</dt>
               <dd className="flex flex-wrap gap-2">

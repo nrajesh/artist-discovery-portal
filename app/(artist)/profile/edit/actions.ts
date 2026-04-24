@@ -143,7 +143,7 @@ export async function updateArtistProfile(input: ArtistProfileEditInput): Promis
           contactCipher: pii.contactCipher,
           emailVisibility: data.emailVisibility,
           contactVisibility: data.contactVisibility,
-          contactType: data.contactType,
+          contactType: data.contactNumber.trim() ? (data.contactType ?? null) : null,
           province: data.province,
           openToCollab,
           profilePhotoUrl: data.profilePhotoUrl ?? null,

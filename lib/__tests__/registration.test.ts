@@ -94,14 +94,8 @@ function resetState() {
   mockState.registrationCreateShouldThrow = false;
 }
 
-// All mandatory field names
-const MANDATORY_FIELDS = [
-  'fullName',
-  'email',
-  'contactNumber',
-  'contactType',
-  'specialities',
-] as const;
+// All mandatory field names (phone / WhatsApp are optional)
+const MANDATORY_FIELDS = ['fullName', 'email', 'specialities'] as const;
 
 type MandatoryField = (typeof MANDATORY_FIELDS)[number];
 
@@ -186,9 +180,6 @@ describe('Property 1: Registration mandatory-field validation', () => {
         for (const field of missingFields) {
           if (field === 'specialities') {
             payload[field] = [];
-          } else if (field === 'contactType') {
-            // @ts-expect-error intentionally invalid
-            payload[field] = undefined;
           } else {
             payload[field] = '';
           }
@@ -248,6 +239,23 @@ describe('Property 1: Registration mandatory-field validation', () => {
       { numRuns: 100 },
     );
   });
+
+  it('accepts empty phone when contact type is omitted', () => {
+    const result = registrationServerSchema.safeParse(
+      validPayload({ contactNumber: '', contactType: '' }),
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects non-empty phone without contact type', () => {
+    const result = registrationServerSchema.safeParse(
+      validPayload({ contactNumber: '+31612345678', contactType: '' }),
+    );
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path[0] === 'contactType')).toBe(true);
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -290,7 +298,10 @@ describe('Property 2: Registration data round-trip', () => {
             fullName: validated.fullName,
             email: validated.email,
             contactNumber: validated.contactNumber,
-            contactType: validated.contactType,
+            contactType:
+              validated.contactType === 'whatsapp' || validated.contactType === 'mobile'
+                ? validated.contactType
+                : null,
             profilePhotoUrl: 'https://cdn.example.com/test-photo.jpg',
             status: 'pending',
             specialities: {

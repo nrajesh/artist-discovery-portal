@@ -46,7 +46,8 @@ model Artist {
   contactCipher      String?
   emailVisibility    PiiVisibility      @default(PRIVATE)
   contactVisibility  PiiVisibility      @default(COLLABORATORS_ONLY)
-  contactType        ContactType
+  /** Null when the artist has no phone / WhatsApp on file. */
+  contactType        ContactType?
   profilePhotoUrl    String?
   backgroundImageUrl String?
   bioRichText        String?
@@ -130,7 +131,8 @@ model RegistrationRequest {
   emailCipher        String?
   emailLookupHash    String?
   contactCipher      String?
-  contactType        ContactType
+  /** Null when no contact number was provided on registration. */
+  contactType        ContactType?
   profilePhotoUrl    String?
   backgroundImageUrl String?
   bioRichText        String?

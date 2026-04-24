@@ -65,18 +65,13 @@ const websiteRowUrlSchema = z.preprocess(
   z.union([z.literal(''), z.string().url('Must be a valid URL')]),
 );
 
-export const registrationSchema = z.object({
+export const registrationSchema = z
+  .object({
   fullName: z.string().min(1, 'Full name is required'),
   email: z.string().email('Valid email address is required'),
   contactNumber: z.preprocess(
     (v) => (typeof v === 'string' ? sanitizeContactNumberInput(v) : ''),
-    z
-      .string()
-      .min(1, 'Contact number is required')
-      .refine(
-        isPlausibleContactNumber,
-        'Enter 7-15 digits; optional + only at the start (no spaces or other symbols)',
-      ),
+    z.string(),
   ),
   contactType: z.enum(['whatsapp', 'mobile']),
   profilePhotoUrl: optionalHttpsPhotoUrlSchema,
@@ -96,7 +91,19 @@ export const registrationSchema = z.object({
   facebookUrl: optMergedSocialField(mergeFacebookUrl),
   twitterUrl: optMergedSocialField(mergeTwitterUrl),
   youtubeUrl: optMergedSocialField(mergeYoutubeUrl),
-});
+})
+  .superRefine((data, ctx) => {
+    const phone = data.contactNumber.trim();
+    if (!phone) return;
+    if (!isPlausibleContactNumber(phone)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          'Enter 7-15 digits; optional + only at the start (no spaces or other symbols)',
+        path: ['contactNumber'],
+      });
+    }
+  });
 
 export type RegistrationFormData = z.infer<typeof registrationSchema>;
 
@@ -302,8 +309,10 @@ export default function RegisterPage() {
       const formData = new FormData();
       formData.append('fullName', data.fullName);
       formData.append('email', data.email);
-      formData.append('contactNumber', data.contactNumber);
-      formData.append('contactType', data.contactType);
+      formData.append('contactNumber', data.contactNumber.trim());
+      if (data.contactNumber.trim()) {
+        formData.append('contactType', data.contactType);
+      }
       if (data.profilePhotoUrl) formData.append('profilePhotoUrl', data.profilePhotoUrl);
       data.specialities.forEach((s) => formData.append('specialities', s));
 
@@ -432,11 +441,11 @@ export default function RegisterPage() {
           {/* ── Contact Number + Contact Type ── */}
           <div>
             <label className="block text-sm font-semibold text-amber-900 mb-1">
-              Contact Number <span className="text-red-600">*</span>
+              Contact Number <span className="font-normal text-amber-600">(optional)</span>
             </label>
             <p className="mb-2 text-xs text-amber-600">
-              Digits only (7-15). Use an optional <strong>+</strong> at the start for a country code  -  no spaces or other
-              symbols.
+              If you add a number: digits only (7-15), optional <strong>+</strong> at the start for a country code — no
+              spaces or other symbols. Choose WhatsApp or mobile below.
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
               <Controller

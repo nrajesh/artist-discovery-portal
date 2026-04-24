@@ -251,7 +251,7 @@ export type ArtistProfileView = {
   backgroundImageUrl: string | null;
   specialities: { name: string; color: string }[];
   contactNumber: string;
-  contactType: string;
+  contactType: "whatsapp" | "mobile" | null;
   openToCollab: boolean;
   /** Alias for UI that used dummy-artists field name */
   availableForCollab: boolean;
@@ -622,7 +622,7 @@ export type ArtistEditView = {
   fullName: string;
   email: string;
   contactNumber: string;
-  contactType: "whatsapp" | "mobile";
+  contactType: "whatsapp" | "mobile" | null;
   emailVisibility: PiiVisibility;
   contactVisibility: PiiVisibility;
   province: string;

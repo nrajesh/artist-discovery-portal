@@ -7,6 +7,7 @@ import { verifySession } from "@/lib/session-jwt";
 import { PortalSectionHeading } from "@/components/portal-section-heading";
 import { normalizeBioHtmlForDisplay } from "@/lib/bio-html-display";
 import { isArtistCollabsRatingsEnabledServer } from "@/lib/feature-flags-server";
+import { ArtistPhoneContactInline } from "@/components/artist-visible-phone-contact";
 
 function StarRating({ rating }: { rating: number }) {
   return (
@@ -95,11 +96,19 @@ export default async function AdminArtistDetailPage({ params }: { params: Promis
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-bold text-stone-800">{artist.name}</h1>
-                <p className="mt-0.5 text-sm text-stone-500">
-                  {artist.email} · {artist.contactNumber}
-                  <span className="ml-1 text-xs text-stone-400">
-                    ({artist.contactType === "whatsapp" ? "WhatsApp" : "Mobile"})
-                  </span>
+                <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-stone-500">
+                  <span className="ph-no-capture">{artist.email}</span>
+                  {artist.contactNumber.trim() ? (
+                    <>
+                      <span className="text-stone-300" aria-hidden>
+                        ·
+                      </span>
+                      <ArtistPhoneContactInline
+                        contactNumber={artist.contactNumber}
+                        contactType={artist.contactType}
+                      />
+                    </>
+                  ) : null}
                 </p>
                 <p className="mt-1 text-xs text-stone-400">
                   {artist.province.trim() ? `📍 ${artist.province} · ` : ""}Joined {joinedLabel}

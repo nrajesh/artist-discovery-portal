@@ -71,12 +71,13 @@ function toArtistProfileEditInput(
   collabsRatingsEnabled: boolean,
   openToCollabWhenCollabsDisabled: boolean,
 ): ArtistProfileEditInput {
+  const phoneTrim = fields.contactNumber.trim();
   return {
     slug: fields.slug,
     fullName: fields.fullName,
     email: fields.email,
     contactNumber: fields.contactNumber,
-    contactType: fields.contactType,
+    contactType: phoneTrim ? fields.contactType : undefined,
     emailVisibility: fields.emailVisibility,
     contactVisibility: fields.contactVisibility,
     province: fields.province,
@@ -101,7 +102,7 @@ function fingerprintArtistProfileInput(p: ArtistProfileEditInput): string {
     fullName: p.fullName.trim(),
     email: p.email.trim().toLowerCase(),
     contactNumber: p.contactNumber.trim(),
-    contactType: p.contactType,
+    contactType: p.contactNumber.trim() ? p.contactType : undefined,
     emailVisibility: p.emailVisibility,
     contactVisibility: p.contactVisibility,
     province: p.province.trim(),
@@ -125,7 +126,7 @@ function snapshotFromEditView(initial: ArtistEditView): FormFieldsSnapshot {
     fullName: initial.fullName,
     email: initial.email,
     contactNumber: initial.contactNumber,
-    contactType: initial.contactType,
+    contactType: initial.contactType ?? "mobile",
     emailVisibility: initial.emailVisibility,
     contactVisibility: initial.contactVisibility,
     province: initial.province,
@@ -169,7 +170,7 @@ export function ArtistProfileEditForm({
   const [fullName, setFullName] = useState(initial.fullName);
   const [email, setEmail] = useState(initial.email);
   const [contactNumber, setContactNumber] = useState(initial.contactNumber);
-  const [contactType, setContactType] = useState<"whatsapp" | "mobile">(initial.contactType);
+  const [contactType, setContactType] = useState<"whatsapp" | "mobile">(initial.contactType ?? "mobile");
   const [emailVisibility, setEmailVisibility] = useState(initial.emailVisibility);
   const [contactVisibility, setContactVisibility] = useState(initial.contactVisibility);
   const [province, setProvince] = useState(initial.province);
@@ -467,7 +468,7 @@ export function ArtistProfileEditForm({
 
         <div>
           <label className="mb-1 block text-sm font-semibold text-stone-700">
-            Contact Number <span className="text-red-500">*</span>
+            Contact Number <span className="font-normal text-stone-500">(optional)</span>
           </label>
           <div className="flex flex-col gap-3 sm:flex-row">
             <input

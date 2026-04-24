@@ -46,21 +46,16 @@ const artistSlugField = z.preprocess(
 );
 
 /** Shared validation for artist self-edit and admin edit of another artist. */
-export const artistProfileEditSchema = z.object({
+export const artistProfileEditSchema = z
+  .object({
   slug: artistSlugField,
   fullName: z.string().trim().min(1, "Full name is required").max(120),
   email: z.string().trim().toLowerCase().email("Valid email is required"),
   contactNumber: z.preprocess(
     (v) => (typeof v === "string" ? sanitizeContactNumberInput(v) : ""),
-    z
-      .string()
-      .min(1, "Contact number is required")
-      .refine(
-        isPlausibleContactNumber,
-        "Enter 7-15 digits; optional + only at the start (no spaces or other symbols)",
-      ),
+    z.string(),
   ),
-  contactType: z.enum(["whatsapp", "mobile"]),
+  contactType: z.enum(["whatsapp", "mobile"]).optional(),
   emailVisibility: piiVisibilitySchema,
   contactVisibility: piiVisibilitySchema,
   /** Empty string means the artist chose not to list a province (allowed in DB). */
@@ -79,6 +74,24 @@ export const artistProfileEditSchema = z.object({
   facebookUrl: optMergedSocialField(mergeFacebookUrl),
   twitterUrl: optMergedSocialField(mergeTwitterUrl),
   youtubeUrl: optMergedSocialField(mergeYoutubeUrl),
-});
+})
+  .superRefine((data, ctx) => {
+    const phone = data.contactNumber.trim();
+    if (!phone) return;
+    if (!isPlausibleContactNumber(phone)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Enter 7-15 digits; optional + only at the start (no spaces or other symbols)",
+        path: ["contactNumber"],
+      });
+    }
+    if (!data.contactType) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Select WhatsApp or mobile for this number.",
+        path: ["contactType"],
+      });
+    }
+  });
 
 export type ArtistProfileEditInput = z.infer<typeof artistProfileEditSchema>;

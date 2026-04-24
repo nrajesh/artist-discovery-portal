@@ -10,6 +10,7 @@ import { isArtistCollabsRatingsEnabledServer } from "@/lib/feature-flags-server"
 import { PortalSectionHeading } from "@/components/portal-section-heading";
 import { normalizeBioHtmlForDisplay } from "@/lib/bio-html-display";
 import { ArtistExternalLinksFeed } from "@/components/artist-external-links-feed";
+import { ArtistVisiblePhoneContact } from "@/components/artist-visible-phone-contact";
 import { ArtistProfileShareButton } from "@/components/artist-profile-share-button";
 import { getAbsoluteSiteUrl } from "@/lib/absolute-site-url";
 import { ArtistProfileTracker } from "./artist-profile-tracker";
@@ -189,6 +190,32 @@ export default async function ArtistProfilePage({ params, searchParams }: PagePr
             dangerouslySetInnerHTML={{ __html: normalizeBioHtmlForDisplay(artist.bio) }}
           />
         </SectionCard>
+
+        {(artist.email.trim().length > 0 || artist.contactNumber.trim().length > 0) && (
+          <SectionCard title="Reach out">
+            <div className="flex flex-col gap-3">
+              {artist.email.trim().length > 0 ? (
+                <a
+                  href={`mailto:${encodeURIComponent(artist.email)}`}
+                  className="inline-flex min-h-[44px] items-center gap-2.5 rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-800 shadow-sm transition-colors hover:border-amber-300 hover:bg-amber-50/80"
+                >
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-800" aria-hidden>
+                    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.75}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                  </span>
+                  <span className="min-w-0 break-all ph-no-capture">{artist.email}</span>
+                </a>
+              ) : null}
+              {artist.contactNumber.trim().length > 0 ? (
+                <ArtistVisiblePhoneContact
+                  contactNumber={artist.contactNumber}
+                  contactType={artist.contactType}
+                />
+              ) : null}
+            </div>
+          </SectionCard>
+        )}
 
         {/* Collab history */}
         {collabsRatingsEnabled && (
