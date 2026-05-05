@@ -8,8 +8,7 @@ import {
   LEGACY_ANALYTICS_OPT_OUT_COOKIE,
 } from "@/lib/analytics-opt-out-cookies";
 import {
-  hasNavigatorAnalyticsDnt,
-  hasNavigatorGlobalPrivacyControl,
+  hasNavigatorPrivacySignalOptOut,
 } from "@/lib/analytics-privacy-signals";
 import { subscribeDocumentConsentSignals } from "@/lib/analytics-consent-subscribe";
 
@@ -42,10 +41,14 @@ export function PrivacyAnalyticsToggle({
     getSnapshot,
     () => initialCookieOptedOut,
   );
+  const browserPrivacySignalOptOut = useSyncExternalStore(
+    subscribeDocumentConsentSignals,
+    hasNavigatorPrivacySignalOptOut,
+    () => false,
+  );
 
   const browserSignalWithoutCookie =
-    !cookieOptedOut &&
-    (serverPrivacyHeaderOptOut || hasNavigatorAnalyticsDnt() || hasNavigatorGlobalPrivacyControl());
+    !cookieOptedOut && (serverPrivacyHeaderOptOut || browserPrivacySignalOptOut);
 
   const optInDisplayUrl =
     optOutDisplayUrl != null ? optOutDisplayUrl.replace(OPT_OUT_PATH, OPT_IN_PATH) : null;

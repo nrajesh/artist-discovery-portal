@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useMemo, useRef, useState, useTransition } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import type { AdminSpecialityRow } from "@/lib/queries/admin-specialities";
 import { deleteSpecialitiesBulkAction } from "./actions";
@@ -58,26 +58,18 @@ export function AdminSpecialitiesGrid({ rows }: { rows: AdminSpecialityRow[] }) 
   );
 
   const selectableSet = useMemo(() => new Set(selectableIds), [selectableIds]);
-
-  useEffect(() => {
-    setSelectedIds((prev) => {
-      let changed = false;
-      const next = new Set<string>();
-      for (const id of prev) {
-        if (selectableSet.has(id)) next.add(id);
-        else changed = true;
-      }
-      return changed ? next : prev;
-    });
-  }, [selectableSet]);
+  const effectiveSelectedIds = useMemo(
+    () => new Set([...selectedIds].filter((id) => selectableSet.has(id))),
+    [selectedIds, selectableSet],
+  );
   const allSelected =
-    selectableIds.length > 0 && selectableIds.every((id) => selectedIds.has(id));
+    selectableIds.length > 0 && selectableIds.every((id) => effectiveSelectedIds.has(id));
   const someSelectableSelected =
-    selectableIds.some((id) => selectedIds.has(id)) && !allSelected;
+    selectableIds.some((id) => effectiveSelectedIds.has(id)) && !allSelected;
 
   function toggleAll() {
     setSelectedIds((prev) => {
-      const next = new Set(prev);
+      const next = new Set([...prev].filter((id) => selectableSet.has(id)));
       const every =
         selectableIds.length > 0 && selectableIds.every((id) => next.has(id));
       if (every) {
@@ -90,11 +82,11 @@ export function AdminSpecialitiesGrid({ rows }: { rows: AdminSpecialityRow[] }) 
   }
 
   function onBulkDelete() {
-    if (selectedIds.size === 0) return;
-    const n = selectedIds.size;
+    if (effectiveSelectedIds.size === 0) return;
+    const n = effectiveSelectedIds.size;
     pendingConfirmAction.current = () => {
       setMessage(null);
-      const ids = [...selectedIds];
+      const ids = [...effectiveSelectedIds];
       startTransition(async () => {
         const result = await deleteSpecialitiesBulkAction(ids);
         if (!result.ok) {
@@ -157,14 +149,14 @@ export function AdminSpecialitiesGrid({ rows }: { rows: AdminSpecialityRow[] }) 
             />
             Select all deletable ({selectableIds.length})
           </label>
-          {selectedIds.size > 0 ? (
+          {effectiveSelectedIds.size > 0 ? (
             <button
               type="button"
               disabled={pending}
               onClick={onBulkDelete}
               className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700 disabled:opacity-50"
             >
-              Delete selected ({selectedIds.size})
+              Delete selected ({effectiveSelectedIds.size})
             </button>
           ) : null}
         </div>
@@ -173,7 +165,7 @@ export function AdminSpecialitiesGrid({ rows }: { rows: AdminSpecialityRow[] }) 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {rows.map((row) => {
           const canSelect = row.artistCount === 0;
-          const checked = canSelect && selectedIds.has(row.id);
+          const checked = canSelect && effectiveSelectedIds.has(row.id);
           return (
             <div key={row.id} className="relative">
               <div

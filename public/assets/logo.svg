@@ -1,0 +1,18 @@
+<svg width="96" height="96" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Artist Discovery Portal logo</title>
+  <desc id="desc">An amber creative portal mark with a central spark.</desc>
+  <rect width="96" height="96" rx="28" fill="#FFFBEB"/>
+  <circle cx="48" cy="48" r="36" fill="url(#bg)"/>
+  <path d="M66.45 26.85A26.32 26.32 0 0 0 48 19.35C32.2 19.35 19.35 32.2 19.35 48S32.2 76.65 48 76.65c7.2 0 13.77-2.64 18.81-7.02" stroke="white" stroke-width="7" stroke-linecap="round"/>
+  <path d="M72.15 36.15c2.85 3.54 4.5 8.04 4.5 11.85 0 4.5-1.08 8.37-4.14 12.45" stroke="#FEF3C7" stroke-width="7" stroke-linecap="round"/>
+  <path d="M48 30.3l4.26 13.44L65.7 48l-13.44 4.26L48 65.7l-4.26-13.44L30.3 48l13.44-4.26L48 30.3Z" fill="white"/>
+  <circle cx="27.15" cy="27.15" r="6.15" fill="#FFF7ED"/>
+  <circle cx="70.35" cy="69.15" r="6" fill="#451A03" fill-opacity=".34"/>
+  <defs>
+    <linearGradient id="bg" x1="22" y1="16" x2="75" y2="82" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F59E0B"/>
+      <stop offset=".48" stop-color="#F97316"/>
+      <stop offset="1" stop-color="#B45309"/>
+    </linearGradient>
+  </defs>
+</svg>

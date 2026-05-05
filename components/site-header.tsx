@@ -3,7 +3,13 @@ import { cookies } from "next/headers";
 import { verifySession } from "@/lib/session-jwt";
 import { BackNavButton } from "@/components/back-nav-button";
 import { HardNavAnchor } from "@/components/hard-nav-anchor";
-import { getDeploymentDisplayConfig } from "@/lib/deployment-display";
+import { SiteBrandMark } from "@/components/site-brand-mark";
+import {
+  siteBrandHomeClass,
+  siteNavPillClass,
+  siteNavShellClass,
+  siteNavTextClass,
+} from "@/components/site-nav-styles";
 
 /**
  * Global header/nav shell.
@@ -17,47 +23,33 @@ export async function SiteHeader() {
   const sessionCookie = (await cookies()).get("session")?.value ?? null;
   const session = sessionCookie ? await verifySession(sessionCookie) : null;
   const dashboardHref = session?.role === "admin" ? "/admin/dashboard" : "/dashboard";
-  const displayConfig = getDeploymentDisplayConfig();
-
-  const linkClass =
-    "text-sm font-medium text-stone-700 underline-offset-4 transition-colors hover:text-amber-900 hover:underline";
 
   return (
     <header className="relative z-20 border-b border-amber-200/80 bg-gradient-to-b from-amber-50/95 to-amber-100/60">
-      <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-        <div className="flex items-center gap-3">
+      <div className="mx-auto w-full max-w-5xl px-4 py-3 sm:py-4">
+        <nav className={siteNavShellClass} aria-label="Primary">
           <BackNavButton />
-          <HardNavAnchor href="/" className="text-sm font-semibold text-stone-800 hover:text-amber-900">
-            {displayConfig.name}
+          <HardNavAnchor href="/" className={siteBrandHomeClass}>
+            <SiteBrandMark className="h-5 w-5" />
+            <span className="sr-only">Home</span>
           </HardNavAnchor>
-        </div>
-        <nav className="flex items-center gap-4">
-          <HardNavAnchor href="/" className={linkClass}>
-            Home
-          </HardNavAnchor>
-          <Link href="/about" className={linkClass}>
-            About
-          </Link>
-          <Link href="/privacy" className={linkClass}>
-            Privacy
+          <Link href="/about" className={siteNavPillClass}>
+            <span className={siteNavTextClass}>About</span>
           </Link>
           {session ? (
             <>
-              <Link href={dashboardHref} className={linkClass}>
-                Dashboard
+              <Link href={dashboardHref} className={siteNavPillClass}>
+                <span className={siteNavTextClass}>Dashboard</span>
               </Link>
               <form action="/api/auth/logout" method="POST" className="inline">
-                <button
-                  type="submit"
-                  className={`${linkClass} cursor-pointer border-0 bg-transparent p-0`}
-                >
-                  Log out
+                <button type="submit" className={`${siteNavPillClass} cursor-pointer`}>
+                  <span className={siteNavTextClass}>Log out</span>
                 </button>
               </form>
             </>
           ) : (
-            <Link href="/auth/login" className={linkClass}>
-              Sign in
+            <Link href="/auth/login" className={siteNavPillClass}>
+              <span className={siteNavTextClass}>Sign in</span>
             </Link>
           )}
         </nav>

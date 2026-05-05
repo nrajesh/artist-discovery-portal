@@ -284,6 +284,7 @@ export async function notifyAdminRegistrationEvent(input: {
   })();
 
   const adminWhere: Prisma.ArtistWhereInput = {
+    isSuspended: false,
     OR: [
       { email: { in: adminEmails } },
       ...(adminHashes.length > 0 ? [{ emailLookupHash: { in: adminHashes } }] : []),

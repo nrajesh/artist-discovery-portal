@@ -4,10 +4,7 @@ import { Suspense, useCallback, useSyncExternalStore } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { hasAnalyticsOptOutCookie } from "@/lib/analytics-opt-out-cookie";
 import { subscribeDocumentConsentSignals } from "@/lib/analytics-consent-subscribe";
-import {
-  hasNavigatorAnalyticsDnt,
-  hasNavigatorGlobalPrivacyControl,
-} from "@/lib/analytics-privacy-signals";
+import { hasNavigatorPrivacySignalOptOut } from "@/lib/analytics-privacy-signals";
 
 /**
  * Green footer reminder when the analytics opt-out cookie is present.
@@ -28,10 +25,13 @@ function AnalyticsOptOutFooterNoteInner() {
     getSnapshot,
     () => false,
   );
+  const browserPrivacySignalOptOut = useSyncExternalStore(
+    subscribeDocumentConsentSignals,
+    hasNavigatorPrivacySignalOptOut,
+    () => false,
+  );
 
-  const browserLimitsAnalytics =
-    !optedOut &&
-    (hasNavigatorAnalyticsDnt() || hasNavigatorGlobalPrivacyControl());
+  const browserLimitsAnalytics = !optedOut && browserPrivacySignalOptOut;
 
   if (!optedOut && !browserLimitsAnalytics) return null;
 

@@ -1,6 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import {
+  siteNavIconBadgeClass,
+  siteNavPillClass,
+} from "@/components/site-nav-styles";
 
 export function BackNavButton() {
   const router = useRouter();
@@ -18,10 +22,12 @@ export function BackNavButton() {
     <button
       type="button"
       onClick={handleBack}
-      className="rounded-md border border-stone-200 bg-transparent px-2.5 py-1 text-xs font-medium text-stone-500 transition-colors hover:border-stone-300 hover:text-stone-700"
+      className={`${siteNavPillClass} cursor-pointer`}
       aria-label="Go back"
     >
-      ← Back
+      <span aria-hidden="true" className={siteNavIconBadgeClass}>
+        ←
+      </span>
     </button>
   );
 }

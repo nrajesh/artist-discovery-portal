@@ -11,8 +11,8 @@ self.addEventListener("push", (event) => {
   const options = {
     body: payload.body || "You have a new notification.",
     data: { url: payload.url || "/" },
-    icon: "/favicon.ico",
-    badge: "/favicon.ico",
+    icon: "/icon.svg",
+    badge: "/icon.svg",
   };
 
   event.waitUntil(self.registration.showNotification(title, options));

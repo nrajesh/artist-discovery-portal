@@ -118,7 +118,7 @@ export default async function AboutPage() {
       {/* Hero */}
       <div className="bg-gradient-to-br from-amber-900 via-amber-800 to-amber-700 text-white px-6 py-20 text-center">
         <p className="text-amber-300 text-sm font-semibold uppercase tracking-widest mb-3">Maintainer Reference</p>
-        <h1 className="mb-4 font-display text-4xl font-bold tracking-tight sm:text-5xl">Artist Discovery Portal</h1>
+        <h1 className="mb-4 font-display text-4xl font-bold tracking-tight sm:text-5xl">Find Artists</h1>
         <p className="text-amber-200 text-lg max-w-2xl mx-auto mb-6">
           An artist discovery portal - connecting singers and instrumentalists
           through a beautiful, accessible and multilingual platform.
@@ -618,7 +618,8 @@ export default async function AboutPage() {
             </div>
           </div>
           <div className="rounded-xl border border-stone-200 bg-stone-100 p-5 text-sm text-stone-700">
-            <strong>Maintainer docs:</strong> repository specs under <code className="text-stone-900">.kiro/specs/posthog-analytics/</code> and the operator guide{" "}
+            <strong>Maintainer docs:</strong>{" "}
+            Repository specs under <code className="text-stone-900">.kiro/specs/posthog-analytics/</code> and the operator guide{" "}
             <code className="text-stone-900">.kiro/steering/posthog-admin-guide.md</code>. Env template: <code className="text-stone-900">env.example</code> (PostHog block).
           </div>
         </Section>

@@ -118,7 +118,7 @@ export function AvailabilityManager({
   }
 
   function setNewRowStart(value: string) {
-    let start = value;
+    const start = value;
     let end = newEndDate;
     if (start && end && end < start) end = start;
     setNewStartDate(start);
@@ -127,7 +127,7 @@ export function AvailabilityManager({
 
   function setNewRowEnd(value: string) {
     let start = newStartDate;
-    let end = value;
+    const end = value;
     if (start && end && end < start) start = end;
     setNewStartDate(start);
     setNewEndDate(end);

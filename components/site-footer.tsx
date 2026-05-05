@@ -33,7 +33,7 @@ export async function SiteFooter() {
       aria-label="Site"
     >
       <div className="mx-auto max-w-5xl px-4 py-8 sm:py-10">
-        <nav className="flex flex-col items-center justify-center gap-3 sm:flex-row sm:flex-wrap sm:gap-x-10 sm:gap-y-2">
+        <nav className="flex flex-row flex-wrap items-center justify-center gap-x-8 gap-y-2">
           <Link href="/about" className={linkClass}>
             About
           </Link>
@@ -62,7 +62,7 @@ export async function SiteFooter() {
         </nav>
         <AnalyticsOptOutFooterNote />
         <p className="mt-6 text-center text-xs text-stone-500">
-          {displayConfig.name} - connecting musicians in {displayConfig.countryName}
+          {displayConfig.name} - connecting artists across geographies
         </p>
       </div>
     </footer>

@@ -11,6 +11,8 @@ export const dynamic = "force-dynamic";
 
 const OPT_OUT_PATH = "/privacy/opt-out";
 const LOCAL_OPT_OUT_SAMPLE = "http://localhost:3000/privacy/opt-out";
+const INFO_NOTE_CLASS =
+  "rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm leading-relaxed text-sky-900";
 
 /**
  * Best-effort absolute URL for copy/paste (host from request or NEXT_PUBLIC_APP_URL).
@@ -58,7 +60,7 @@ export default async function PrivacyPage({
         <div className="mb-4 text-4xl">🔒</div>
         <h1 className="mb-3 font-display text-3xl font-bold tracking-tight sm:text-4xl">Privacy Policy</h1>
         <p className="mx-auto max-w-xl text-base text-amber-200 sm:text-lg">
-          How Artist Discovery Portal handles account contact details, analytics, and related product telemetry.
+          How Find Artists handles account contact details, analytics, and related product telemetry.
         </p>
         <div className="mt-6">
           <Link
@@ -109,28 +111,41 @@ export default async function PrivacyPage({
         {/* 1. Account contact (email & phone) */}
         <section aria-labelledby="account-contact-details">
           <h2 id="account-contact-details" className="portal-section-article">
-            1. Email and phone number (artist accounts)
+            1. Email and optional phone number (artist accounts)
           </h2>
           <div className="space-y-3 rounded-2xl border border-amber-200 bg-white p-6 leading-relaxed text-stone-700 shadow-sm">
             <p>
-              When you register or update your artist profile, the portal asks for a <strong className="text-stone-900">
-              working email address</strong> and <strong className="text-stone-900">phone or WhatsApp number</strong>.
-              These are collected only where they are needed to run the service, not for resale or unrelated marketing.
+              When you register or update your artist profile, the portal asks for a{" "}
+              <strong className="text-stone-900">working email address</strong>. You may also add a{" "}
+              <strong className="text-stone-900">phone or WhatsApp number</strong>, but that number is optional. If you
+              leave it blank, no phone or WhatsApp value is stored for your artist account. These details are collected
+              only where they are needed to run the service, not for resale or unrelated marketing.
             </p>
             <p>
-              <strong className="text-stone-900">Why we need them:</strong> to create and secure your account, to
+              <strong className="text-stone-900">Why we need them:</strong>{" "}
+              To create and secure your account, to
               prevent duplicate registrations (using a one-way hash of your normalised email for lookup), so the
-              portal operator and systems can reach you about your listing (for example approvals or abuse reports),
-              and so other users can contact you <em>according to the visibility you choose</em> in your profile (for
-              example only you and admins, collaborators you work with, or visitors when you set a field to public).
+              portal operator and systems can reach you about your listing (for example approvals or abuse reports).
+              If you add a phone or WhatsApp number, it can also help other users contact you{" "}
+              <em>according to the visibility you choose</em> in your profile.
             </p>
             <p>
-              <strong className="text-stone-900">How they are stored:</strong> email and phone values are stored using
+              <strong className="text-stone-900">How they are stored:</strong>{" "}
+              Email and phone values are stored using
               application-level encryption for the sensitive fields; a non-identifying placeholder may remain in legacy
-              columns for database compatibility. Your choices for &quot;email visibility&quot; and &quot;phone
-              visibility&quot; control how widely each value is shown outside admin tools.
+              columns for database compatibility. Phone/WhatsApp storage is skipped when you do not provide a number.
+              Your choices for &quot;email visibility&quot; and &quot;phone visibility&quot; control how widely each
+              value is shown outside admin tools.
             </p>
-            <p className="text-sm text-stone-600">
+            <p>
+              <strong className="text-stone-900">Your visibility choices:</strong>{" "}
+              Email and phone visibility are
+              controlled separately. For each field, you can keep it visible only to you and portal admins, reveal it to
+              fellow collaborators on shared projects, or show it publicly on your artist profile and directory listing.
+              Adding a phone or WhatsApp number does not automatically make it public; the exposure is controlled by
+              your phone visibility setting.
+            </p>
+            <p className={INFO_NOTE_CLASS}>
               This section describes the behaviour implemented in the application. The portal operator remains
               responsible for the legal basis, retention periods, and any data processing agreements that apply in
               their jurisdiction.
@@ -206,7 +221,7 @@ export default async function PrivacyPage({
               </a>
               .
             </p>
-            <p className="text-sm text-stone-600">
+            <p className={INFO_NOTE_CLASS}>
               Local development builds typically do not record replay unless explicitly enabled. Production builds may
               disable replay entirely using environment variables documented for operators (
               <code className="rounded bg-stone-100 px-1 text-xs">NEXT_PUBLIC_POSTHOG_ENABLE_RECORDING</code> and related
@@ -230,7 +245,7 @@ export default async function PrivacyPage({
               artist ID</strong> (a UUID). Non-identifying attributes such as province and role may be stored on that
               profile to support aggregate reporting.
             </p>
-            <p className="text-sm text-stone-600">
+            <p className={INFO_NOTE_CLASS}>
               Session replay is a separate surface from “event properties”: it may reflect what appears on screen
               subject to masking and PostHog settings. If you need to avoid replay entirely, use the opt-out mechanisms
               in section 6 or ask the operator to disable recording for the deployment.
@@ -249,8 +264,9 @@ export default async function PrivacyPage({
               </strong> on the operator&apos;s PostHog project (for example{" "}
               <strong className="text-stone-900">12 months</strong> if that is what they configure).
             </p>
-            <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-              <strong>Note for portal operators:</strong> replace the example period above with the value shown in
+            <p className={`mt-3 ${INFO_NOTE_CLASS}`}>
+              <strong>Note for portal operators:</strong>{" "}
+              Replace the example period above with the value shown in
               PostHog (<strong>Settings → Project</strong> for events and replay retention) and keep this page in sync.
             </p>
           </div>
@@ -327,7 +343,7 @@ export default async function PrivacyPage({
               <strong className="text-stone-900">self-hosted</strong> PostHog instance. Server-side analytics calls from
               this app connect to the same configured host.
             </p>
-            <p className="text-sm text-stone-600">
+            <p className={INFO_NOTE_CLASS}>
               The operator is responsible for listing subprocessors, data processing agreements, and any cookie banner
               or consent text required in their jurisdiction. This page describes what the application is built to
               do; it is not a substitute for legal advice.

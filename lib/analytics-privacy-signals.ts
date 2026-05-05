@@ -24,11 +24,12 @@ export function hasNavigatorGlobalPrivacyControl(): boolean {
   return (navigator as Navigator & { globalPrivacyControl?: boolean }).globalPrivacyControl === true;
 }
 
+/** Client-only navigator signals that disable analytics even without an opt-out cookie. */
+export function hasNavigatorPrivacySignalOptOut(): boolean {
+  return hasNavigatorAnalyticsDnt() || hasNavigatorGlobalPrivacyControl();
+}
+
 /** True when capture should be off (cookie OR browser privacy signals). Used by `PostHogProvider` only. */
 export function hasBrowserAnalyticsOptOut(): boolean {
-  return (
-    hasAnalyticsOptOutCookie() ||
-    hasNavigatorAnalyticsDnt() ||
-    hasNavigatorGlobalPrivacyControl()
-  );
+  return hasAnalyticsOptOutCookie() || hasNavigatorPrivacySignalOptOut();
 }

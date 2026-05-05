@@ -11,6 +11,7 @@ import { buildLocationMapPoints } from "@/lib/location-map-data";
 import { DEFAULT_ARTIST_ACCENT_COLOR, getThemeFromArtistSpecialities } from "@/lib/speciality-theme";
 import { verifySession } from "@/lib/session-jwt";
 import { PortalSectionHeading } from "@/components/portal-section-heading";
+import { SiteBrandMark } from "@/components/site-brand-mark";
 
 export const dynamic = "force-dynamic";
 
@@ -57,15 +58,21 @@ export default async function HomePage({
     <main className="min-h-screen bg-amber-50">
       {ph_reset === "1" && <PostHogReset />}
 
-      <div className="bg-gradient-to-br from-amber-900 via-amber-800 to-amber-700 text-white px-6 py-20 text-center">
-        <div className="text-5xl mb-4">🎵</div>
-        <h1 className="mb-4 font-display text-4xl font-bold tracking-tight sm:text-5xl">{displayConfig.name}</h1>
-        <p className="text-amber-200 text-lg sm:text-xl max-w-xl mx-auto mb-8">
+      <div className="bg-gradient-to-br from-amber-900 via-amber-800 to-amber-700 px-6 py-14 text-center text-white sm:py-20">
+        <div className="mb-3 flex justify-center sm:mb-4">
+          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 via-orange-500 to-amber-700 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.36),0_12px_24px_rgba(69,26,3,0.28)] ring-1 ring-white/30">
+            <SiteBrandMark className="h-9 w-9" />
+          </span>
+        </div>
+        <h1 className="mb-3 font-display text-3xl font-bold tracking-tight sm:mb-4 sm:text-5xl">
+          {displayConfig.name}
+        </h1>
+        <p className="mx-auto mb-6 max-w-lg text-base text-amber-200 sm:mb-8 sm:max-w-xl sm:text-xl">
           {collabsRatingsEnabled
-            ? `Browse artists in ${displayConfig.countryName} - discover profiles, find collaborators, and grow your musical network.`
-            : `Browse artists in ${displayConfig.countryName} - discover profiles and connect with talented artists.`}
+            ? "Browse artists, discover profiles, find collaborators, and grow your musical network."
+            : "Browse artists, discover profiles, and connect with talented artists."}
         </p>
-        <div className="flex flex-wrap justify-center gap-4">
+        <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
           <Link
             href={artistsDirectoryHref}
             className="px-6 py-3 border-2 border-white text-white font-semibold rounded-lg hover:bg-white/10 transition-colors min-h-[44px] flex items-center"
@@ -77,13 +84,13 @@ export default async function HomePage({
       </div>
 
       <div
-        className={`max-w-4xl mx-auto px-6 py-12 grid gap-4 sm:gap-6 text-center ${
+        className={`mx-auto grid max-w-4xl gap-3 px-6 py-8 text-center sm:gap-6 sm:py-12 ${
           collabsRatingsEnabled ? "grid-cols-3" : "grid-cols-2"
         }`}
       >
         <Link
           href={artistsDirectoryHref}
-          className="bg-white rounded-2xl border border-amber-200 shadow-sm p-5 sm:p-6 block transition-colors hover:border-amber-400 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-50"
+          className="block rounded-2xl border border-amber-200 bg-white p-4 shadow-sm transition-colors hover:border-amber-400 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-50 sm:p-6"
           aria-label={`${totalArtists} artists on the portal - browse directory`}
         >
           <div className="text-3xl font-bold text-amber-800">{totalArtists}</div>
@@ -93,13 +100,13 @@ export default async function HomePage({
           <>
             <a
               href="#home-location-explorer"
-              className="bg-white rounded-2xl border border-amber-200 shadow-sm p-5 sm:p-6 block transition-colors hover:border-amber-400 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-50"
+              className="block rounded-2xl border border-amber-200 bg-white p-4 shadow-sm transition-colors hover:border-amber-400 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-50 sm:p-6"
               aria-label={`${seekingCollab} open to collaborate - jump to location explorer`}
             >
               <div className="text-3xl font-bold text-amber-800">{seekingCollab}</div>
               <div className="text-xs sm:text-sm text-amber-600 mt-1">Open to collaborate</div>
             </a>
-            <div className="bg-white rounded-2xl border border-amber-200 shadow-sm p-5 sm:p-6">
+            <div className="rounded-2xl border border-amber-200 bg-white p-4 shadow-sm sm:p-6">
               <div className="text-3xl font-bold text-amber-800">{totalCollabs}</div>
               <div className="text-xs sm:text-sm text-amber-600 mt-1">Collaborations live</div>
             </div>
@@ -107,7 +114,7 @@ export default async function HomePage({
         ) : (
           <a
             href="#home-location-explorer"
-            className="bg-white rounded-2xl border border-amber-200 shadow-sm p-5 sm:p-6 block transition-colors hover:border-amber-400 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-50"
+            className="block rounded-2xl border border-amber-200 bg-white p-4 shadow-sm transition-colors hover:border-amber-400 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-50 sm:p-6"
             aria-label={`${locationsWithArtists} ${locationConfig.areaLabelPlural.toLowerCase()} represented - jump to location explorer`}
           >
             <div className="text-3xl font-bold text-amber-800">{locationsWithArtists}</div>
@@ -117,20 +124,20 @@ export default async function HomePage({
       </div>
 
       {featuredArtist && (
-        <div className="mx-auto max-w-4xl px-6 pb-10">
+        <div className="mx-auto max-w-4xl px-6 pb-8 sm:pb-10">
           <div className="overflow-hidden rounded-2xl border border-amber-200 bg-white shadow-sm transition-all hover:border-amber-300 hover:shadow-md">
-            <div className="border-b border-amber-100/80 px-6 pb-4 pt-6 sm:px-8 sm:pt-8">
+            <div className="border-b border-amber-100/80 px-5 pb-3 pt-5 sm:px-8 sm:pb-4 sm:pt-8">
               <PortalSectionHeading variant="title" textOnly className="mb-2 text-amber-900">
                 In the spotlight today
               </PortalSectionHeading>
-              <p className="mb-4 max-w-2xl text-xs text-stone-500">
+              <p className="mb-0 max-w-2xl text-xs text-stone-500">
                 Meet someone from our community - profiles rotate so every serious performer gets a moment to shine.
               </p>
             </div>
             <div className="grid sm:grid-cols-[minmax(0,1fr)_minmax(0,260px)]">
               <Link
                 href={`/artists/${featuredArtist.slug}`}
-                className="group flex gap-4 px-6 py-5 sm:px-8 sm:py-6"
+                className="group flex gap-4 px-5 py-4 sm:px-8 sm:py-6"
               >
                 <FeaturedArtistPhoto
                   photoUrl={featuredArtist.profilePhotoUrl ?? ""}
@@ -152,7 +159,7 @@ export default async function HomePage({
                   </p>
                 </div>
               </Link>
-              <aside className="flex flex-col justify-center border-t border-amber-100 bg-gradient-to-br from-amber-50/90 to-amber-50/30 px-5 py-5 sm:border-l sm:border-t-0 sm:px-6">
+              <aside className="flex flex-col justify-center border-t border-amber-100 bg-gradient-to-br from-amber-50/90 to-amber-50/30 px-5 py-4 sm:border-l sm:border-t-0 sm:px-6 sm:py-5">
                 <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-amber-700">
                   {collabsRatingsEnabled ? "Happening now" : "Discovery"}
                 </p>

@@ -38,7 +38,7 @@
   "vars": {
     "POSTHOG_HOST": "https://eu.i.posthog.com",
     "DEPLOYMENT_REGION": "NL",
-    "DEPLOYMENT_NAME": "Artist Discovery Portal",
+    "DEPLOYMENT_NAME": "Find Artists",
     "DEPLOYMENT_LOCALE_PRIMARY": "en",
     "DEPLOYMENT_LOCALE_SECONDARY": "nl",
     "DEPLOYMENT_MAP_GEOJSON_URL": "/geo/netherlands-provinces.geojson",

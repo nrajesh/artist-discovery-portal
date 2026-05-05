@@ -6,6 +6,7 @@ import { PostHogIdentify } from "@/components/posthog-identify";
 import { getDb } from "@/lib/db";
 import { verifySession } from "@/lib/session-jwt";
 import { isArtistCollabsRatingsEnabledServer } from "@/lib/feature-flags-server";
+import { SiteBrandMark } from "@/components/site-brand-mark";
 
 export default async function AdminDashboardPage({
   searchParams,
@@ -55,7 +56,7 @@ export default async function AdminDashboardPage({
       <div className="mx-auto max-w-5xl">
         <div className="mb-10">
           <h1 className="text-3xl font-bold tracking-tight text-stone-900">Admin Dashboard</h1>
-          <p className="mt-1.5 text-stone-500">Manage Artist Discovery Portal</p>
+          <p className="mt-1.5 text-stone-500">Manage Find Artists</p>
         </div>
 
         <div className={gridClass}>
@@ -73,7 +74,9 @@ export default async function AdminDashboardPage({
 
           <Link href="/admin/artists" className={cardClass}>
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-amber-50 to-amber-100/90 text-2xl shadow-inner ring-1 ring-amber-200/30">
-              🎵
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 via-orange-500 to-amber-700 text-white shadow-sm ring-1 ring-white/70">
+                <SiteBrandMark className="h-6 w-6" />
+              </span>
             </div>
             <div>
               <h2 className="font-semibold text-stone-800 transition-colors group-hover:text-amber-900">Artists</h2>
