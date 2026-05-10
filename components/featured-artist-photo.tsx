@@ -12,6 +12,8 @@ type FeaturedArtistPhotoProps = {
   sizeClassName?: string;
   /** Extra classes on the `<img>` (e.g. ring colour for cards on tinted headers) */
   imgClassName?: string;
+  /** When true the photo / fallback is rendered with a CSS blur */
+  blurred?: boolean;
 };
 
 /**
@@ -26,6 +28,7 @@ export function FeaturedArtistPhoto({
   alt,
   sizeClassName = DEFAULT_SIZE,
   imgClassName = "",
+  blurred = false,
 }: FeaturedArtistPhotoProps) {
   const [showImage, setShowImage] = useState(true);
 
@@ -33,7 +36,7 @@ export function FeaturedArtistPhoto({
     return (
       <div
         className={`flex flex-shrink-0 items-center justify-center rounded-full font-bold ring-2 ring-amber-100/80 ${sizeClassName}`}
-        style={{ background: accentColor, color: "#FFFFFF" }}
+        style={{ background: accentColor, color: "#FFFFFF", ...(blurred ? { filter: "blur(6px)", userSelect: "none" as const } : {}) }}
         aria-label={alt}
       >
         {initial}
@@ -47,6 +50,7 @@ export function FeaturedArtistPhoto({
       src={photoUrl}
       alt={alt}
       className={`flex-shrink-0 rounded-full object-cover ring-2 ring-amber-100 shadow-sm ${sizeClassName} ${imgClassName}`.trim()}
+      style={blurred ? { filter: "blur(6px)" } : undefined}
       onError={() => setShowImage(false)}
     />
   );

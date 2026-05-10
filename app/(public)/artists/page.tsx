@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { verifySession } from "@/lib/session-jwt";
 import { Suspense } from "react";
 import ArtistsSearch from "./artists-search";
 import { ArtistListingTracker } from "./artist-listing-tracker";
@@ -18,6 +20,9 @@ interface PageProps {
 
 export default async function ArtistsPage({ searchParams }: PageProps) {
   const { q = "", speciality = "", location = "", province = "" } = await searchParams;
+  const sessionCookie = (await cookies()).get("session")?.value ?? null;
+  const session = sessionCookie ? await verifySession(sessionCookie) : null;
+  const isLoggedIn = !!session;
   const selectedLocation = location || province;
   const [allArtists, collabsRatingsEnabled, displayConfig, locationConfig] = await Promise.all([
     listArtistsForDirectory(),
@@ -60,6 +65,7 @@ export default async function ArtistsPage({ searchParams }: PageProps) {
             specialities={specialitiesCatalog}
             locationOptions={locationOptionsList}
             locationAreaLabelPlural={locationConfig.areaLabelPlural}
+            nameSearchDisabled={!isLoggedIn}
           />
         </Suspense>
 
@@ -88,8 +94,8 @@ export default async function ArtistsPage({ searchParams }: PageProps) {
             return (
             <Link
               key={artist.id}
-              href={`/artists/${artist.slug}`}
-              className="group bg-white rounded-2xl border border-stone-200 overflow-hidden hover:border-amber-400 hover:shadow-lg transition-all"
+              href={isLoggedIn ? `/artists/${artist.slug}` : "/auth/login"}
+              className={`group bg-white rounded-2xl border border-stone-200 overflow-hidden transition-all ${isLoggedIn ? "hover:border-amber-400 hover:shadow-lg" : "hover:border-stone-300"}`}
             >
               <div
                 className="h-20 flex items-end px-5 pb-3"
@@ -105,11 +111,12 @@ export default async function ArtistsPage({ searchParams }: PageProps) {
                     alt=""
                     sizeClassName="h-12 w-12 text-xl"
                     imgClassName="!ring-white border-2 border-white shadow-md"
+                    blurred={!isLoggedIn}
                   />
                 </div>
               </div>
               <div className="pt-8 px-5 pb-5">
-                <p className="font-semibold text-stone-800 group-hover:text-amber-800 transition-colors leading-tight">{artist.name}</p>
+                <p className="font-semibold text-stone-800 group-hover:text-amber-800 transition-colors leading-tight" style={!isLoggedIn ? { filter: "blur(6px)", userSelect: "none" } : undefined}>{artist.name}</p>
                 <div className="flex flex-wrap items-center gap-2 mt-2">
                   {artist.specialities.map((s) => (
                     <span

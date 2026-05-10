@@ -165,6 +165,18 @@ export default function LoginPage() {
               >
                 {status === 'loading' ? 'Sending…' : 'Send login link'}
               </button>
+
+              <div className="mt-6 border-t border-stone-100 pt-6 text-center">
+                <p className="text-sm text-stone-500">
+                  Not a member yet?{' '}
+                  <Link
+                    href="/register"
+                    className="font-semibold text-amber-700 hover:text-amber-900 underline underline-offset-2"
+                  >
+                    Join the portal
+                  </Link>
+                </p>
+              </div>
             </form>
           )}
         </div>

@@ -8,10 +8,12 @@ export default function ArtistsSearch({
   specialities = [],
   locationOptions = [],
   locationAreaLabelPlural = "Regions",
+  nameSearchDisabled = false,
 }: {
   specialities?: SearchOption[];
   locationOptions?: SearchOption[];
   locationAreaLabelPlural?: string;
+  nameSearchDisabled?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -56,10 +58,11 @@ export default function ArtistsSearch({
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm">🔍</span>
           <input
             type="text"
-            placeholder="Keyword: name, bio, social URLs…"
+            placeholder={nameSearchDisabled ? "Sign up to search by name…" : "Keyword: name, bio, social URLs…"}
             defaultValue={q}
             onChange={(e) => updateParam("q", e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 min-h-[44px]"
+            disabled={nameSearchDisabled}
+            className={`w-full pl-9 pr-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 min-h-[44px] ${nameSearchDisabled ? "opacity-50 cursor-not-allowed" : ""}`}
           />
         </div>
 

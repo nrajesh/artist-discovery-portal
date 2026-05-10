@@ -92,8 +92,8 @@ export default async function ArtistProfilePage({ params, searchParams }: PagePr
     : [];
 
   const profileShareUrl = await getAbsoluteSiteUrl(`/artists/${encodeURIComponent(slug)}`);
-  const shareTitle = `${artist.name} - Artist profile`;
-  const shareText = `Check out ${artist.name} on the artist discovery portal`;
+  const shareTitle = isLoggedIn ? `${artist.name} - Artist profile` : "Artist profile";
+  const shareText = isLoggedIn ? `Check out ${artist.name} on the artist discovery portal` : "Check out this artist on the artist discovery portal";
 
   return (
     <main className="min-h-screen bg-amber-50">
@@ -120,10 +120,11 @@ export default async function ArtistProfilePage({ params, searchParams }: PagePr
             alt={`${artist.name} profile photo`}
             sizeClassName="h-20 w-20 shrink-0 text-3xl border-4 border-white/40"
             imgClassName="!ring-white/50 border-4 border-white/40 shadow-lg"
+            blurred={!isLoggedIn}
           />
           <div className="min-w-0 flex-1 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
             <div className="min-w-0">
-              <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">{artist.name}</h1>
+              <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl" style={!isLoggedIn ? { filter: "blur(6px)", userSelect: "none" } : undefined}>{artist.name}</h1>
               <div className="flex flex-wrap gap-2 mt-2">
                 {artist.specialities.map((s) => (
                   <span
@@ -185,10 +186,21 @@ export default async function ArtistProfilePage({ params, searchParams }: PagePr
 
         {/* Bio */}
         <SectionCard title="About">
-          <div
-            className="max-w-measure text-left font-sans prose prose-sm prose-stone sm:prose-base [text-wrap:pretty]"
-            dangerouslySetInnerHTML={{ __html: normalizeBioHtmlForDisplay(artist.bio) }}
-          />
+          {isLoggedIn ? (
+            <div
+              className="max-w-measure text-left font-sans prose prose-sm prose-stone sm:prose-base [text-wrap:pretty]"
+              dangerouslySetInnerHTML={{ __html: normalizeBioHtmlForDisplay(artist.bio) }}
+            />
+          ) : (
+            <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50 px-5 py-6 text-center">
+              <p className="text-sm font-semibold text-amber-800 mb-1">Artist Bio</p>
+              <p className="text-xs text-amber-600 mb-4">Sign up to read the full bio and experience.</p>
+              <Link href="/auth/login"
+                className="inline-block px-5 py-2 bg-amber-700 text-white text-sm font-semibold rounded-lg hover:bg-amber-800 transition-colors">
+                Log in to view
+              </Link>
+            </div>
+          )}
         </SectionCard>
 
         {(artist.email.trim().length > 0 || artist.contactNumber.trim().length > 0) && (
@@ -318,8 +330,9 @@ export default async function ArtistProfilePage({ params, searchParams }: PagePr
                     <div key={r.id} id={r.id} className="border border-stone-100 rounded-lg p-4 scroll-mt-6">
                       <div className="flex items-start justify-between gap-3 mb-2">
                         <div>
-                          <Link href={`/artists/${r.reviewerSlug}`}
-                            className="text-sm font-semibold text-stone-800 hover:text-amber-800 transition-colors">
+                          <Link href={isLoggedIn ? `/artists/${r.reviewerSlug}` : `/artists/${r.reviewerId}`}
+                            className="text-sm font-semibold text-stone-800 hover:text-amber-800 transition-colors"
+                            style={!isLoggedIn ? { filter: "blur(6px)", userSelect: "none" } : undefined}>
                             {r.from}
                           </Link>
                           <p className="text-xs text-stone-400 mt-0.5">{r.collab} · {r.date}</p>
@@ -391,7 +404,23 @@ export default async function ArtistProfilePage({ params, searchParams }: PagePr
         {/* External links - feed-style cards (web + mobile) */}
         {artist.links.length > 0 && (
           <SectionCard title="Connect">
-            <ArtistExternalLinksFeed links={artist.links} />
+            {isLoggedIn ? (
+              <ArtistExternalLinksFeed links={artist.links} />
+            ) : (
+              <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50 px-5 py-6 text-center">
+                <p className="text-2xl mb-2">🔒</p>
+                <p className="text-sm font-semibold text-amber-800 mb-1">
+                  Social Media Channels
+                </p>
+                <p className="text-xs text-amber-600 mb-4">
+                  Log in as a registered artist to view their social channels.
+                </p>
+                <Link href="/auth/login"
+                  className="inline-block px-5 py-2 bg-amber-700 text-white text-sm font-semibold rounded-lg hover:bg-amber-800 transition-colors">
+                  Log in to view
+                </Link>
+              </div>
+            )}
           </SectionCard>
         )}
       </div>
