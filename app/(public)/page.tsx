@@ -22,6 +22,7 @@ export default async function HomePage({
 }) {
   const sessionCookie = (await cookies()).get("session")?.value ?? null;
   const session = sessionCookie ? await verifySession(sessionCookie) : null;
+  const isLoggedIn = !!session;
   const collabsIndexHref = session?.role === "admin" ? "/admin/collabs" : "/collabs";
   const { ph_reset } = await searchParams;
   const {
