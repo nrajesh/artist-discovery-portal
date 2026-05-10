@@ -94,8 +94,8 @@ export default async function ArtistsPage({ searchParams }: PageProps) {
             return (
             <Link
               key={artist.id}
-              href={`/artists/${artist.slug}`}
-              className="group bg-white rounded-2xl border border-stone-200 overflow-hidden hover:border-amber-400 hover:shadow-lg transition-all"
+              href={isLoggedIn ? `/artists/${artist.slug}` : "/auth/login"}
+              className={`group bg-white rounded-2xl border border-stone-200 overflow-hidden transition-all ${isLoggedIn ? "hover:border-amber-400 hover:shadow-lg" : "hover:border-stone-300"}`}
             >
               <div
                 className="h-20 flex items-end px-5 pb-3"

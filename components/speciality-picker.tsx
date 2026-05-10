@@ -164,20 +164,19 @@ export default function SpecialityPicker({
                 </li>
               ))}
               {customEligible ? (
-                <li className="border-t border-amber-100 bg-amber-50/80">
+                <li className="border-t border-amber-100 bg-amber-50/50">
                   <button
                     type="button"
                     onMouseDown={(e) => {
                       e.preventDefault();
                       addCustom();
                     }}
-                    className="flex min-h-[44px] w-full flex-col items-start gap-1 px-4 py-2.5 text-left text-sm font-medium text-amber-900 hover:bg-amber-100/80"
+                    className="flex min-h-[44px] w-full items-center gap-2 px-4 py-3 text-left text-sm font-bold text-amber-700 hover:bg-amber-100/80"
                   >
-                    <span>Add custom: &ldquo;{normalizedQuery}&rdquo;</span>
-                    <span className="text-xs font-normal text-stone-500">
-                      If it&apos;s missing from the list, admins can add it to the catalogue when reviewing your
-                      application.
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-dashed border-amber-400 text-lg leading-none">
+                      +
                     </span>
+                    <span>Add custom: &ldquo;{normalizedQuery}&rdquo;</span>
                   </button>
                 </li>
               ) : null}
@@ -202,13 +201,13 @@ export default function SpecialityPicker({
                   e.preventDefault();
                   addCustom();
                 }}
-                className="w-full text-left text-sm font-medium text-amber-900"
+                className="flex w-full items-center gap-2 text-left text-sm font-bold text-amber-700"
               >
-                Add custom: &ldquo;{normalizedQuery}&rdquo;
+                <span className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-dashed border-amber-400 text-lg leading-none">
+                  +
+                </span>
+                <span>Add custom: &ldquo;{normalizedQuery}&rdquo;</span>
               </button>
-              <p className="mt-1 text-xs text-stone-500">
-                If it&apos;s missing from the list, admins can add it to the catalogue when reviewing your application.
-              </p>
             </div>
           )}
         </div>

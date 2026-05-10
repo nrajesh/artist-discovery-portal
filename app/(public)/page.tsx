@@ -180,7 +180,7 @@ export default async function HomePage({
             </div>
             <div className="grid sm:grid-cols-[minmax(0,1fr)_minmax(0,260px)]">
               <Link
-                href={`/artists/${featuredArtist.slug}`}
+                href={isLoggedIn ? `/artists/${featuredArtist.slug}` : "/auth/login"}
                 className="group flex gap-4 px-5 py-4 sm:px-8 sm:py-6"
               >
                 <FeaturedArtistPhoto

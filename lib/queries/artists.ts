@@ -290,7 +290,11 @@ export async function getArtistBySlug(
   viewer?: { artistId: string; role: "artist" | "admin" } | null,
 ): Promise<ArtistProfileView | null> {
   const artist = await getDb().artist.findFirst({
-    where: { slug, isSuspended: false, isSystemAccount: false },
+    where: {
+      OR: [{ slug }, { id: slug }],
+      isSuspended: false,
+      isSystemAccount: false,
+    },
     include: {
       specialities: {
         orderBy: { displayOrder: "asc" },

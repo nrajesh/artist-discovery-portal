@@ -248,7 +248,7 @@ export default async function AboutPage() {
               { lang: "Telugu",     sample: "కర్ణాటక సంగీతం నా జీవితంలో అంతర్భాగం. నేను చిన్నప్పటి నుండి వీణ నేర్చుకున్నాను.", script: "te" },
               { lang: "Kannada",    sample: "ಕರ್ನಾಟಕ ಸಂಗೀತ ನನ್ನ ಜೀವನದ ಭಾಗ. ನಾನು ಚಿಕ್ಕಂದಿನಿಂದ ವೀಣೆ ಕಲಿತೆ.", script: "kn" },
               { lang: "Hindi",      sample: "कर्नाटक संगीत मेरे जीवन का अभिन्न अंग है। मैंने बचपन से मृदंगम सीखा।", script: "hi" },
-              { lang: "Mixed",      sample: "My journey in music began in Chennai and continues in Amsterdam - classical vocals remain my anchor.", script: "mixed" },
+              { lang: "Mixed",      sample: "My journey in music began in Chennai (சென்னை) and continues in Amsterdam - classical vocals (ശാസ്‌ത്രീയ സംഗീതം) remain my anchor.", script: "mixed" },
             ].map(({ lang, sample, script }) => (
               <div key={lang} className="bg-white rounded-xl border border-stone-200 p-4">
                 <p className="text-xs font-semibold text-stone-400 uppercase tracking-wide mb-2">{lang}</p>

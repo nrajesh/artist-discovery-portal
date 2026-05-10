@@ -186,10 +186,21 @@ export default async function ArtistProfilePage({ params, searchParams }: PagePr
 
         {/* Bio */}
         <SectionCard title="About">
-          <div
-            className="max-w-measure text-left font-sans prose prose-sm prose-stone sm:prose-base [text-wrap:pretty]"
-            dangerouslySetInnerHTML={{ __html: normalizeBioHtmlForDisplay(artist.bio) }}
-          />
+          {isLoggedIn ? (
+            <div
+              className="max-w-measure text-left font-sans prose prose-sm prose-stone sm:prose-base [text-wrap:pretty]"
+              dangerouslySetInnerHTML={{ __html: normalizeBioHtmlForDisplay(artist.bio) }}
+            />
+          ) : (
+            <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50 px-5 py-6 text-center">
+              <p className="text-sm font-semibold text-amber-800 mb-1">Artist Bio</p>
+              <p className="text-xs text-amber-600 mb-4">Sign up to read the full bio and experience.</p>
+              <Link href="/auth/login"
+                className="inline-block px-5 py-2 bg-amber-700 text-white text-sm font-semibold rounded-lg hover:bg-amber-800 transition-colors">
+                Log in to view
+              </Link>
+            </div>
+          )}
         </SectionCard>
 
         {(artist.email.trim().length > 0 || artist.contactNumber.trim().length > 0) && (
@@ -319,8 +330,9 @@ export default async function ArtistProfilePage({ params, searchParams }: PagePr
                     <div key={r.id} id={r.id} className="border border-stone-100 rounded-lg p-4 scroll-mt-6">
                       <div className="flex items-start justify-between gap-3 mb-2">
                         <div>
-                          <Link href={`/artists/${r.reviewerSlug}`}
-                            className="text-sm font-semibold text-stone-800 hover:text-amber-800 transition-colors">
+                          <Link href={isLoggedIn ? `/artists/${r.reviewerSlug}` : `/artists/${r.reviewerId}`}
+                            className="text-sm font-semibold text-stone-800 hover:text-amber-800 transition-colors"
+                            style={!isLoggedIn ? { filter: "blur(6px)", userSelect: "none" } : undefined}>
                             {r.from}
                           </Link>
                           <p className="text-xs text-stone-400 mt-0.5">{r.collab} · {r.date}</p>
