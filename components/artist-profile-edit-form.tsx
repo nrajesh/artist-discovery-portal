@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, FormEvent, useMemo, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { usePostHog } from "posthog-js/react";
 import SpecialityPicker from "@/components/speciality-picker";
 import { RegistrationPrefixedUrlInput } from "@/components/registration-prefixed-url-input";
@@ -16,7 +17,6 @@ import {
   slugLiveRestrictedHandlers,
   urlSuffixRestrictedHandlers,
 } from "@/lib/restricted-input-handlers";
-import { BioRichTextEditor } from "@/components/bio-rich-text-editor";
 import {
   REGISTRATION_FACEBOOK_PREFIX,
   REGISTRATION_HTTPS_PREFIX,
@@ -44,6 +44,18 @@ import type { ArtistEditView } from "@/lib/queries/artists";
 import type { ArtistProfileEditInput } from "@/lib/artist-profile-update-schema";
 import { updateArtistProfile } from "@/app/(artist)/profile/edit/actions";
 import { updateAdminArtistProfile } from "@/app/(admin)/admin/artists/[id]/edit/actions";
+
+const BioRichTextEditor = dynamic(
+  () => import("@/components/bio-rich-text-editor").then((mod) => mod.BioRichTextEditor),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="rounded-md border border-stone-300 bg-white px-4 py-5 text-sm text-stone-600">
+        Loading editor...
+      </div>
+    ),
+  },
+);
 
 type Variant = "artist" | "admin";
 

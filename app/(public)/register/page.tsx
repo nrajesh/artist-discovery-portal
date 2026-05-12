@@ -9,12 +9,8 @@ import { useState, useEffect, useRef } from "react";
 import { useForm, useFieldArray, Controller, useWatch, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useEditor, EditorContent } from "@tiptap/react";
-import type { Editor } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import TiptapImage from "@tiptap/extension-image";
-import TiptapLink from "@tiptap/extension-link";
 import NextLink from "next/link";
+import dynamic from "next/dynamic";
 import { usePostHog } from "posthog-js/react";
 import SpecialityPicker, { type SpecialityCatalogItem } from "@/components/speciality-picker";
 import { RegistrationPrefixedUrlInput } from "@/components/registration-prefixed-url-input";
@@ -51,6 +47,18 @@ import {
   youtubeSuffixFromStored,
 } from "@/lib/registration-input-normalize";
 import { getPublicDeploymentLocationInputConfig } from "@/lib/deployment-location-public";
+
+const BioRichTextEditor = dynamic(
+  () => import("@/components/bio-rich-text-editor").then((mod) => mod.BioRichTextEditor),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="rounded-md border border-amber-300 bg-white px-4 py-5 text-sm text-amber-900">
+        Loading editor...
+      </div>
+    ),
+  },
+);
 
 // ---------------------------------------------------------------------------
 // Zod schema
@@ -218,83 +226,6 @@ async function processProfilePhotoFile(file: File): Promise<File> {
   return new File([blob], "profile-photo.jpg", { type: "image/jpeg", lastModified: Date.now() });
 }
 
-// ---------------------------------------------------------------------------
-// ---------------------------------------------------------------------------
-// Tiptap toolbar
-// ---------------------------------------------------------------------------
-
-function EditorToolbar({ editor }: { editor: Editor | null }) {
-  if (!editor) return null;
-
-  const addImage = () => {
-    const url = window.prompt("Enter image URL");
-    if (url) editor.chain().focus().setImage({ src: url }).run();
-  };
-
-  const setLink = () => {
-    const url = window.prompt("Enter URL");
-    if (url) {
-      editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
-    } else {
-      editor.chain().focus().unsetLink().run();
-    }
-  };
-
-  return (
-    <div className="flex flex-wrap gap-1 border border-amber-300 border-b-0 rounded-t-md bg-amber-50 p-2">
-      <button
-        type="button"
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => editor.chain().focus().toggleBold().run()}
-        className={`px-2 py-1 text-sm rounded font-bold min-w-[44px] min-h-[44px] ${
-          editor.isActive("bold")
-            ? "bg-amber-700 text-white"
-            : "bg-white text-amber-900 border border-amber-300"
-        }`}
-        aria-label="Bold"
-      >
-        B
-      </button>
-      <button
-        type="button"
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => editor.chain().focus().toggleItalic().run()}
-        className={`px-2 py-1 text-sm rounded italic min-w-[44px] min-h-[44px] ${
-          editor.isActive("italic")
-            ? "bg-amber-700 text-white"
-            : "bg-white text-amber-900 border border-amber-300"
-        }`}
-        aria-label="Italic"
-      >
-        I
-      </button>
-      <button
-        type="button"
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={setLink}
-        className={`px-2 py-1 text-sm rounded min-w-[44px] min-h-[44px] ${
-          editor.isActive("link")
-            ? "bg-amber-700 text-white"
-            : "bg-white text-amber-900 border border-amber-300"
-        }`}
-        aria-label="Link"
-      >
-        🔗
-      </button>
-      <button
-        type="button"
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={addImage}
-        className="px-2 py-1 text-sm rounded bg-white text-amber-900 border border-amber-300 min-w-[44px] min-h-[44px]"
-        aria-label="Insert image"
-      >
-        🖼
-      </button>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
 
@@ -319,7 +250,6 @@ export default function RegisterPage() {
   const [profilePhotoError, setProfilePhotoError] = useState<string | null>(null);
   const [profilePhotoProcessing, setProfilePhotoProcessing] = useState(false);
   const posthog = usePostHog();
-  const bioRichTextDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const formatNote = useTimedFieldNotice();
   const locationConfig = getPublicDeploymentLocationInputConfig();
@@ -473,32 +403,6 @@ export default function RegisterPage() {
     }
   }
 
-  // Tiptap editor - immediatelyRender: false prevents SSR hydration mismatch
-  const editor = useEditor({
-    immediatelyRender: false,
-    extensions: [StarterKit, TiptapImage, TiptapLink.configure({ openOnClick: false })],
-    content: "",
-    editorProps: {
-      attributes: {
-        class:
-          "prose prose-sm prose-stone max-w-measure min-h-[12rem] cursor-text px-4 py-4 text-left font-sans leading-relaxed text-amber-950 outline-none focus:outline-none sm:prose-base",
-      },
-    },
-    onUpdate: ({ editor: ed }) => {
-      if (bioRichTextDebounceRef.current) clearTimeout(bioRichTextDebounceRef.current);
-      bioRichTextDebounceRef.current = setTimeout(() => {
-        bioRichTextDebounceRef.current = null;
-        setValue("bioRichText", ed.getHTML(), { shouldDirty: true, shouldValidate: false });
-      }, 300);
-    },
-  });
-
-  useEffect(() => {
-    return () => {
-      if (bioRichTextDebounceRef.current) clearTimeout(bioRichTextDebounceRef.current);
-    };
-  }, []);
-
   const onSubmit = async (data: RegistrationFormData) => {
     setSubmitError(null);
     if (sessionState.authenticated && !registeringSomeoneElse) {
@@ -534,7 +438,7 @@ export default function RegisterPage() {
       data.specialities.forEach((s) => formData.append("specialities", s));
 
       if (data.backgroundImageUrl) formData.append("backgroundImageUrl", data.backgroundImageUrl);
-      const bioRichText = editor?.getHTML() ?? data.bioRichText ?? "";
+      const bioRichText = data.bioRichText ?? "";
       if (bioRichText) formData.append("bioRichText", bioRichText);
       if (data.linkedinUrl) formData.append("linkedinUrl", data.linkedinUrl);
       if (data.instagramUrl) formData.append("instagramUrl", data.instagramUrl);
@@ -979,10 +883,11 @@ export default function RegisterPage() {
                     <label className="block text-sm font-semibold text-amber-900 mb-1">
                       Bio / Artistic Journey
                     </label>
-                    <EditorToolbar editor={editor} />
-                    <EditorContent
-                      editor={editor}
-                      className="rounded-b-md border border-t-0 border-amber-300 bg-white focus-within:ring-2 focus-within:ring-amber-500"
+                    <BioRichTextEditor
+                      initialHtml=""
+                      onHtmlChange={(html) =>
+                        setValue("bioRichText", html, { shouldDirty: true, shouldValidate: false })
+                      }
                     />
                   </div>
                 </div>
