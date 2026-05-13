@@ -25,6 +25,9 @@ model Artist {
   /// * When the applicant confirmed they have rights to use the managed profile photo.
   profilePhotoRightsConfirmedAt DateTime?
   backgroundImageUrl            String?
+  backgroundImageFocusX         Int                     @default(50)
+  backgroundImageFocusY         Int                     @default(50)
+  backgroundImageZoom           Int                     @default(100)
   bioRichText                   String?
   province                      String
   isSuspended                   Boolean                 @default(false)
@@ -57,6 +60,9 @@ model Artist {
   magicLinkTokens               MagicLinkToken[]
   notifications                 Notification[]
   notificationPreference        NotificationPreference?
+  profilePhotoReportsFiled      ProfilePhotoReport[]    @relation("ProfilePhotoReportReporter")
+  profilePhotoReportsReceived   ProfilePhotoReport[]    @relation("ProfilePhotoReportArtist")
+  profilePhotoReportsResolved   ProfilePhotoReport[]    @relation("ProfilePhotoReportResolver")
   pushSubscriptions             PushSubscription[]
   reviewedRegistrations         RegistrationRequest[]   @relation("ReviewedBy")
   sessions                      Session[]
@@ -214,6 +220,22 @@ model Feedback {
   reviewer    Artist    @relation("Reviewer", fields: [reviewerId], references: [id])
 
   @@unique([reviewerId, revieweeId, collabId])
+}
+
+model ProfilePhotoReport {
+  id         String   @id @default(uuid())
+  artistId   String
+  reporterId String
+  createdAt  DateTime @default(now())
+  resolvedAt DateTime?
+  resolvedBy String?
+  artist     Artist   @relation("ProfilePhotoReportArtist", fields: [artistId], references: [id], onDelete: Cascade)
+  reporter   Artist   @relation("ProfilePhotoReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  resolver   Artist?  @relation("ProfilePhotoReportResolver", fields: [resolvedBy], references: [id], onDelete: SetNull)
+
+  @@index([artistId, resolvedAt, createdAt])
+  @@index([reporterId, createdAt])
+  @@index([resolvedBy])
 }
 
 model Notification {

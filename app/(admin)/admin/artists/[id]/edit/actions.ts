@@ -4,7 +4,10 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { revalidateHomeMarketing } from "@/lib/cache/home-marketing";
 import { getDb } from "@/lib/db";
-import { deleteManagedProfilePhotoBestEffort } from "@/lib/profile-photo-storage";
+import {
+  deleteManagedFileByUrlBestEffort,
+  deleteManagedProfilePhotoBestEffort,
+} from "@/lib/profile-photo-storage";
 import { verifySession } from "@/lib/session-jwt";
 import {
   artistProfileEditSchema,
@@ -116,7 +119,13 @@ export async function updateAdminArtistProfile(
 
   const target = await db.artist.findUnique({
     where: { id: targetArtistId },
-    select: { id: true, slug: true, profilePhotoUrl: true, profilePhotoObjectKey: true },
+    select: {
+      id: true,
+      slug: true,
+      profilePhotoUrl: true,
+      profilePhotoObjectKey: true,
+      backgroundImageUrl: true,
+    },
   });
   if (!target) {
     return { ok: false, error: "Artist not found." };
@@ -167,6 +176,8 @@ export async function updateAdminArtistProfile(
   const pii = buildEncryptedArtistPiiPayload(targetArtistId, data.email, data.contactNumber);
   const nextProfilePhotoUrl = data.profilePhotoUrl ?? null;
   const profilePhotoChanged = nextProfilePhotoUrl !== (target.profilePhotoUrl ?? null);
+  const nextBackgroundImageUrl = data.backgroundImageUrl ?? null;
+  const backgroundImageChanged = nextBackgroundImageUrl !== (target.backgroundImageUrl ?? null);
 
   try {
     await db.$transaction(async (tx) => {
@@ -193,10 +204,18 @@ export async function updateAdminArtistProfile(
                 profilePhotoRightsConfirmedAt: null,
               }
             : {}),
-          backgroundImageUrl: data.backgroundImageUrl ?? null,
+          backgroundImageUrl: nextBackgroundImageUrl,
           bioRichText,
         },
       });
+      await tx.$executeRaw`
+        UPDATE "Artist"
+        SET
+          "backgroundImageFocusX" = ${data.backgroundImageFocusX},
+          "backgroundImageFocusY" = ${data.backgroundImageFocusY},
+          "backgroundImageZoom" = ${data.backgroundImageZoom}
+        WHERE "id" = ${targetArtistId}
+      `;
 
       await tx.artistSpeciality.deleteMany({ where: { artistId: targetArtistId } });
       await tx.artistSpeciality.createMany({
@@ -233,6 +252,9 @@ export async function updateAdminArtistProfile(
 
   if (profilePhotoChanged) {
     await deleteManagedProfilePhotoBestEffort(target.profilePhotoObjectKey);
+  }
+  if (backgroundImageChanged) {
+    await deleteManagedFileByUrlBestEffort(target.backgroundImageUrl);
   }
 
   revalidatePath("/admin/artists");

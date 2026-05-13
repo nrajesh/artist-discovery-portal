@@ -13,6 +13,11 @@ import { ArtistExternalLinksFeed } from "@/components/artist-external-links-feed
 import { ArtistVisiblePhoneContact } from "@/components/artist-visible-phone-contact";
 import { ArtistProfileShareButton } from "@/components/artist-profile-share-button";
 import { getAbsoluteSiteUrl } from "@/lib/absolute-site-url";
+import {
+  getBackgroundImageObjectPosition,
+  getBackgroundImageScale,
+  normalizeBackgroundImageFocus,
+} from "@/lib/background-image-focus";
 import { ArtistProfileTracker } from "./artist-profile-tracker";
 
 export const dynamic = "force-dynamic";
@@ -88,6 +93,11 @@ export default async function ArtistProfilePage({ params, searchParams }: PagePr
     ? heroTheme.background
     : heroTheme.accentColor;
   const bgCover = artist.backgroundImageUrl?.trim();
+  const backgroundImageFocus = normalizeBackgroundImageFocus({
+    backgroundImageFocusX: artist.backgroundImageFocusX,
+    backgroundImageFocusY: artist.backgroundImageFocusY,
+    backgroundImageZoom: artist.backgroundImageZoom,
+  });
   const activeCollabs = artist.collabs.filter((c) => c.status === "active");
   const completedCollabs = artist.collabs.filter((c) => c.status === "completed");
 
@@ -111,78 +121,96 @@ export default async function ArtistProfilePage({ params, searchParams }: PagePr
     <main className="min-h-screen bg-amber-50">
       <ArtistProfileTracker artistSlug={slug} />
       {/* Hero */}
-      <div
-        className="px-6 pt-10 pb-20 text-white"
-        style={
-          bgCover
-            ? {
-                backgroundImage: `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.58)), url(${bgCover})`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-              }
-            : { background: heroBackground }
-        }
-      >
+      <div className="px-4 pt-5 text-white sm:px-6 sm:pt-8">
         <Link href="/artists" className="text-white/70 hover:text-white text-sm mb-6 inline-block">
           ← All Artists
         </Link>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5 max-w-3xl mx-auto">
-          <FeaturedArtistPhoto
-            photoUrl={artist.profilePhotoUrl ?? ""}
-            initial={artist.name[0] ?? "?"}
-            accentColor={heroAvatarAccent}
-            alt={`${artist.name} profile photo`}
-            sizeClassName="h-20 w-20 shrink-0 text-3xl border-4 border-white/40"
-            imgClassName="!ring-white/50 border-4 border-white/40 shadow-lg"
-            blurred={!isLoggedIn}
-          />
-          <div className="min-w-0 flex-1 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-            <div className="min-w-0">
-              <h1
-                className="font-display text-3xl font-bold tracking-tight sm:text-4xl"
-                style={!isLoggedIn ? { filter: "blur(6px)", userSelect: "none" } : undefined}
-              >
-                {artist.name}
-              </h1>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {artist.specialities.map((s) => (
-                  <span
-                    key={s.name}
-                    className="text-xs px-2 py-0.5 rounded-full font-semibold shadow-sm ring-1 ring-white/35"
-                    style={{
-                      backgroundColor: s.color,
-                      color: "#FFFFFF",
-                    }}
-                  >
-                    {s.name}
-                  </span>
-                ))}
-                {collabsRatingsEnabled && artist.availableForCollab && (
-                  <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-green-400/30 text-white border border-green-300/40">
-                    Open to collab
-                  </span>
-                )}
+        <div className="mx-auto w-full max-w-5xl lg:w-[72%] xl:w-[68%]">
+          <div
+            className="relative min-h-[260px] overflow-hidden rounded-[2rem] border border-white/20 shadow-2xl shadow-stone-900/20 sm:min-h-[300px] md:aspect-[16/6] md:min-h-0"
+            style={!bgCover ? { background: heroBackground } : undefined}
+          >
+            {bgCover ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element -- artist-uploaded image URLs vary by storage host */}
+                <img
+                  src={bgCover}
+                  alt=""
+                  aria-hidden
+                  className="absolute inset-0 h-full w-full select-none object-cover"
+                  style={{
+                    objectPosition: getBackgroundImageObjectPosition(backgroundImageFocus),
+                    transform: `scale(${getBackgroundImageScale(backgroundImageFocus)})`,
+                    transformOrigin: getBackgroundImageObjectPosition(backgroundImageFocus),
+                  }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/20 to-black/50" />
+              </>
+            ) : null}
+            <div className="relative px-5 py-7 text-white sm:px-8 sm:py-10">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5">
+                <FeaturedArtistPhoto
+                  photoUrl={artist.profilePhotoUrl ?? ""}
+                  initial={artist.name[0] ?? "?"}
+                  accentColor={heroAvatarAccent}
+                  alt={`${artist.name} profile photo`}
+                  sizeClassName="h-20 w-20 shrink-0 text-3xl border-4 border-white/40"
+                  imgClassName="!ring-white/50 border-4 border-white/40 shadow-lg"
+                  blurred={!isLoggedIn}
+                />
+                <div className="min-w-0 flex-1 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                  <div className="min-w-0">
+                    <h1
+                      className="font-display text-3xl font-bold tracking-tight sm:text-4xl"
+                      style={!isLoggedIn ? { filter: "blur(6px)", userSelect: "none" } : undefined}
+                    >
+                      {artist.name}
+                    </h1>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {artist.specialities.map((s) => (
+                        <span
+                          key={s.name}
+                          className="text-xs px-2 py-0.5 rounded-full font-semibold shadow-sm ring-1 ring-white/35"
+                          style={{
+                            backgroundColor: s.color,
+                            color: "#FFFFFF",
+                          }}
+                        >
+                          {s.name}
+                        </span>
+                      ))}
+                      {collabsRatingsEnabled && artist.availableForCollab && (
+                        <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-green-400/30 text-white border border-green-300/40">
+                          Open to collab
+                        </span>
+                      )}
+                    </div>
+                    {artist.province.trim() ? (
+                      <p className="text-white/70 mt-1 text-sm">📍 {artist.province}</p>
+                    ) : null}
+                  </div>
+                  <ArtistProfileShareButton
+                    profileUrl={profileShareUrl}
+                    shareTitle={shareTitle}
+                    shareText={shareText}
+                    className="self-start sm:self-start sm:shrink-0"
+                  />
+                </div>
               </div>
-              {artist.province.trim() ? (
-                <p className="text-white/70 mt-1 text-sm">📍 {artist.province}</p>
-              ) : null}
             </div>
-            <ArtistProfileShareButton
-              profileUrl={profileShareUrl}
-              shareTitle={shareTitle}
-              shareText={shareText}
-              className="self-start sm:self-start sm:shrink-0"
-            />
           </div>
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-6 -mt-10 pb-16">
-        {profilePhotoReported ? (
-          <div className="mb-6 rounded-xl border border-green-200 bg-green-50 px-5 py-4 text-sm font-medium text-green-800 shadow-sm">
+      {profilePhotoReported ? (
+        <div className="mx-auto mt-4 max-w-3xl px-6">
+          <div className="rounded-xl border border-green-200 bg-green-50 px-5 py-4 text-sm font-medium text-green-800 shadow-sm">
             Profile photo report sent to admins.
           </div>
-        ) : null}
+        </div>
+      ) : null}
+
+      <div className="max-w-3xl mx-auto mt-6 px-6 pb-16">
 
         {/* Quick stats */}
         {collabsRatingsEnabled && (

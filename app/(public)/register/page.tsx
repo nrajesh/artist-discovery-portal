@@ -5,7 +5,7 @@
  * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.7, 1.8
  */
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useForm, useFieldArray, Controller, useWatch, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -164,9 +164,11 @@ const finalRequiredFieldLabels = {
   specialities: "Specialities",
 } as const;
 
-const PROFILE_PHOTO_INPUT_MAX_BYTES = 5 * 1024 * 1024;
+const IMAGE_INPUT_MAX_BYTES = 5 * 1024 * 1024;
 const PROFILE_PHOTO_OUTPUT_SIZE = 320;
-const PROFILE_PHOTO_ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const BACKGROUND_IMAGE_OUTPUT_WIDTH = 1600;
+const BACKGROUND_IMAGE_OUTPUT_HEIGHT = 900;
+const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 async function loadImageForCanvas(file: File): Promise<ImageBitmap | HTMLImageElement> {
   if ("createImageBitmap" in window) {
@@ -184,23 +186,41 @@ async function loadImageForCanvas(file: File): Promise<ImageBitmap | HTMLImageEl
   }
 }
 
-async function processProfilePhotoFile(file: File): Promise<File> {
-  if (!PROFILE_PHOTO_ALLOWED_TYPES.has(file.type)) {
+async function processImageFile(params: {
+  file: File;
+  outputWidth: number;
+  outputHeight: number;
+  outputName: string;
+}): Promise<File> {
+  const { file, outputWidth, outputHeight, outputName } = params;
+  if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
     throw new Error("Choose a JPEG, PNG, or WebP image.");
   }
-  if (file.size > PROFILE_PHOTO_INPUT_MAX_BYTES) {
+  if (file.size > IMAGE_INPUT_MAX_BYTES) {
     throw new Error("Choose an image smaller than 5 MB.");
   }
 
   const source = await loadImageForCanvas(file);
   const sourceWidth = source instanceof HTMLImageElement ? source.naturalWidth : source.width;
   const sourceHeight = source instanceof HTMLImageElement ? source.naturalHeight : source.height;
-  const side = Math.min(sourceWidth, sourceHeight);
-  const sourceX = Math.max(0, (sourceWidth - side) / 2);
-  const sourceY = Math.max(0, (sourceHeight - side) / 2);
+  const sourceAspectRatio = sourceWidth / sourceHeight;
+  const targetAspectRatio = outputWidth / outputHeight;
+  let cropWidth = sourceWidth;
+  let cropHeight = sourceHeight;
+  let sourceX = 0;
+  let sourceY = 0;
+
+  if (sourceAspectRatio > targetAspectRatio) {
+    cropWidth = sourceHeight * targetAspectRatio;
+    sourceX = Math.max(0, (sourceWidth - cropWidth) / 2);
+  } else if (sourceAspectRatio < targetAspectRatio) {
+    cropHeight = sourceWidth / targetAspectRatio;
+    sourceY = Math.max(0, (sourceHeight - cropHeight) / 2);
+  }
+
   const canvas = document.createElement("canvas");
-  canvas.width = PROFILE_PHOTO_OUTPUT_SIZE;
-  canvas.height = PROFILE_PHOTO_OUTPUT_SIZE;
+  canvas.width = outputWidth;
+  canvas.height = outputHeight;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Could not prepare the image.");
 
@@ -210,12 +230,12 @@ async function processProfilePhotoFile(file: File): Promise<File> {
     source,
     sourceX,
     sourceY,
-    side,
-    side,
+    cropWidth,
+    cropHeight,
     0,
     0,
-    PROFILE_PHOTO_OUTPUT_SIZE,
-    PROFILE_PHOTO_OUTPUT_SIZE,
+    outputWidth,
+    outputHeight,
   );
   if ("close" in source && typeof source.close === "function") source.close();
 
@@ -223,7 +243,25 @@ async function processProfilePhotoFile(file: File): Promise<File> {
     canvas.toBlob(resolve, "image/jpeg", 0.86),
   );
   if (!blob) throw new Error("Could not prepare the image.");
-  return new File([blob], "profile-photo.jpg", { type: "image/jpeg", lastModified: Date.now() });
+  return new File([blob], outputName, { type: "image/jpeg", lastModified: Date.now() });
+}
+
+async function processProfilePhotoFile(file: File): Promise<File> {
+  return processImageFile({
+    file,
+    outputWidth: PROFILE_PHOTO_OUTPUT_SIZE,
+    outputHeight: PROFILE_PHOTO_OUTPUT_SIZE,
+    outputName: "profile-photo.jpg",
+  });
+}
+
+async function processBackgroundImageFile(file: File): Promise<File> {
+  return processImageFile({
+    file,
+    outputWidth: BACKGROUND_IMAGE_OUTPUT_WIDTH,
+    outputHeight: BACKGROUND_IMAGE_OUTPUT_HEIGHT,
+    outputName: "background-image.jpg",
+  });
 }
 
 // Main component
@@ -249,6 +287,11 @@ export default function RegisterPage() {
   const [profilePhotoRightsConfirmed, setProfilePhotoRightsConfirmed] = useState(false);
   const [profilePhotoError, setProfilePhotoError] = useState<string | null>(null);
   const [profilePhotoProcessing, setProfilePhotoProcessing] = useState(false);
+  const [backgroundImageFile, setBackgroundImageFile] = useState<File | null>(null);
+  const [backgroundImagePreviewUrl, setBackgroundImagePreviewUrl] = useState<string | null>(null);
+  const [backgroundImageRightsConfirmed, setBackgroundImageRightsConfirmed] = useState(false);
+  const [backgroundImageError, setBackgroundImageError] = useState<string | null>(null);
+  const [backgroundImageProcessing, setBackgroundImageProcessing] = useState(false);
   const posthog = usePostHog();
 
   const formatNote = useTimedFieldNotice();
@@ -303,8 +346,16 @@ export default function RegisterPage() {
         setProfilePhotoError("Please wait until the profile photo is ready.");
         return;
       }
-      if (profilePhotoFile && !profilePhotoRightsConfirmed) {
+      if (backgroundImageProcessing) {
+        setBackgroundImageError("Please wait until the Header Image is ready.");
+        return;
+      }
+      if ((profilePhotoFile || profilePhotoUrlValue.trim()) && !profilePhotoRightsConfirmed) {
         setProfilePhotoError("Confirm that you have rights to use the profile photo.");
+        return;
+      }
+      if (backgroundImageFile && !backgroundImageRightsConfirmed) {
+        setBackgroundImageError("Confirm that you have rights to use the Header Image.");
         return;
       }
     }
@@ -330,6 +381,7 @@ export default function RegisterPage() {
   });
   const fullNameValue = useWatch({ control, name: "fullName" }) ?? "";
   const emailValue = useWatch({ control, name: "email" }) ?? "";
+  const profilePhotoUrlValue = useWatch({ control, name: "profilePhotoUrl" }) ?? "";
 
   useEffect(() => {
     let active = true;
@@ -381,6 +433,12 @@ export default function RegisterPage() {
     };
   }, [profilePhotoPreviewUrl]);
 
+  useEffect(() => {
+    return () => {
+      if (backgroundImagePreviewUrl) URL.revokeObjectURL(backgroundImagePreviewUrl);
+    };
+  }, [backgroundImagePreviewUrl]);
+
   async function handleProfilePhotoChange(file: File | null) {
     setProfilePhotoError(null);
     setProfilePhotoRightsConfirmed(false);
@@ -403,6 +461,28 @@ export default function RegisterPage() {
     }
   }
 
+  async function handleBackgroundImageChange(file: File | null) {
+    setBackgroundImageError(null);
+    setBackgroundImageRightsConfirmed(false);
+    setBackgroundImageFile(null);
+    setBackgroundImagePreviewUrl((previous) => {
+      if (previous) URL.revokeObjectURL(previous);
+      return null;
+    });
+
+    if (!file) return;
+    setBackgroundImageProcessing(true);
+    try {
+      const processed = await processBackgroundImageFile(file);
+      setBackgroundImageFile(processed);
+      setBackgroundImagePreviewUrl(URL.createObjectURL(processed));
+    } catch (err) {
+      setBackgroundImageError(err instanceof Error ? err.message : "Could not prepare the image.");
+    } finally {
+      setBackgroundImageProcessing(false);
+    }
+  }
+
   const onSubmit = async (data: RegistrationFormData) => {
     setSubmitError(null);
     if (sessionState.authenticated && !registeringSomeoneElse) {
@@ -416,10 +496,21 @@ export default function RegisterPage() {
       setSubmitError("Please wait until the profile photo is ready.");
       return;
     }
-    if (profilePhotoFile && !profilePhotoRightsConfirmed) {
+    if (backgroundImageProcessing) {
+      setCurrentStep(1);
+      setSubmitError("Please wait until the Header Image is ready.");
+      return;
+    }
+    if ((profilePhotoFile || profilePhotoUrlValue.trim()) && !profilePhotoRightsConfirmed) {
       setCurrentStep(1);
       setProfilePhotoError("Confirm that you have rights to use the profile photo.");
       setSubmitError("Confirm that you have rights to use the profile photo.");
+      return;
+    }
+    if (backgroundImageFile && !backgroundImageRightsConfirmed) {
+      setCurrentStep(1);
+      setBackgroundImageError("Confirm that you have rights to use the Header Image.");
+      setSubmitError("Confirm that you have rights to use the Header Image.");
       return;
     }
     try {
@@ -434,10 +525,19 @@ export default function RegisterPage() {
       if (profilePhotoFile) {
         formData.append("profilePhotoFile", profilePhotoFile);
         formData.append("profilePhotoRightsConfirmed", "true");
+      } else if (data.profilePhotoUrl) {
+        formData.append("profilePhotoUrl", data.profilePhotoUrl);
+        formData.append("profilePhotoRightsConfirmed", "true");
+      }
+      if (backgroundImageFile) {
+        formData.append("backgroundImageFile", backgroundImageFile);
+        formData.append("backgroundImageRightsConfirmed", "true");
       }
       data.specialities.forEach((s) => formData.append("specialities", s));
 
-      if (data.backgroundImageUrl) formData.append("backgroundImageUrl", data.backgroundImageUrl);
+      if (data.backgroundImageUrl && !backgroundImageFile) {
+        formData.append("backgroundImageUrl", data.backgroundImageUrl);
+      }
       const bioRichText = data.bioRichText ?? "";
       if (bioRichText) formData.append("bioRichText", bioRichText);
       if (data.linkedinUrl) formData.append("linkedinUrl", data.linkedinUrl);
@@ -466,12 +566,25 @@ export default function RegisterPage() {
             }
           }
           if (fieldErrors.province) setCurrentStep(0);
-          if (fieldErrors.profilePhotoFile || fieldErrors.profilePhotoRightsConfirmed) {
+          if (
+            fieldErrors.profilePhotoFile ||
+            fieldErrors.profilePhotoRightsConfirmed ||
+            fieldErrors.profilePhotoUrl
+          ) {
             setCurrentStep(1);
             setProfilePhotoError(
               fieldErrors.profilePhotoFile ??
                 fieldErrors.profilePhotoRightsConfirmed ??
+                fieldErrors.profilePhotoUrl ??
                 "Check the profile photo.",
+            );
+          }
+          if (fieldErrors.backgroundImageFile || fieldErrors.backgroundImageRightsConfirmed) {
+            setCurrentStep(1);
+            setBackgroundImageError(
+              fieldErrors.backgroundImageFile ??
+                fieldErrors.backgroundImageRightsConfirmed ??
+                "Check the Header Image.",
             );
           }
         }
@@ -751,31 +864,34 @@ export default function RegisterPage() {
 
             {currentStep === 1 ? (
               <>
-                <div>
-                  <label
-                    htmlFor="profilePhotoFile"
-                    className="block text-sm font-semibold text-amber-900 mb-1"
-                  >
-                    Profile photo <span className="font-normal text-amber-600">(optional)</span>
-                  </label>
-                  <p className="mb-2 text-xs leading-relaxed text-amber-700">
-                    Upload a JPEG, PNG, or WebP image. It will be cropped to a small square avatar
-                    before submission.
+                <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
+                  <p className="text-sm font-semibold text-amber-900">Images</p>
+                  <p className="mt-1 text-xs leading-relaxed text-amber-700">
+                    Profile photos and Header Images can use either managed upload or a direct
+                    HTTPS URL. Remote profile-photo URLs are ingested into managed storage before
+                    review.
                   </p>
-                  <div className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50/60 p-4 sm:flex-row sm:items-center">
-                    {profilePhotoPreviewUrl ? (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img
-                        src={profilePhotoPreviewUrl}
-                        alt="Profile photo preview"
-                        className="h-20 w-20 rounded-xl border border-amber-200 object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl border border-dashed border-amber-300 bg-white text-xs font-semibold text-amber-700">
-                        Photo
+
+                  <div className="mt-4 grid gap-4 border-b border-amber-200 pb-4 md:grid-cols-2">
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        {profilePhotoPreviewUrl ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={profilePhotoPreviewUrl}
+                            alt="Profile photo preview"
+                            className="h-16 w-16 rounded-xl border border-amber-200 object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-dashed border-amber-300 bg-white text-xs font-semibold text-amber-700">
+                            Photo
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-sm font-semibold text-amber-900">Profile photo upload</p>
+                          <p className="text-xs text-amber-700">Cropped to a square avatar.</p>
+                        </div>
                       </div>
-                    )}
-                    <div className="min-w-0 flex-1">
                       <input
                         id="profilePhotoFile"
                         type="file"
@@ -783,13 +899,13 @@ export default function RegisterPage() {
                         onChange={(e) =>
                           void handleProfilePhotoChange(e.currentTarget.files?.[0] ?? null)
                         }
-                        className="block w-full text-sm text-amber-900 file:mr-3 file:min-h-[40px] file:rounded-lg file:border-0 file:bg-amber-700 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-amber-800"
+                        className="block w-full text-sm text-amber-900 file:mr-3 file:min-h-[38px] file:rounded-lg file:border-0 file:bg-amber-700 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-amber-800"
                       />
                       {profilePhotoProcessing ? (
-                        <p className="mt-2 text-xs text-amber-700">Preparing image…</p>
+                        <p className="text-xs text-amber-700">Preparing image…</p>
                       ) : null}
-                      {profilePhotoFile ? (
-                        <label className="mt-3 flex cursor-pointer items-start gap-2 text-xs leading-relaxed text-amber-900">
+                      {profilePhotoFile || profilePhotoUrlValue.trim() ? (
+                        <label className="flex cursor-pointer items-start gap-2 text-xs leading-relaxed text-amber-900">
                           <input
                             type="checkbox"
                             checked={profilePhotoRightsConfirmed}
@@ -799,28 +915,130 @@ export default function RegisterPage() {
                             }}
                             className="mt-0.5 accent-amber-700"
                           />
-                          <span>
-                            I confirm I have the right to use this image on my public artist
-                            profile.
-                          </span>
+                          <span>I confirm I have the right to use this profile photo.</span>
                         </label>
                       ) : null}
                       {profilePhotoFile ? (
                         <button
                           type="button"
                           onClick={() => void handleProfilePhotoChange(null)}
-                          className="mt-2 min-h-[36px] text-xs font-semibold text-amber-700 underline underline-offset-2 hover:text-amber-900"
+                          className="min-h-[36px] text-xs font-semibold text-amber-700 underline underline-offset-2 hover:text-amber-900"
                         >
                           Remove selected photo
                         </button>
                       ) : null}
+                      {profilePhotoError ? (
+                        <p className="text-sm text-red-600" role="alert">
+                          {profilePhotoError}
+                        </p>
+                      ) : null}
+                    </div>
+
+                    <div className="border-t border-amber-200 pt-4 md:border-l md:border-t-0 md:pl-4 md:pt-0">
+                      <Controller
+                        name="profilePhotoUrl"
+                        control={control}
+                        render={({ field }) => (
+                          <RegistrationPrefixedUrlInput
+                            id="profilePhotoUrl"
+                            label="Profile photo URL"
+                            helperText="Optional fallback HTTPS URL for an avatar image."
+                            prefix={REGISTRATION_HTTPS_PREFIX}
+                            suffixPlaceholder="example.com/photo.jpg"
+                            suffixFromStored={websitePathSuffixFromStored}
+                            merge={mergeWebsitePath}
+                            field={field}
+                            error={errors.profilePhotoUrl?.message as string | undefined}
+                            onFormatNote={formatNote.show}
+                          />
+                        )}
+                      />
                     </div>
                   </div>
-                  {profilePhotoError ? (
-                    <p className="mt-1 text-sm text-red-600" role="alert">
-                      {profilePhotoError}
-                    </p>
-                  ) : null}
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        {backgroundImagePreviewUrl ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={backgroundImagePreviewUrl}
+                            alt="Header Image preview"
+                            className="h-20 w-full rounded-xl border border-amber-200 object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-20 w-full items-center justify-center rounded-xl border border-dashed border-amber-300 bg-white text-xs font-semibold text-amber-700">
+                            Header Image
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-sm font-semibold text-amber-900">Header Image upload</p>
+                          <p className="text-xs text-amber-700">Cropped to a wide hero banner.</p>
+                        </div>
+                      </div>
+                      <input
+                        id="backgroundImageFile"
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={(e) =>
+                          void handleBackgroundImageChange(e.currentTarget.files?.[0] ?? null)
+                        }
+                        className="block w-full text-sm text-amber-900 file:mr-3 file:min-h-[38px] file:rounded-lg file:border-0 file:bg-amber-700 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-amber-800"
+                      />
+                      {backgroundImageProcessing ? (
+                        <p className="text-xs text-amber-700">Preparing image…</p>
+                      ) : null}
+                      {backgroundImageFile ? (
+                        <label className="flex cursor-pointer items-start gap-2 text-xs leading-relaxed text-amber-900">
+                          <input
+                            type="checkbox"
+                            checked={backgroundImageRightsConfirmed}
+                            onChange={(e) => {
+                              setBackgroundImageRightsConfirmed(e.target.checked);
+                              if (e.target.checked) setBackgroundImageError(null);
+                            }}
+                            className="mt-0.5 accent-amber-700"
+                          />
+                          <span>I confirm I have the right to use this Header Image.</span>
+                        </label>
+                      ) : null}
+                      {backgroundImageFile ? (
+                        <button
+                          type="button"
+                          onClick={() => void handleBackgroundImageChange(null)}
+                          className="min-h-[36px] text-xs font-semibold text-amber-700 underline underline-offset-2 hover:text-amber-900"
+                        >
+                          Remove selected Header Image
+                        </button>
+                      ) : null}
+                      {backgroundImageError ? (
+                        <p className="text-sm text-red-600" role="alert">
+                          {backgroundImageError}
+                        </p>
+                      ) : null}
+                    </div>
+
+                    <div className="border-t border-amber-200 pt-4 md:border-l md:border-t-0 md:pl-4 md:pt-0">
+                      <Controller
+                        name="backgroundImageUrl"
+                        control={control}
+                        render={({ field }) => (
+                          <RegistrationPrefixedUrlInput
+                            id="backgroundImageUrl"
+                            label="Header Image URL"
+                            helperText="Optional fallback HTTPS URL for your hero banner."
+                            prefix={REGISTRATION_HTTPS_PREFIX}
+                            suffixPlaceholder="example.com/banner.jpg"
+                            suffixFromStored={websitePathSuffixFromStored}
+                            merge={mergeWebsitePath}
+                            field={field}
+                            error={errors.backgroundImageUrl?.message as string | undefined}
+                            onFormatNote={formatNote.show}
+                          />
+                        )}
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {/* ── Specialities ── */}
@@ -855,28 +1073,6 @@ export default function RegisterPage() {
                 {/* ── Divider: Optional fields ── */}
                 <div className="rounded-2xl border border-dashed border-amber-200 bg-amber-50/60 p-4">
                   <p className="text-sm font-semibold text-amber-700 mb-4">Optional extras</p>
-
-                  {/* Background image URL */}
-                  <div className="mb-4">
-                    <Controller
-                      name="backgroundImageUrl"
-                      control={control}
-                      render={({ field }) => (
-                        <RegistrationPrefixedUrlInput
-                          id="backgroundImageUrl"
-                          label="Background image URL"
-                          helperText="Optional. Wide banner image for your public profile hero."
-                          prefix={REGISTRATION_HTTPS_PREFIX}
-                          suffixPlaceholder="example.com/banner.jpg"
-                          suffixFromStored={websitePathSuffixFromStored}
-                          merge={mergeWebsitePath}
-                          field={field}
-                          error={errors.backgroundImageUrl?.message as string | undefined}
-                          onFormatNote={formatNote.show}
-                        />
-                      )}
-                    />
-                  </div>
 
                   {/* Bio / Artistic Journey  -  min-height on ProseMirror (editorProps) so the whole box is clickable */}
                   <div className="mb-4 min-w-0 max-w-full">

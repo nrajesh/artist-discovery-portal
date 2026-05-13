@@ -258,14 +258,11 @@ describe("Property 1: Registration mandatory-field validation", () => {
     }
   });
 
-  it("rejects legacy remote profile photo URLs", () => {
+  it("accepts HTTPS profile photo URLs for managed ingestion", () => {
     const result = registrationServerSchema.safeParse(
       validPayload({ profilePhotoUrl: "https://cdn.example.com/photo.jpg" }),
     );
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error.issues.some((i) => i.path[0] === "profilePhotoUrl")).toBe(true);
-    }
+    expect(result.success).toBe(true);
   });
 });
 

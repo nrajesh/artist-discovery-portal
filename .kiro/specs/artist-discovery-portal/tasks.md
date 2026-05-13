@@ -172,8 +172,9 @@ Implement Artist Discovery Portal as a Next.js 14 (App Router) TypeScript PWA. T
   - [x] 20.2 Collab moderation (`/admin/collabs`) - sortable table, message history detail
   - [x] 20.3-20.4 Message delete and artist suspend - UI stubs; API pending
   - [x] 20.5 Speciality management (`/admin/specialities`) - colour-coded cards, artist counts
-  - [x] 20.6 Artist management (`/admin/artists`) - sortable table; artist detail page with bio, availability, collab history, reviews
-  - [x] 20.7 Artist deletion - UI confirmation prompt; API pending
+- [x] 20.6 Artist management (`/admin/artists`) - sortable table; artist detail page with bio, availability, collab history, reviews
+- [x] 20.7 Artist deletion - UI confirmation prompt; API pending
+- [x] 20.8 Reported profile photo moderation - durable report records, admin notification fan-out, `/admin/reported-photos` bulk queue, clear / suspend actions, repeat-offender sort flag
   - [x] 20.8 Collab management - sortable table with owner, member count, message count, status
 
 - [x] 21. Home page - built with dummy data; D3 map and daily rotation pending

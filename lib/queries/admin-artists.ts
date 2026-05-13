@@ -5,6 +5,7 @@ import {
   formatDeploymentMonthYear,
 } from "@/lib/format-deployment-datetime";
 import { decryptArtistStoredContact } from "@/lib/artist-pii";
+import { normalizeBackgroundImageFocus } from "@/lib/background-image-focus";
 import { getDb } from "@/lib/db";
 import { type ArtistProfileView, specColor } from "@/lib/queries/artists";
 import { type SuspensionMessage, resolveSuspensionMessages } from "@/lib/suspension-thread";
@@ -150,6 +151,11 @@ export async function getArtistProfileForAdmin(
     collab: f.collab.name,
     date: formatDeploymentDateNumericDay(f.submittedAt),
   }));
+  const backgroundImageFocus = normalizeBackgroundImageFocus({
+    backgroundImageFocusX: artist.backgroundImageFocusX,
+    backgroundImageFocusY: artist.backgroundImageFocusY,
+    backgroundImageZoom: artist.backgroundImageZoom,
+  });
 
   return {
     id: artist.id,
@@ -159,6 +165,9 @@ export async function getArtistProfileForAdmin(
     province: artist.province,
     profilePhotoUrl: artist.profilePhotoUrl,
     backgroundImageUrl: artist.backgroundImageUrl ?? null,
+    backgroundImageFocusX: backgroundImageFocus.backgroundImageFocusX,
+    backgroundImageFocusY: backgroundImageFocus.backgroundImageFocusY,
+    backgroundImageZoom: backgroundImageFocus.backgroundImageZoom,
     specialities: artist.specialities.map((j) => specColor(j.speciality)),
     contactNumber: pii.contactNumber,
     contactType: artist.contactType,

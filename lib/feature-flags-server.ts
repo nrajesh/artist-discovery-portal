@@ -1,5 +1,8 @@
 import { analyticsServer } from "@/lib/analytics-server";
-import { POSTHOG_FLAG_ARTIST_COLLABS_RATINGS } from "@/lib/feature-flag-keys";
+import {
+  POSTHOG_FLAG_ADMIN_PROFILE_PHOTO_REPORT_SORTING,
+  POSTHOG_FLAG_ARTIST_COLLABS_RATINGS,
+} from "@/lib/feature-flag-keys";
 
 const ANON_DISTINCT = "anonymous";
 
@@ -10,6 +13,14 @@ function parseEnvOverride(): boolean | null {
   if (!raw) return null;
   if (raw === "true" || raw === "1" || raw === "yes") return true;
   if (raw === "false" || raw === "0" || raw === "no") return false;
+  return null;
+}
+
+function parseBooleanOverride(raw: string | undefined): boolean | null {
+  const normalized = raw?.trim().toLowerCase();
+  if (!normalized) return null;
+  if (normalized === "true" || normalized === "1" || normalized === "yes") return true;
+  if (normalized === "false" || normalized === "0" || normalized === "no") return false;
   return null;
 }
 
@@ -40,5 +51,27 @@ export async function assertArtistCollabsRatingsEnabled(distinctId: string): Pro
   const ok = await isArtistCollabsRatingsEnabledServer({ distinctId });
   if (!ok) {
     throw new Error("Collaborations and ratings are not available.");
+  }
+}
+
+export async function isAdminProfilePhotoReportSortingEnabledServer(options: {
+  distinctId?: string;
+} = {}): Promise<boolean> {
+  const override =
+    parseBooleanOverride(process.env.POSTHOG_FLAG_ADMIN_PROFILE_PHOTO_REPORT_SORTING) ??
+    parseBooleanOverride(process.env.NEXT_PUBLIC_POSTHOG_FLAG_ADMIN_PROFILE_PHOTO_REPORT_SORTING);
+  if (override !== null) return override;
+
+  if (!analyticsServer) return false;
+
+  const distinctId = options.distinctId ?? ANON_DISTINCT;
+  try {
+    const result = await analyticsServer.isFeatureEnabled(
+      POSTHOG_FLAG_ADMIN_PROFILE_PHOTO_REPORT_SORTING,
+      distinctId,
+    );
+    return result === true;
+  } catch {
+    return false;
   }
 }

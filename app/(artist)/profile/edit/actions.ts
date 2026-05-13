@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { revalidateHomeMarketing } from "@/lib/cache/home-marketing";
 import { getDb } from "@/lib/db";
+import { deleteManagedFileByUrlBestEffort } from "@/lib/profile-photo-storage";
 import { verifySession } from "@/lib/session-jwt";
 import {
   artistProfileEditSchema,
@@ -78,12 +79,13 @@ export async function updateArtistProfile(
 
   const selfBefore = await db.artist.findUnique({
     where: { id: artistId },
-    select: { slug: true },
+    select: { slug: true, backgroundImageUrl: true },
   });
   if (!selfBefore) {
     return { ok: false, error: "Artist not found." };
   }
   const previousSlug = selfBefore.slug;
+  const previousBackgroundImageUrl = selfBefore.backgroundImageUrl ?? null;
   if (data.slug !== previousSlug) {
     const slugOwnerId = await findArtistIdOwningSlug(db, data.slug);
     if (slugOwnerId !== null && slugOwnerId !== artistId) {
@@ -135,6 +137,7 @@ export async function updateArtistProfile(
 
   const bioTrim = data.bioRichText?.trim() ?? "";
   const bioRichText = bioTrim.length > 0 ? data.bioRichText! : null;
+  const nextBackgroundImageUrl = data.backgroundImageUrl ?? null;
 
   const pii = buildEncryptedArtistPiiPayload(artistId, data.email, data.contactNumber);
 
@@ -155,10 +158,18 @@ export async function updateArtistProfile(
           contactType: data.contactNumber.trim() ? (data.contactType ?? null) : null,
           province: data.province,
           openToCollab,
-          backgroundImageUrl: data.backgroundImageUrl ?? null,
+          backgroundImageUrl: nextBackgroundImageUrl,
           bioRichText,
         },
       });
+      await tx.$executeRaw`
+        UPDATE "Artist"
+        SET
+          "backgroundImageFocusX" = ${data.backgroundImageFocusX},
+          "backgroundImageFocusY" = ${data.backgroundImageFocusY},
+          "backgroundImageZoom" = ${data.backgroundImageZoom}
+        WHERE "id" = ${artistId}
+      `;
 
       await tx.artistSpeciality.deleteMany({ where: { artistId } });
       await tx.artistSpeciality.createMany({
@@ -191,6 +202,10 @@ export async function updateArtistProfile(
       };
     }
     throw e;
+  }
+
+  if (nextBackgroundImageUrl !== previousBackgroundImageUrl) {
+    await deleteManagedFileByUrlBestEffort(previousBackgroundImageUrl);
   }
 
   revalidatePath("/dashboard");

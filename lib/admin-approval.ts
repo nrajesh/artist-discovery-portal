@@ -10,7 +10,7 @@ import { buildEncryptedArtistPiiPayload, decryptRegistrationStoredContact } from
 import { getDb } from "./db";
 import { issueMagicLink } from "./auth";
 import { REGISTRATION_APPROVE_DEFAULT_COMMENT } from "./admin-review-comment";
-import { deleteManagedProfilePhotoBestEffort } from "./profile-photo-storage";
+import { deleteManagedFileByUrlBestEffort, deleteManagedProfilePhotoBestEffort } from "./profile-photo-storage";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -184,6 +184,7 @@ export async function rejectRegistration(
 
   const now = new Date();
   const profilePhotoObjectKey = registration.profilePhotoObjectKey;
+  const backgroundImageUrl = registration.backgroundImageUrl;
 
   await getDb().registrationRequest.update({
     where: { id: registrationId },
@@ -200,6 +201,7 @@ export async function rejectRegistration(
   });
 
   await deleteManagedProfilePhotoBestEffort(profilePhotoObjectKey);
+  await deleteManagedFileByUrlBestEffort(backgroundImageUrl);
 
   return { success: true };
 }

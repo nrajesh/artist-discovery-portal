@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  MAX_BACKGROUND_IMAGE_ZOOM,
+  MIN_BACKGROUND_IMAGE_ZOOM,
+} from "@/lib/background-image-focus";
 import { normalizeArtistSlugInput } from "@/lib/artist-slug-normalize";
 import {
   mergeFacebookUrl,
@@ -66,6 +70,9 @@ export const artistProfileEditSchema = z
   openToCollab: z.boolean(),
   profilePhotoUrl: optionalHttpsPhotoUrlSchema,
   backgroundImageUrl: optionalHttpsPhotoUrlSchema,
+  backgroundImageFocusX: z.number().int().min(0).max(100),
+  backgroundImageFocusY: z.number().int().min(0).max(100),
+  backgroundImageZoom: z.number().int().min(MIN_BACKGROUND_IMAGE_ZOOM).max(MAX_BACKGROUND_IMAGE_ZOOM),
   bioRichText: z.string().max(200_000).optional(),
   websiteUrls: z.array(z.object({ url: websiteRowUrlSchema })).optional(),
   linkedinUrl: optMergedSocialField(mergeLinkedinUrl),

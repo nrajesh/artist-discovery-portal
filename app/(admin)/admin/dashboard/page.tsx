@@ -84,6 +84,20 @@ export default async function AdminDashboardPage({
             </div>
           </Link>
 
+          <Link href="/admin/reported-photos" className={cardClass}>
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-red-50 to-orange-100/90 text-2xl shadow-inner ring-1 ring-red-200/30">
+              🚩
+            </div>
+            <div>
+              <h2 className="font-semibold text-stone-800 transition-colors group-hover:text-amber-900">
+                Reported Profile Photos
+              </h2>
+              <p className="mt-1 text-sm leading-relaxed text-stone-500">
+                Bulk clear reported images and suspend repeat offenders
+              </p>
+            </div>
+          </Link>
+
           {collabsRatingsEnabled && (
             <Link href="/admin/collabs" className={cardClass}>
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-amber-50 to-amber-100/90 text-2xl shadow-inner ring-1 ring-amber-200/30">

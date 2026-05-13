@@ -125,7 +125,7 @@ async function getR2AwsContext(): Promise<{
   return { aws, accountId, bucket };
 }
 
-async function getPublicUrl(): Promise<string> {
+export async function getPublicUrl(): Promise<string> {
   const publicUrl = await resolveR2EnvString('R2_PUBLIC_URL');
   if (!publicUrl) {
     throw new StorageError(
@@ -197,6 +197,17 @@ export async function uploadFile(params: {
       `Storage operation failed: ${err instanceof Error ? err.message : String(err)}`,
     );
   }
+}
+
+export async function managedObjectKeyFromPublicUrl(url: string | null | undefined): Promise<string | null> {
+  if (!url) return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+
+  const publicUrl = await getPublicUrl();
+  const base = publicUrl.endsWith('/') ? publicUrl : `${publicUrl}/`;
+  if (!trimmed.startsWith(base)) return null;
+  return trimmed.slice(base.length);
 }
 
 /**
