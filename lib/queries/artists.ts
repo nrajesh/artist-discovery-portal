@@ -14,6 +14,7 @@ import {
 } from "@/lib/artist-pii";
 import { artistsShareActiveCollab } from "@/lib/collaboration-scope";
 import { getDb } from "@/lib/db";
+import { normalizeBackgroundImageFocus } from "@/lib/background-image-focus";
 import type { PiiVisibility, Speciality } from "@prisma/client";
 import { getLocalCalendarDateForDb, getLocalDayOrdinalForRotation } from "@/lib/local-day";
 
@@ -255,6 +256,9 @@ export type ArtistProfileView = {
   province: string;
   profilePhotoUrl: string | null;
   backgroundImageUrl: string | null;
+  backgroundImageFocusX: number;
+  backgroundImageFocusY: number;
+  backgroundImageZoom: number;
   specialities: { name: string; color: string }[];
   contactNumber: string;
   contactType: "whatsapp" | "mobile" | null;
@@ -319,6 +323,11 @@ export async function getArtistBySlug(
   if (!artist) return null;
 
   const decrypted = decryptArtistStoredContact(artist);
+  const backgroundImageFocus = normalizeBackgroundImageFocus({
+    backgroundImageFocusX: artist.backgroundImageFocusX,
+    backgroundImageFocusY: artist.backgroundImageFocusY,
+    backgroundImageZoom: artist.backgroundImageZoom,
+  });
   const ctx: ProfileViewerContext = {
     viewerArtistId: viewer?.artistId ?? null,
     viewerRole: viewer?.role ?? null,
@@ -369,6 +378,9 @@ export async function getArtistBySlug(
     province: artist.province,
     profilePhotoUrl: artist.profilePhotoUrl,
     backgroundImageUrl: artist.backgroundImageUrl ?? null,
+    backgroundImageFocusX: backgroundImageFocus.backgroundImageFocusX,
+    backgroundImageFocusY: backgroundImageFocus.backgroundImageFocusY,
+    backgroundImageZoom: backgroundImageFocus.backgroundImageZoom,
     specialities: artist.specialities.map((j) => specColor(j.speciality)),
     contactNumber: showContact ? decrypted.contactNumber : "",
     contactType: artist.contactType,
@@ -648,6 +660,9 @@ export type ArtistEditView = {
   openToCollab: boolean;
   profilePhotoUrl: string;
   backgroundImageUrl: string;
+  backgroundImageFocusX: number;
+  backgroundImageFocusY: number;
+  backgroundImageZoom: number;
   bioRichText: string;
   linkedinUrl: string;
   instagramUrl: string;
@@ -677,6 +692,11 @@ export async function getArtistForEdit(artistIdOrSlug: string): Promise<ArtistEd
   if (!artist) return null;
   const social = profileSocialFromExternalLinks(artist.externalLinks);
   const d = decryptArtistStoredContact(artist);
+  const backgroundImageFocus = normalizeBackgroundImageFocus({
+    backgroundImageFocusX: artist.backgroundImageFocusX,
+    backgroundImageFocusY: artist.backgroundImageFocusY,
+    backgroundImageZoom: artist.backgroundImageZoom,
+  });
   return {
     id: artist.id,
     slug: artist.slug,
@@ -692,6 +712,9 @@ export async function getArtistForEdit(artistIdOrSlug: string): Promise<ArtistEd
     openToCollab: artist.openToCollab,
     profilePhotoUrl: artist.profilePhotoUrl ?? "",
     backgroundImageUrl: artist.backgroundImageUrl ?? "",
+    backgroundImageFocusX: backgroundImageFocus.backgroundImageFocusX,
+    backgroundImageFocusY: backgroundImageFocus.backgroundImageFocusY,
+    backgroundImageZoom: backgroundImageFocus.backgroundImageZoom,
     bioRichText: artist.bioRichText ?? "",
     ...social,
     profileRevision: artist.updatedAt.toISOString(),

@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db";
 import { isBrowserDocumentNavigation, redirectPublicPath } from "@/lib/http/document-navigation";
+import { notifyAdminProfilePhotoReport } from "@/lib/notifications";
+import { createProfilePhotoReport } from "@/lib/profile-photo-reports";
 import { verifySession } from "@/lib/session-jwt";
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -16,7 +18,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 
   const db = getDb();
-  const [artist, reporter, admins] = await Promise.all([
+  const [artist, reporter] = await Promise.all([
     db.artist.findUnique({
       where: { id },
       select: { id: true, slug: true, fullName: true, profilePhotoUrl: true },
@@ -25,10 +27,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       where: { id: session.artistId },
       select: { id: true, fullName: true },
     }),
-    db.artist.findMany({
-      where: { isAdmin: true, isSuspended: false },
-      select: { id: true },
-    }),
   ]);
 
   if (!artist || !artist.profilePhotoUrl) {
@@ -36,23 +34,18 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
   }
 
-  if (admins.length > 0) {
-    const reporterName = reporter?.fullName ?? "A signed-in artist";
-    await db.notification.createMany({
-      data: admins.map((admin) => ({
-        artistId: admin.id,
-        type: "profile_photo_report",
-        payload: {
-          text: `${reporterName} reported ${artist.fullName}'s profile photo.`,
-          href: `/admin/artists/${artist.id}/edit`,
-          artistId: artist.id,
-          artistName: artist.fullName,
-          reporterId: session.artistId,
-        },
-        isRead: false,
-      })),
-    });
-  }
+  await createProfilePhotoReport({
+    artistId: artist.id,
+    reporterId: session.artistId,
+  });
+
+  await notifyAdminProfilePhotoReport({
+    artistId: artist.id,
+    artistName: artist.fullName,
+    reporterId: session.artistId,
+    reporterName: reporter?.fullName ?? "A signed-in artist",
+    baseUrl: process.env.NEXT_PUBLIC_APP_URL,
+  });
 
   revalidatePath(`/artists/${artist.slug}`);
 

@@ -14,8 +14,11 @@ import {
 } from "@/lib/pii-crypto";
 import { notifyAdminRegistrationEvent } from "@/lib/notifications";
 import {
+  deleteManagedFileByUrlBestEffort,
   deleteManagedProfilePhotoBestEffort,
   isUploadedProfilePhotoFile,
+  uploadRegistrationProfilePhotoFromUrl,
+  uploadRegistrationBackgroundImage,
   uploadRegistrationProfilePhoto,
 } from "@/lib/profile-photo-storage";
 import { normalizeSpecialityList } from "@/lib/speciality-catalog";
@@ -114,12 +117,17 @@ export async function POST(request: NextRequest) {
   }
 
   const registrationId = crypto.randomUUID();
-  const backgroundImageUrl = validated.backgroundImageUrl;
+  const profilePhotoUrl = validated.profilePhotoUrl;
+  let backgroundImageUrl = validated.backgroundImageUrl;
   const profilePhotoFileEntry = formData.get("profilePhotoFile");
   const hasProfilePhotoFile = isUploadedProfilePhotoFile(profilePhotoFileEntry);
   const profilePhotoRightsConfirmed = formData.get("profilePhotoRightsConfirmed") === "true";
+  const backgroundImageFileEntry = formData.get("backgroundImageFile");
+  const hasBackgroundImageFile = isUploadedProfilePhotoFile(backgroundImageFileEntry);
+  const backgroundImageRightsConfirmed = formData.get("backgroundImageRightsConfirmed") === "true";
   let uploadedProfilePhoto: { url: string; objectKey: string; rightsConfirmedAt: Date } | null =
     null;
+  let uploadedBackgroundImage: { url: string; objectKey: string } | null = null;
 
   if (hasProfilePhotoFile) {
     if (!profilePhotoRightsConfirmed) {
@@ -160,6 +168,82 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  if (!hasProfilePhotoFile && profilePhotoUrl) {
+    if (!profilePhotoRightsConfirmed) {
+      return NextResponse.json(
+        {
+          error: "VALIDATION_ERROR",
+          message: "Confirm that you have rights to use the profile photo.",
+          fields: {
+            profilePhotoRightsConfirmed: "Confirm that you have rights to use the profile photo.",
+          },
+        },
+        { status: 400 },
+      );
+    }
+
+    try {
+      const upload = await uploadRegistrationProfilePhotoFromUrl({
+        registrationId,
+        sourceUrl: profilePhotoUrl,
+      });
+      uploadedProfilePhoto = {
+        ...upload,
+        rightsConfirmedAt: new Date(),
+      };
+    } catch (err) {
+      const message =
+        err instanceof StorageError && err.code !== "STORAGE_UNAVAILABLE"
+          ? err.message
+          : "Profile photo URL ingestion is temporarily unavailable.";
+      return NextResponse.json(
+        {
+          error: "PROFILE_PHOTO_UPLOAD_FAILED",
+          message,
+          fields: { profilePhotoUrl: message },
+        },
+        { status: err instanceof StorageError && err.code !== "STORAGE_UNAVAILABLE" ? 400 : 503 },
+      );
+    }
+  }
+
+  if (hasBackgroundImageFile) {
+    if (!backgroundImageRightsConfirmed) {
+      return NextResponse.json(
+        {
+          error: "VALIDATION_ERROR",
+          message: "Confirm that you have rights to use the Header Image.",
+          fields: {
+            backgroundImageRightsConfirmed:
+              "Confirm that you have rights to use the Header Image.",
+          },
+        },
+        { status: 400 },
+      );
+    }
+
+    try {
+      uploadedBackgroundImage = await uploadRegistrationBackgroundImage({
+        registrationId,
+        file: backgroundImageFileEntry,
+      });
+      backgroundImageUrl = uploadedBackgroundImage.url;
+    } catch (err) {
+      const message =
+        err instanceof StorageError && err.code !== "STORAGE_UNAVAILABLE"
+          ? err.message
+          : "Header Image upload is temporarily unavailable.";
+      return NextResponse.json(
+        {
+          error: "BACKGROUND_IMAGE_UPLOAD_FAILED",
+          message,
+          fields: { backgroundImageFile: message },
+        },
+        { status: err instanceof StorageError && err.code !== "STORAGE_UNAVAILABLE" ? 400 : 503 },
+      );
+    }
+  }
+
   // Persist to DB
   let registrationCreated = false;
   try {
@@ -190,7 +274,7 @@ export async function POST(request: NextRequest) {
         contactType: hasPhone ? (validated.contactType as "whatsapp" | "mobile") : null,
         // Empty string when omitted: works before/after DB migration (NOT NULL legacy + optional URL).
         profilePhotoUrl: uploadedProfilePhoto?.url ?? "",
-        profilePhotoSourceUrl: null,
+        profilePhotoSourceUrl: uploadedProfilePhoto ? profilePhotoUrl ?? null : null,
         profilePhotoObjectKey: uploadedProfilePhoto?.objectKey ?? null,
         profilePhotoRightsConfirmedAt: uploadedProfilePhoto?.rightsConfirmedAt ?? null,
         backgroundImageUrl: backgroundImageUrl ?? undefined,
@@ -218,6 +302,7 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     if (!registrationCreated) {
       await deleteManagedProfilePhotoBestEffort(uploadedProfilePhoto?.objectKey);
+      await deleteManagedFileByUrlBestEffort(uploadedBackgroundImage?.url);
     }
     logSafeError("[api/registrations] Registration persistence failed", err);
     return NextResponse.json(

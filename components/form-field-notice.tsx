@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
 
-export type FormFieldNoticeTone = "error" | "warning";
+export type FormFieldNoticeTone = "error" | "warning" | "success";
 
 const toneClass: Record<FormFieldNoticeTone, string> = {
   error: "border-red-200 bg-red-50 text-red-900",
   warning: "border-amber-200 bg-amber-50 text-amber-950",
+  success: "border-green-200 bg-green-50 text-green-900 font-semibold",
 };
 
 type Props = {

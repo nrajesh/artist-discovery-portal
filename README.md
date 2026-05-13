@@ -14,7 +14,7 @@ An artist discovery and portfolio platform for musicians in The Netherlands - bu
 |---|---|
 | **Visitors** | Discover and browse artist profiles, daily featured vocalist on the home page, bios, collab stats, and reviews |
 | **Artists** | Manage portfolio, mark availability, search collaborators, create group chats (collabs), leave feedback, tune **notification** channels (email / push) on `/profile/notifications` |
-| **Admins** | Approve/reject registrations (with review notes), moderate chats and **collab detail** threads, suspend artists with audit context, manage artists/specialities/collabs |
+| **Admins** | Approve/reject registrations (with review notes), moderate chats and **collab detail** threads, review reported profile photos in bulk, clear images, suspend repeat offenders with audit context, manage artists/specialities/collabs |
 
 ---
 
@@ -28,6 +28,9 @@ Artists can write their bio, chat messages, and reviews in Tamil, Kannada, Telug
 
 ### 🔒 Magic-link authentication
 No passwords. Artists request a link at `/auth/login`; the email points to `/auth/verify?token=…`, where a **confirm** step (POST) consumes the token so mail-client previews and prefetch GETs cannot invalidate it. Links remain valid 72 hours. Sessions are 30-day signed JWTs validated by Edge middleware - no database round-trip on every request. **Logout** is `POST /api/auth/logout` (CSRF-safe form POST from the header/footer/dashboard). Admin role is stored on the artist record via the `isAdmin` database flag.
+
+### 🚩 Profile photo reporting and moderation
+Signed-in artists can report a public profile photo from `/artists/[slug]`. The Portal records a durable `ProfilePhotoReport`, notifies admins in-app, and sends email / push notifications when those channels are enabled in admin preferences. Admins review open reports at `/admin/reported-photos`, where they can bulk resolve reports, clear current profile photos, or suspend repeat offenders while also clearing the image and resolving the open queue. The moderation queue exposes both **open** and **total** report counts per artist. Optional feature flag `admin-profile-photo-report-sorting` enables queue sorting by report-count priority instead of newest-first only.
 
 ### ✨ Home spotlight
 
@@ -121,6 +124,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 # PostHog (optional) - see env.example for Session Replay, proxy, and feature-flag vars
 # NEXT_PUBLIC_POSTHOG_KEY=
 # POSTHOG_HOST=https://eu.i.posthog.com
+# POSTHOG_FLAG_ADMIN_PROFILE_PHOTO_REPORT_SORTING=true
 
 # These can be left as placeholders for local browsing
 # (only needed when the actual features are used)
@@ -215,6 +219,7 @@ Since magic-link email requires Resend to be configured, use these shortcuts for
 | `/admin/dashboard` | Admin home (admin role required) |
 | `/admin/registrations` | Review pending registrations (filters, status toasts, review comments) |
 | `/admin/artists` | Manage all artists (edit profiles, suspension with notes) |
+| `/admin/reported-photos` | Review reported profile photos in bulk; resolve, clear images, or suspend repeat offenders |
 | `/admin/collabs` | Moderate group chats; open `/admin/collabs/[id]` for thread detail, messaging, and feedback controls |
 | `/admin/specialities` | Manage speciality colour palette |
 | `/about` | Maintainer showcase - USPs, speciality **colour examples** (2 and 3 instruments), Unicode samples, PostHog / privacy, tech stack, live demos |
@@ -254,7 +259,7 @@ app/
 │   ├── search/
 │   └── collabs/
 ├── (admin)/           # Admin-protected routes
-│   └── admin/         # dashboard, registrations, artists, collabs, specialities
+│   └── admin/         # dashboard, registrations, artists, reported-photos, collabs, specialities
 └── api/               # Route handlers
 
 lib/
@@ -346,7 +351,7 @@ Then add `public/geo/belgium-provinces.geojson` with Belgian province boundaries
 Full requirements, design, and implementation plan are in `.kiro/specs/artist-discovery-portal/`:
 
 - `requirements.md` - 19 requirements with EARS-pattern acceptance criteria
-- `design.md` - architecture, ERD, Prisma schema, speciality theming contracts, 28 correctness properties, testing strategy
+- `design.md` - architecture, ERD, Prisma schema, speciality theming contracts, reported-photo moderation flow, 28 correctness properties, testing strategy
 - `tasks.md` - 28 implementation tasks with progress tracking
 
 PostHog analytics, proxy behaviour, Session Replay, and privacy contracts: **`.kiro/specs/posthog-analytics/`** (plus **`.kiro/steering/posthog-admin-guide.md`** for operators).

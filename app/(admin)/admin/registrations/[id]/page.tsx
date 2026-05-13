@@ -224,12 +224,12 @@ export default async function ReviewRegistrationPage({
           {reg.backgroundImageUrl && (
             <div className="flex flex-col gap-1">
               <span className="text-xs font-semibold text-stone-500 uppercase tracking-wide">
-                Background Image
+                Header Image
               </span>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={reg.backgroundImageUrl}
-                alt={`${reg.fullName} background`}
+                alt={`${reg.fullName} header`}
                 className="h-28 w-full rounded-xl border border-stone-200 object-cover"
               />
             </div>

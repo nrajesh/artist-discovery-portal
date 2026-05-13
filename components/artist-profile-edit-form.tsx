@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, FormEvent, useMemo, useRef, useTransition } from "react";
+import { useEffect, useState, FormEvent, useMemo, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { usePostHog } from "posthog-js/react";
@@ -38,6 +38,15 @@ import {
   youtubeSuffixFromStored,
 } from "@/lib/registration-input-normalize";
 import { FeaturedArtistPhoto } from "@/components/featured-artist-photo";
+import {
+  BACKGROUND_IMAGE_FOCUS_DEFAULTS,
+  MAX_BACKGROUND_IMAGE_ZOOM,
+  MIN_BACKGROUND_IMAGE_ZOOM,
+  getBackgroundImageObjectPosition,
+  getBackgroundImageScale,
+  normalizeBackgroundImageFocus,
+  type BackgroundImageFocus,
+} from "@/lib/background-image-focus";
 import { stripHtmlForSearch } from "@/lib/artist-directory-search";
 import { getThemeFromArtistSpecialities } from "@/lib/speciality-theme";
 import type { ArtistEditView } from "@/lib/queries/artists";
@@ -72,6 +81,9 @@ type FormFieldsSnapshot = {
   openToCollab: boolean;
   profilePhotoUrl: string;
   backgroundImageUrl: string;
+  backgroundImageFocusX: number;
+  backgroundImageFocusY: number;
+  backgroundImageZoom: number;
   bioRichText: string;
   websiteUrls: { url: string }[];
   linkedinUrl: string;
@@ -81,9 +93,10 @@ type FormFieldsSnapshot = {
   youtubeUrl: string;
 };
 
-const PROFILE_PHOTO_INPUT_MAX_BYTES = 5 * 1024 * 1024;
+const IMAGE_INPUT_MAX_BYTES = 5 * 1024 * 1024;
 const PROFILE_PHOTO_OUTPUT_SIZE = 320;
-const PROFILE_PHOTO_ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const BACKGROUND_IMAGE_MAX_DIMENSION = 1600;
+const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 async function loadImageForCanvas(file: File): Promise<ImageBitmap | HTMLImageElement> {
   if ("createImageBitmap" in window) {
@@ -101,23 +114,41 @@ async function loadImageForCanvas(file: File): Promise<ImageBitmap | HTMLImageEl
   }
 }
 
-async function processProfilePhotoFile(file: File): Promise<File> {
-  if (!PROFILE_PHOTO_ALLOWED_TYPES.has(file.type)) {
+async function processImageFile(params: {
+  file: File;
+  outputWidth: number;
+  outputHeight: number;
+  outputName: string;
+}): Promise<File> {
+  const { file, outputWidth, outputHeight, outputName } = params;
+  if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
     throw new Error("Choose a JPEG, PNG, or WebP image.");
   }
-  if (file.size > PROFILE_PHOTO_INPUT_MAX_BYTES) {
+  if (file.size > IMAGE_INPUT_MAX_BYTES) {
     throw new Error("Choose an image smaller than 5 MB.");
   }
 
   const source = await loadImageForCanvas(file);
   const sourceWidth = source instanceof HTMLImageElement ? source.naturalWidth : source.width;
   const sourceHeight = source instanceof HTMLImageElement ? source.naturalHeight : source.height;
-  const side = Math.min(sourceWidth, sourceHeight);
-  const sourceX = Math.max(0, (sourceWidth - side) / 2);
-  const sourceY = Math.max(0, (sourceHeight - side) / 2);
+  const sourceAspectRatio = sourceWidth / sourceHeight;
+  const targetAspectRatio = outputWidth / outputHeight;
+  let cropWidth = sourceWidth;
+  let cropHeight = sourceHeight;
+  let sourceX = 0;
+  let sourceY = 0;
+
+  if (sourceAspectRatio > targetAspectRatio) {
+    cropWidth = sourceHeight * targetAspectRatio;
+    sourceX = Math.max(0, (sourceWidth - cropWidth) / 2);
+  } else if (sourceAspectRatio < targetAspectRatio) {
+    cropHeight = sourceWidth / targetAspectRatio;
+    sourceY = Math.max(0, (sourceHeight - cropHeight) / 2);
+  }
+
   const canvas = document.createElement("canvas");
-  canvas.width = PROFILE_PHOTO_OUTPUT_SIZE;
-  canvas.height = PROFILE_PHOTO_OUTPUT_SIZE;
+  canvas.width = outputWidth;
+  canvas.height = outputHeight;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Could not prepare the image.");
 
@@ -127,12 +158,12 @@ async function processProfilePhotoFile(file: File): Promise<File> {
     source,
     sourceX,
     sourceY,
-    side,
-    side,
+    cropWidth,
+    cropHeight,
     0,
     0,
-    PROFILE_PHOTO_OUTPUT_SIZE,
-    PROFILE_PHOTO_OUTPUT_SIZE,
+    outputWidth,
+    outputHeight,
   );
   if ("close" in source && typeof source.close === "function") source.close();
 
@@ -140,7 +171,52 @@ async function processProfilePhotoFile(file: File): Promise<File> {
     canvas.toBlob(resolve, "image/jpeg", 0.86),
   );
   if (!blob) throw new Error("Could not prepare the image.");
-  return new File([blob], "profile-photo.jpg", { type: "image/jpeg", lastModified: Date.now() });
+  return new File([blob], outputName, { type: "image/jpeg", lastModified: Date.now() });
+}
+
+async function processProfilePhotoFile(file: File): Promise<File> {
+  return processImageFile({
+    file,
+    outputWidth: PROFILE_PHOTO_OUTPUT_SIZE,
+    outputHeight: PROFILE_PHOTO_OUTPUT_SIZE,
+    outputName: "profile-photo.jpg",
+  });
+}
+
+async function processBackgroundImageFile(file: File): Promise<File> {
+  if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+    throw new Error("Choose a JPEG, PNG, or WebP image.");
+  }
+  if (file.size > IMAGE_INPUT_MAX_BYTES) {
+    throw new Error("Choose an image smaller than 5 MB.");
+  }
+
+  const source = await loadImageForCanvas(file);
+  const sourceWidth = source instanceof HTMLImageElement ? source.naturalWidth : source.width;
+  const sourceHeight = source instanceof HTMLImageElement ? source.naturalHeight : source.height;
+  const scale = Math.min(1, BACKGROUND_IMAGE_MAX_DIMENSION / Math.max(sourceWidth, sourceHeight));
+  const outputWidth = Math.max(1, Math.round(sourceWidth * scale));
+  const outputHeight = Math.max(1, Math.round(sourceHeight * scale));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = outputWidth;
+  canvas.height = outputHeight;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Could not prepare the image.");
+
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(source, 0, 0, sourceWidth, sourceHeight, 0, 0, outputWidth, outputHeight);
+  if ("close" in source && typeof source.close === "function") source.close();
+
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve, "image/jpeg", 0.84),
+  );
+  if (!blob) throw new Error("Could not prepare the image.");
+  return new File([blob], "background-image.jpg", {
+    type: "image/jpeg",
+    lastModified: Date.now(),
+  });
 }
 
 /** TipTap empty doc is often `<p></p>` while the DB may store `""` - treat both as empty for dirty checks only. */
@@ -169,6 +245,9 @@ function toArtistProfileEditInput(
     openToCollab: collabsRatingsEnabled ? fields.openToCollab : openToCollabWhenCollabsDisabled,
     profilePhotoUrl: fields.profilePhotoUrl.trim() || undefined,
     backgroundImageUrl: fields.backgroundImageUrl.trim() || undefined,
+    backgroundImageFocusX: fields.backgroundImageFocusX,
+    backgroundImageFocusY: fields.backgroundImageFocusY,
+    backgroundImageZoom: fields.backgroundImageZoom,
     bioRichText: fields.bioRichText,
     websiteUrls: fields.websiteUrls,
     linkedinUrl: fields.linkedinUrl,
@@ -194,6 +273,9 @@ function fingerprintArtistProfileInput(p: ArtistProfileEditInput): string {
     openToCollab: p.openToCollab,
     profilePhotoUrl: (p.profilePhotoUrl ?? "").trim(),
     backgroundImageUrl: (p.backgroundImageUrl ?? "").trim(),
+    backgroundImageFocusX: p.backgroundImageFocusX,
+    backgroundImageFocusY: p.backgroundImageFocusY,
+    backgroundImageZoom: p.backgroundImageZoom,
     bioRichText: normalizeBioRichTextForFingerprint(p.bioRichText),
     websiteUrls: sites,
     linkedinUrl: p.linkedinUrl.trim(),
@@ -218,6 +300,9 @@ function snapshotFromEditView(initial: ArtistEditView): FormFieldsSnapshot {
     openToCollab: initial.openToCollab,
     profilePhotoUrl: initial.profilePhotoUrl,
     backgroundImageUrl: initial.backgroundImageUrl,
+    backgroundImageFocusX: initial.backgroundImageFocusX,
+    backgroundImageFocusY: initial.backgroundImageFocusY,
+    backgroundImageZoom: initial.backgroundImageZoom,
     bioRichText: initial.bioRichText,
     websiteUrls:
       initial.websiteUrls.length > 0
@@ -229,6 +314,157 @@ function snapshotFromEditView(initial: ArtistEditView): FormFieldsSnapshot {
     twitterUrl: initial.twitterUrl,
     youtubeUrl: initial.youtubeUrl,
   };
+}
+
+type BackgroundFocusEditorProps = {
+  imageUrl: string;
+  focus: BackgroundImageFocus;
+  onChange: (next: BackgroundImageFocus) => void;
+  title: string;
+  subtitle: string;
+};
+
+function BackgroundFocusEditor({
+  imageUrl,
+  focus,
+  onChange,
+  title,
+  subtitle,
+}: BackgroundFocusEditorProps) {
+  const frameRef = useRef<HTMLDivElement | null>(null);
+  const dragRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    focus: BackgroundImageFocus;
+  } | null>(null);
+
+  function setFocusPatch(patch: Partial<BackgroundImageFocus>) {
+    onChange(normalizeBackgroundImageFocus({ ...focus, ...patch }));
+  }
+
+  function handlePointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    if (!imageUrl.trim()) return;
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      focus,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function handlePointerMove(event: React.PointerEvent<HTMLDivElement>) {
+    const drag = dragRef.current;
+    const frame = frameRef.current;
+    if (!drag || drag.pointerId !== event.pointerId || !frame) return;
+
+    const dx = event.clientX - drag.startX;
+    const dy = event.clientY - drag.startY;
+    const motionFactor = Math.max(0.55, 100 / drag.focus.backgroundImageZoom);
+    const nextFocus = normalizeBackgroundImageFocus({
+      backgroundImageFocusX: drag.focus.backgroundImageFocusX + (dx / frame.clientWidth) * 100 * motionFactor,
+      backgroundImageFocusY: drag.focus.backgroundImageFocusY + (dy / frame.clientHeight) * 100 * motionFactor,
+      backgroundImageZoom: drag.focus.backgroundImageZoom,
+    });
+    onChange(nextFocus);
+  }
+
+  function stopDragging(event: React.PointerEvent<HTMLDivElement>) {
+    if (dragRef.current?.pointerId === event.pointerId) {
+      dragRef.current = null;
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <div
+        ref={frameRef}
+        className="relative aspect-[16/6] min-h-[180px] overflow-hidden rounded-2xl border border-stone-200 bg-stone-900 shadow-inner touch-none md:min-h-0"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={stopDragging}
+        onPointerCancel={stopDragging}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element -- artist-uploaded image URLs vary by storage host */}
+        <img
+          src={imageUrl}
+          alt=""
+          aria-hidden
+          draggable={false}
+          className="absolute inset-0 h-full w-full select-none object-cover"
+          style={{
+            objectPosition: getBackgroundImageObjectPosition(focus),
+            transform: `scale(${getBackgroundImageScale(focus)})`,
+            transformOrigin: getBackgroundImageObjectPosition(focus),
+          }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/15 to-black/45" />
+        <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 bg-gradient-to-t from-black/60 to-transparent px-4 py-3 text-white">
+          <div>
+            <p className="text-sm font-semibold">{title}</p>
+            <p className="text-xs text-white/75">{subtitle}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => onChange(normalizeBackgroundImageFocus(BACKGROUND_IMAGE_FOCUS_DEFAULTS))}
+            className="rounded-lg border border-white/25 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-white/20"
+          >
+            Reset focus
+          </button>
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <label className="space-y-1">
+          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">
+            Horizontal
+          </span>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={focus.backgroundImageFocusX}
+            onChange={(event) =>
+              setFocusPatch({ backgroundImageFocusX: Number(event.target.value) })
+            }
+            className="block w-full accent-amber-700"
+          />
+        </label>
+        <label className="space-y-1">
+          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">
+            Vertical
+          </span>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={focus.backgroundImageFocusY}
+            onChange={(event) =>
+              setFocusPatch({ backgroundImageFocusY: Number(event.target.value) })
+            }
+            className="block w-full accent-amber-700"
+          />
+        </label>
+        <label className="space-y-1">
+          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">
+            Zoom
+          </span>
+          <input
+            type="range"
+            min={MIN_BACKGROUND_IMAGE_ZOOM}
+            max={MAX_BACKGROUND_IMAGE_ZOOM}
+            value={focus.backgroundImageZoom}
+            onChange={(event) =>
+              setFocusPatch({ backgroundImageZoom: Number(event.target.value) })
+            }
+            className="block w-full accent-amber-700"
+          />
+        </label>
+      </div>
+    </div>
+  );
 }
 
 type ArtistProfileEditFormProps = {
@@ -255,6 +491,7 @@ export function ArtistProfileEditForm({
   const router = useRouter();
   const posthog = usePostHog();
   const profilePhotoInputRef = useRef<HTMLInputElement | null>(null);
+  const backgroundImageInputRef = useRef<HTMLInputElement | null>(null);
   const [slug, setSlug] = useState(initial.slug);
   const [fullName, setFullName] = useState(initial.fullName);
   const [email, setEmail] = useState(initial.email);
@@ -269,6 +506,9 @@ export function ArtistProfileEditForm({
   const [openToCollab, setOpenToCollab] = useState(initial.openToCollab);
   const [profilePhotoUrl, setProfilePhotoUrl] = useState(initial.profilePhotoUrl);
   const [backgroundImageUrl, setBackgroundImageUrl] = useState(initial.backgroundImageUrl);
+  const [backgroundImageFocusX, setBackgroundImageFocusX] = useState(initial.backgroundImageFocusX);
+  const [backgroundImageFocusY, setBackgroundImageFocusY] = useState(initial.backgroundImageFocusY);
+  const [backgroundImageZoom, setBackgroundImageZoom] = useState(initial.backgroundImageZoom);
   const [bioHtml, setBioHtml] = useState(initial.bioRichText);
   const [linkedinUrl, setLinkedinUrl] = useState(initial.linkedinUrl);
   const [instagramUrl, setInstagramUrl] = useState(initial.instagramUrl);
@@ -286,6 +526,12 @@ export function ArtistProfileEditForm({
   const [photoUploadError, setPhotoUploadError] = useState<string | null>(null);
   const [photoUploadSuccess, setPhotoUploadSuccess] = useState<string | null>(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [pendingBackgroundImageFile, setPendingBackgroundImageFile] = useState<File | null>(null);
+  const [pendingBackgroundPreviewUrl, setPendingBackgroundPreviewUrl] = useState<string | null>(null);
+  const [backgroundImageRightsConfirmed, setBackgroundImageRightsConfirmed] = useState(false);
+  const [backgroundUploadError, setBackgroundUploadError] = useState<string | null>(null);
+  const [backgroundUploadSuccess, setBackgroundUploadSuccess] = useState<string | null>(null);
+  const [isUploadingBackground, setIsUploadingBackground] = useState(false);
 
   const [errors, setErrors] = useState<Partial<Record<keyof ArtistProfileEditInput, string>>>({});
   const [saved, setSaved] = useState(false);
@@ -293,6 +539,18 @@ export function ArtistProfileEditForm({
   const [isPending, startTransition] = useTransition();
   const formatNote = useTimedFieldNotice();
   const locationAreaLabelLower = locationAreaLabel.toLowerCase();
+
+  useEffect(() => {
+    if (!pendingBackgroundImageFile) {
+      setPendingBackgroundPreviewUrl(null);
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(pendingBackgroundImageFile);
+    setPendingBackgroundPreviewUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [pendingBackgroundImageFile]);
+
   const baselineFingerprint = useMemo(
     () =>
       fingerprintArtistProfileInput(
@@ -321,6 +579,9 @@ export function ArtistProfileEditForm({
           openToCollab,
           profilePhotoUrl,
           backgroundImageUrl,
+          backgroundImageFocusX,
+          backgroundImageFocusY,
+          backgroundImageZoom,
           bioRichText: bioHtml,
           websiteUrls,
           linkedinUrl,
@@ -346,6 +607,9 @@ export function ArtistProfileEditForm({
     openToCollab,
     profilePhotoUrl,
     backgroundImageUrl,
+    backgroundImageFocusX,
+    backgroundImageFocusY,
+    backgroundImageZoom,
     bioHtml,
     websiteUrls,
     linkedinUrl,
@@ -358,6 +622,16 @@ export function ArtistProfileEditForm({
   ]);
 
   const isDirty = baselineFingerprint !== currentFingerprint;
+  const backgroundImagePreviewUrl = pendingBackgroundPreviewUrl ?? backgroundImageUrl.trim();
+  const backgroundImageFocus = useMemo(
+    () =>
+      normalizeBackgroundImageFocus({
+        backgroundImageFocusX,
+        backgroundImageFocusY,
+        backgroundImageZoom,
+      }),
+    [backgroundImageFocusX, backgroundImageFocusY, backgroundImageZoom],
+  );
 
   const previewCardTheme = useMemo(() => {
     const specs = specialities
@@ -404,6 +678,9 @@ export function ArtistProfileEditForm({
         openToCollab,
         profilePhotoUrl,
         backgroundImageUrl,
+        backgroundImageFocusX,
+        backgroundImageFocusY,
+        backgroundImageZoom,
         bioRichText: bioHtml,
         websiteUrls,
         linkedinUrl,
@@ -496,6 +773,112 @@ export function ArtistProfileEditForm({
     }
   }
 
+  async function handleBackgroundImageUpload() {
+    setBackgroundUploadError(null);
+    setBackgroundUploadSuccess(null);
+
+    if (!pendingBackgroundImageFile) {
+      setBackgroundUploadError("Choose a Header Image first.");
+      return;
+    }
+    if (!backgroundImageRightsConfirmed) {
+      setBackgroundUploadError("Confirm that you have rights to use this Header Image.");
+      return;
+    }
+
+    setIsUploadingBackground(true);
+    try {
+      const processedFile = await processBackgroundImageFile(pendingBackgroundImageFile);
+      const formData = new FormData();
+      formData.append("backgroundImageFile", processedFile);
+      formData.append("backgroundImageRightsConfirmed", "true");
+      formData.append("backgroundImageFocusX", String(backgroundImageFocus.backgroundImageFocusX));
+      formData.append("backgroundImageFocusY", String(backgroundImageFocus.backgroundImageFocusY));
+      formData.append("backgroundImageZoom", String(backgroundImageFocus.backgroundImageZoom));
+
+      const response = await fetch(
+        `/api/artists/${targetArtistId ?? initial.id}/background-image`,
+        {
+          method: "POST",
+          body: formData,
+        },
+      );
+      const body = (await response.json().catch(() => null)) as
+        | {
+            message?: string;
+            fields?: Record<string, string>;
+            backgroundImageUrl?: string;
+            backgroundImageFocusX?: number;
+            backgroundImageFocusY?: number;
+            backgroundImageZoom?: number;
+          }
+        | null;
+
+      if (!response.ok || !body?.backgroundImageUrl) {
+        setBackgroundUploadError(
+          body?.fields?.backgroundImageFile ??
+            body?.fields?.backgroundImageRightsConfirmed ??
+            body?.message ??
+            "Header Image upload failed.",
+        );
+        return;
+      }
+
+      setBackgroundImageUrl(body.backgroundImageUrl);
+      const nextFocus = normalizeBackgroundImageFocus({
+        backgroundImageFocusX: body.backgroundImageFocusX,
+        backgroundImageFocusY: body.backgroundImageFocusY,
+        backgroundImageZoom: body.backgroundImageZoom,
+      });
+      setBackgroundImageFocusX(nextFocus.backgroundImageFocusX);
+      setBackgroundImageFocusY(nextFocus.backgroundImageFocusY);
+      setBackgroundImageZoom(nextFocus.backgroundImageZoom);
+      setBaselineSnapshot((current) => ({
+        ...current,
+        backgroundImageUrl: body.backgroundImageUrl!,
+        backgroundImageFocusX: nextFocus.backgroundImageFocusX,
+        backgroundImageFocusY: nextFocus.backgroundImageFocusY,
+        backgroundImageZoom: nextFocus.backgroundImageZoom,
+      }));
+      setPendingBackgroundImageFile(null);
+      setBackgroundImageRightsConfirmed(false);
+      if (backgroundImageInputRef.current) backgroundImageInputRef.current.value = "";
+      setBackgroundUploadSuccess(
+        "Header Image uploaded. The hero preview is now centered on your chosen focal point.",
+      );
+    } catch (err) {
+      setBackgroundUploadError(
+        err instanceof Error ? err.message : "Header Image upload failed unexpectedly.",
+      );
+    } finally {
+      setIsUploadingBackground(false);
+    }
+  }
+
+  function handleClearProfilePhoto() {
+    setPendingProfilePhotoFile(null);
+    setProfilePhotoRightsConfirmed(false);
+    setPhotoUploadError(null);
+    setPhotoUploadSuccess(null);
+    if (variant === "admin") {
+      setProfilePhotoUrl("");
+    }
+    if (profilePhotoInputRef.current) profilePhotoInputRef.current.value = "";
+  }
+
+  function handleClearBackgroundImage() {
+    setPendingBackgroundImageFile(null);
+    setBackgroundImageRightsConfirmed(false);
+    setBackgroundUploadError(null);
+    setBackgroundUploadSuccess(null);
+    setBackgroundImageUrl("");
+    setPendingBackgroundPreviewUrl(null);
+    setBackgroundImageFocusX(BACKGROUND_IMAGE_FOCUS_DEFAULTS.backgroundImageFocusX);
+    setBackgroundImageFocusY(BACKGROUND_IMAGE_FOCUS_DEFAULTS.backgroundImageFocusY);
+    setBackgroundImageZoom(BACKGROUND_IMAGE_FOCUS_DEFAULTS.backgroundImageZoom);
+    if (backgroundImageInputRef.current) backgroundImageInputRef.current.value = "";
+  }
+
   const ring = "focus:ring-amber-400";
 
   return (
@@ -523,17 +906,27 @@ export function ArtistProfileEditForm({
         ) : null}
         <div className="overflow-hidden rounded-xl border border-stone-100">
           <div
-            className="flex h-20 items-end px-5 pb-3"
-            style={
-              backgroundImageUrl.trim()
-                ? {
-                    backgroundImage: `linear-gradient(rgba(0,0,0,0.38), rgba(0,0,0,0.48)), url(${backgroundImageUrl.trim()})`,
-                    backgroundSize: "cover",
-                    backgroundPosition: "center",
-                  }
-                : { background: previewCardTheme.headerBg }
-            }
+            className="relative flex h-20 items-end px-5 pb-3"
+            style={!backgroundImagePreviewUrl ? { background: previewCardTheme.headerBg } : undefined}
           >
+            {backgroundImagePreviewUrl ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element -- artist-uploaded image URLs vary by storage host */}
+                <img
+                  src={backgroundImagePreviewUrl}
+                  alt=""
+                  aria-hidden
+                  draggable={false}
+                  className="absolute inset-0 h-full w-full object-cover"
+                  style={{
+                    objectPosition: getBackgroundImageObjectPosition(backgroundImageFocus),
+                    transform: `scale(${getBackgroundImageScale(backgroundImageFocus)})`,
+                    transformOrigin: getBackgroundImageObjectPosition(backgroundImageFocus),
+                  }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-b from-black/30 to-black/45" />
+              </>
+            ) : null}
             <div className="translate-y-6 flex-shrink-0">
               <FeaturedArtistPhoto
                 photoUrl={profilePhotoUrl}
@@ -770,98 +1163,219 @@ export function ArtistProfileEditForm({
           </div>
         )}
 
-        <div className="rounded-xl border border-stone-200 bg-stone-50 px-4 py-4">
-          <p className="text-sm font-semibold text-stone-800">Profile photo</p>
-          <p className="mt-1 text-xs leading-relaxed text-stone-500">
-            Uploading here stores only a square `320x320` JPEG derivative, strips metadata, and
-            serves the image from managed object storage. If upload is unavailable, the current
-            photo stays unchanged and the profile falls back to initials when needed.
-          </p>
-          <div className="mt-4 space-y-3">
-            <input
-              ref={profilePhotoInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={(event) => {
-                const nextFile = event.target.files?.[0] ?? null;
-                setPendingProfilePhotoFile(nextFile);
-                setPhotoUploadError(null);
-                setPhotoUploadSuccess(null);
-              }}
-              className={`block min-h-[44px] w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-700 focus:outline-none focus:ring-2 ${ring}`}
-            />
-            <label className="flex cursor-pointer items-start gap-3">
+        <section className="rounded-xl border border-stone-200 bg-stone-50 px-4 py-4">
+          <div className="mb-4">
+            <p className="text-sm font-semibold text-stone-800">Images</p>
+            <p className="mt-1 text-xs leading-relaxed text-stone-500">
+              Each upload is converted to a managed JPEG, metadata is stripped, and the result is
+              served from object storage. You can also keep using a direct HTTPS URL when that fits
+              better.
+            </p>
+          </div>
+
+          <div className="grid gap-4 border-b border-stone-200 pb-4 md:grid-cols-2">
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <FeaturedArtistPhoto
+                  photoUrl={profilePhotoUrl}
+                  initial={(fullName.trim()[0] ?? "?").toUpperCase()}
+                  accentColor={previewCardTheme.avatarAccent}
+                  alt=""
+                  sizeClassName="h-14 w-14 text-xl"
+                  imgClassName="border border-stone-200 shadow-sm"
+                />
+                <div>
+                  <p className="text-sm font-semibold text-stone-800">Profile photo upload</p>
+                  <p className="text-xs text-stone-500">Square crop, ideal for avatars.</p>
+                </div>
+              </div>
               <input
-                type="checkbox"
-                checked={profilePhotoRightsConfirmed}
-                onChange={(event) => setProfilePhotoRightsConfirmed(event.target.checked)}
-                className="mt-1 accent-amber-600"
+                ref={profilePhotoInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={(event) => {
+                  const nextFile = event.target.files?.[0] ?? null;
+                  setPendingProfilePhotoFile(nextFile);
+                  setPhotoUploadError(null);
+                  setPhotoUploadSuccess(null);
+                }}
+                className={`block min-h-[40px] w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-700 focus:outline-none focus:ring-2 ${ring}`}
               />
-              <span className="text-xs leading-relaxed text-stone-600">
-                I confirm I have the rights to use this photo on the public artist profile.
-              </span>
-            </label>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <button
-                type="button"
-                onClick={handleProfilePhotoUpload}
-                disabled={isUploadingPhoto}
-                className="min-h-[44px] rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-700 transition-colors hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isUploadingPhoto ? "Uploading..." : "Upload profile photo"}
-              </button>
+              <label className="flex cursor-pointer items-start gap-2">
+                <input
+                  type="checkbox"
+                  checked={profilePhotoRightsConfirmed}
+                  onChange={(event) => setProfilePhotoRightsConfirmed(event.target.checked)}
+                  className="mt-0.5 accent-amber-600"
+                />
+                <span className="text-xs leading-relaxed text-stone-600">
+                  I have the rights to use this profile photo.
+                </span>
+              </label>
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleProfilePhotoUpload}
+                  disabled={isUploadingPhoto}
+                  className="min-h-[40px] rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-700 transition-colors hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isUploadingPhoto ? "Uploading..." : "Upload"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClearProfilePhoto}
+                  disabled={
+                    variant === "admin"
+                      ? !profilePhotoUrl && !pendingProfilePhotoFile
+                      : !pendingProfilePhotoFile
+                  }
+                  className="min-h-[40px] rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-700 transition-colors hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Clear
+                </button>
+              </div>
               <p className="text-xs text-stone-500">
                 {pendingProfilePhotoFile
                   ? `Selected: ${pendingProfilePhotoFile.name}`
-                  : "JPEG, PNG, or WebP up to 5 MB before processing."}
+                  : "JPEG, PNG, or WebP up to 5 MB."}
               </p>
+              {photoUploadError ? <FormFieldNotice tone="error">{photoUploadError}</FormFieldNotice> : null}
+              {photoUploadSuccess ? (
+                <FormFieldNotice tone="success">{photoUploadSuccess}</FormFieldNotice>
+              ) : null}
             </div>
-            {photoUploadError ? <FormFieldNotice tone="error">{photoUploadError}</FormFieldNotice> : null}
-            {photoUploadSuccess ? (
-              <FormFieldNotice tone="success">{photoUploadSuccess}</FormFieldNotice>
-            ) : null}
-          </div>
-        </div>
 
-        {variant === "admin" ? (
-          <div>
-            <RegistrationPrefixedUrlInput
-              id="profilePhotoUrl"
-              label="Profile photo URL"
-              helperText="Optional fallback HTTPS URL. Uploading above is preferred; this keeps a direct reference when you intentionally use one."
-              prefix={REGISTRATION_HTTPS_PREFIX}
-              suffixPlaceholder="cdn.example.com/photo.jpg"
-              suffixFromStored={websitePathSuffixFromStored}
-              merge={mergeWebsitePath}
-              field={{
-                value: profilePhotoUrl,
-                onChange: setProfilePhotoUrl,
-                onBlur: () => {},
-              }}
-              error={errors.profilePhotoUrl}
-              onFormatNote={formatNote.show}
-            />
+            <div className="border-t border-stone-200 pt-4 md:border-l md:border-t-0 md:pl-4 md:pt-0">
+              {variant === "admin" ? (
+                <RegistrationPrefixedUrlInput
+                  id="profilePhotoUrl"
+                  label="Profile photo URL"
+                  helperText="Fallback HTTPS URL. Managed upload is preferred."
+                  prefix={REGISTRATION_HTTPS_PREFIX}
+                  suffixPlaceholder="cdn.example.com/photo.jpg"
+                  suffixFromStored={websitePathSuffixFromStored}
+                  merge={mergeWebsitePath}
+                  field={{
+                    value: profilePhotoUrl,
+                    onChange: setProfilePhotoUrl,
+                    onBlur: () => {},
+                  }}
+                  error={errors.profilePhotoUrl}
+                  onFormatNote={formatNote.show}
+                />
+              ) : (
+                <div className="rounded-lg border border-dashed border-stone-300 bg-white px-4 py-4 text-sm text-stone-600">
+                  Profile photo URLs stay admin-managed here. Use the upload option on the left for
+                  artists.
+                </div>
+              )}
+            </div>
           </div>
-        ) : null}
 
-        <div>
-          <RegistrationPrefixedUrlInput
-            id="backgroundImageUrl"
-            label="Background image URL"
-            helperText="Optional. Wide banner for your public profile hero."
-            prefix={REGISTRATION_HTTPS_PREFIX}
-            suffixPlaceholder="example.com/banner.jpg"
-            suffixFromStored={websitePathSuffixFromStored}
-            merge={mergeWebsitePath}
-            field={{
-              value: backgroundImageUrl,
-              onChange: setBackgroundImageUrl,
-              onBlur: () => {},
-            }}
-            error={errors.backgroundImageUrl}
-            onFormatNote={formatNote.show}
-          />
-        </div>
+          <div className="grid gap-4 pt-4 md:grid-cols-2">
+            <div className="space-y-3">
+              <div className="space-y-2">
+                {backgroundImagePreviewUrl ? (
+                  <BackgroundFocusEditor
+                    imageUrl={backgroundImagePreviewUrl}
+                    focus={backgroundImageFocus}
+                    onChange={(next) => {
+                      setBackgroundImageFocusX(next.backgroundImageFocusX);
+                      setBackgroundImageFocusY(next.backgroundImageFocusY);
+                      setBackgroundImageZoom(next.backgroundImageZoom);
+                    }}
+                    title="Header Image focus"
+                    subtitle="Drag to pan, then fine-tune with the sliders below."
+                  />
+                ) : (
+                  <div className="flex h-24 items-center justify-center rounded-lg border border-dashed border-stone-300 bg-stone-50 text-center text-xs text-stone-500">
+                    Upload a Header Image to adjust the hero focus.
+                  </div>
+                )}
+                <div>
+                  <p className="text-sm font-semibold text-stone-800">Header Image upload</p>
+                  <p className="text-xs text-stone-500">
+                    Upload keeps the image compact and lets you save the exact focal point later.
+                  </p>
+                  <p className="mt-1 text-xs font-medium text-amber-700">
+                    After panning or zooming, scroll down and hit Submit to save the change.
+                  </p>
+                </div>
+              </div>
+              <input
+                ref={backgroundImageInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={(event) => {
+                  const nextFile = event.target.files?.[0] ?? null;
+                  setPendingBackgroundImageFile(nextFile);
+                  setBackgroundUploadError(null);
+                  setBackgroundUploadSuccess(null);
+                }}
+                className={`block min-h-[40px] w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-700 focus:outline-none focus:ring-2 ${ring}`}
+              />
+              <label className="flex cursor-pointer items-start gap-2">
+                <input
+                  type="checkbox"
+                  checked={backgroundImageRightsConfirmed}
+                  onChange={(event) => setBackgroundImageRightsConfirmed(event.target.checked)}
+                  className="mt-0.5 accent-amber-600"
+                />
+                <span className="text-xs leading-relaxed text-stone-600">
+                  I have the rights to use this Header Image.
+                </span>
+              </label>
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleBackgroundImageUpload}
+                  disabled={isUploadingBackground}
+                  className="min-h-[40px] rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-700 transition-colors hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isUploadingBackground ? "Uploading..." : "Upload"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClearBackgroundImage}
+                  disabled={!backgroundImageUrl && !pendingBackgroundImageFile}
+                  className="min-h-[40px] rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-700 transition-colors hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Clear
+                </button>
+              </div>
+              <p className="text-xs text-stone-500">
+                {pendingBackgroundImageFile
+                  ? `Selected: ${pendingBackgroundImageFile.name}`
+                  : "Wide JPEG, PNG, or WebP up to 5 MB."}
+              </p>
+              {backgroundUploadError ? (
+                <FormFieldNotice tone="error">{backgroundUploadError}</FormFieldNotice>
+              ) : null}
+              {backgroundUploadSuccess ? (
+                <FormFieldNotice tone="success">{backgroundUploadSuccess}</FormFieldNotice>
+              ) : null}
+            </div>
+
+            <div className="border-t border-stone-200 pt-4 md:border-l md:border-t-0 md:pl-4 md:pt-0">
+              <RegistrationPrefixedUrlInput
+                id="backgroundImageUrl"
+                label="Header Image URL"
+                helperText="Optional fallback HTTPS URL for the hero banner."
+                prefix={REGISTRATION_HTTPS_PREFIX}
+                suffixPlaceholder="example.com/banner.jpg"
+                suffixFromStored={websitePathSuffixFromStored}
+                merge={mergeWebsitePath}
+                field={{
+                  value: backgroundImageUrl,
+                  onChange: setBackgroundImageUrl,
+                  onBlur: () => {},
+                }}
+                error={errors.backgroundImageUrl}
+                onFormatNote={formatNote.show}
+              />
+            </div>
+          </div>
+        </section>
 
         <div id="profile-bio" className="scroll-mt-28">
           <label className="mb-1 block text-sm font-semibold text-stone-700">

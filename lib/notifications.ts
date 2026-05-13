@@ -257,6 +257,20 @@ function buildAdminRegistrationMessage(input: {
   };
 }
 
+function buildProfilePhotoReportMessage(input: {
+  artistId: string;
+  artistName: string;
+  reporterId: string;
+  reporterName: string;
+}): { title: string; text: string; emailSubject: string; href: string } {
+  return {
+    title: "Profile photo reported",
+    text: `${input.reporterName} reported ${input.artistName}'s profile photo.`,
+    emailSubject: "Profile photo reported",
+    href: `/admin/artists/${input.artistId}/edit`,
+  };
+}
+
 export async function notifyAdminRegistrationEvent(input: {
   event: AdminRegistrationNotificationEvent;
   registrationId: string;
@@ -377,6 +391,122 @@ export async function notifyAdminRegistrationEvent(input: {
         title: rendered.title,
         body: rendered.text,
         url: href,
+      });
+    }),
+  );
+}
+
+export async function notifyAdminProfilePhotoReport(input: {
+  artistId: string;
+  artistName: string;
+  reporterId: string;
+  reporterName: string;
+  baseUrl?: string;
+}): Promise<void> {
+  const db = getDb();
+  const admins = await db.artist.findMany({
+    where: {
+      isAdmin: true,
+      isSuspended: false,
+    },
+    select: {
+      id: true,
+      email: true,
+      emailCipher: true,
+      contactCipher: true,
+      contactNumber: true,
+      fullName: true,
+      notificationPreference: {
+        select: {
+          inAppEnabled: true,
+          emailEnabled: true,
+          webPushEnabled: true,
+          reviewAddedEnabled: true,
+          reviewUpdatedEnabled: true,
+          reviewDeletedEnabled: true,
+          newRegistrationEnabled: true,
+          registrationApprovedEnabled: true,
+          registrationRejectedEnabled: true,
+        },
+      },
+      pushSubscriptions: {
+        select: {
+          endpoint: true,
+          p256dh: true,
+          auth: true,
+        },
+      },
+    },
+  });
+  if (admins.length === 0) return;
+
+  const appUrl = (input.baseUrl?.trim() || normalizeAppUrl()).replace(/\/+$/, "");
+  const rendered = buildProfilePhotoReportMessage(input);
+  const fullHref = appUrl ? `${appUrl}${rendered.href}` : rendered.href;
+  const resendApiKey = process.env.RESEND_API_KEY;
+  const fromEmail = process.env.RESEND_FROM_EMAIL ?? "noreply@artist-discovery.example";
+
+  const inAppRows = admins
+    .map((admin) => {
+      const pref = admin.notificationPreference ?? defaultNotificationPreferences();
+      if (!pref.inAppEnabled) return null;
+
+      return {
+        artistId: admin.id,
+        type: "profile_photo_report",
+        payload: {
+          text: rendered.text,
+          href: rendered.href,
+          artistId: input.artistId,
+          artistName: input.artistName,
+          reporterId: input.reporterId,
+        },
+        isRead: false,
+      };
+    })
+    .filter((row): row is NonNullable<typeof row> => row !== null);
+
+  if (inAppRows.length > 0) {
+    await db.notification.createMany({
+      data: inAppRows,
+    });
+  }
+
+  if (resendApiKey) {
+    await Promise.all(
+      admins.map(async (admin) => {
+        const pref = admin.notificationPreference ?? defaultNotificationPreferences();
+        if (!pref.emailEnabled) return;
+
+        const adminInbox = decryptArtistStoredContact(admin).email;
+        const reportContent = {
+          eyebrow: `Hi ${admin.fullName},`,
+          title: rendered.emailSubject,
+          paragraphs: [rendered.text],
+          primaryCta: { href: fullHref, label: "Review reported profile photo" },
+        };
+        await sendResendEmail({
+          apiKey: resendApiKey,
+          from: fromEmail,
+          to: adminInbox,
+          subject: `${rendered.emailSubject} · ${getPortalNameForEmail()}`,
+          html: transactionalEmailHtml(reportContent),
+          text: transactionalEmailPlainText(reportContent),
+        });
+      }),
+    );
+  }
+
+  await Promise.all(
+    admins.map(async (admin) => {
+      const pref = admin.notificationPreference ?? defaultNotificationPreferences();
+      if (!pref.webPushEnabled) return;
+
+      await sendPushNotifications({
+        subscriptions: admin.pushSubscriptions,
+        title: rendered.title,
+        body: rendered.text,
+        url: rendered.href,
       });
     }),
   );

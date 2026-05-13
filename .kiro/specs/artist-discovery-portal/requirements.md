@@ -21,6 +21,7 @@ Artist Discovery Portal is a web-based artist discovery and portfolio platform f
 - **PWA**: Progressive Web App - a web application that can be installed on mobile devices and works offline for key features.
 - **Registration Request**: The initial form submission by an Applicant seeking to join the Portal.
 - **Feedback**: A written review left by one Artist about another Artist following a completed Collab.
+- **Profile Photo Report**: A moderation record created when a signed-in Artist reports another Artist's public profile photo for admin review.
 
 ---
 
@@ -189,6 +190,25 @@ Artist Discovery Portal is a web-based artist discovery and portfolio platform f
 4. THE Admin Dashboard SHALL allow an Admin to delete individual messages from a Collab.
 5. THE Admin Dashboard SHALL allow an Admin to close a Collab and set its status to Incomplete if the content is deemed inappropriate.
 6. THE Admin Dashboard SHALL allow an Admin to suspend an Artist account, which SHALL prevent the Artist from sending messages or creating new Collabs.
+
+---
+
+### Requirement 10A: Reported Profile Photo Moderation
+
+**User Story:** As an Admin, I want a dedicated moderation queue for reported profile photos, so that I can review problematic images quickly, clear them in bulk, and suspend repeat offenders when necessary.
+
+#### Acceptance Criteria
+
+1. WHEN a signed-in Artist reports a public profile photo, THE Portal SHALL create a durable Profile Photo Report record linked to both the reported Artist and the reporting Artist.
+2. WHEN a profile photo report is accepted, THE Portal SHALL notify active Admin accounts via in-Portal notification, and SHALL additionally send email and push notifications when those admin channels are enabled.
+3. THE Admin Dashboard SHALL provide a reported-photo moderation queue listing Artists with open profile photo reports.
+4. THE reported-photo moderation queue SHALL display, for each listed Artist, the current public profile photo, account status, open report count, total historical report count, latest report timestamp, and recent reporter names.
+5. THE reported-photo moderation queue SHALL allow an Admin to bulk-select one or more reported Artists.
+6. WHEN an Admin resolves selected reports without clearing the image, THE Portal SHALL mark all open Profile Photo Report records for those Artists as resolved and SHALL leave the current profile photo unchanged.
+7. WHEN an Admin clears a selected Artist's reported profile photo, THE Portal SHALL remove the public profile photo reference, delete the managed R2 object when one exists, and mark the related open Profile Photo Report records as resolved.
+8. WHEN an Admin suspends a selected reported Artist from the moderation queue, THE Portal SHALL suspend the account, clear the current profile photo, resolve that Artist's open Profile Photo Report records, and store a suspension note suitable for audit history.
+9. THE Portal SHALL prevent an Admin from suspending their own account through the reported-photo moderation queue, and SHALL skip that record with an informational result.
+10. THE Portal SHALL support an operator-controlled feature flag that enables sorting the moderation queue by repeat-offender counts in addition to newest report first.
 
 ---
 

@@ -7,7 +7,19 @@ const mockState = vi.hoisted(() => ({
     fullName: string;
     isAdmin: boolean;
     isSuspended: boolean;
-    notificationPreference?: null;
+    notificationPreference?:
+      | {
+          inAppEnabled: boolean;
+          emailEnabled: boolean;
+          webPushEnabled: boolean;
+          reviewAddedEnabled: boolean;
+          reviewUpdatedEnabled: boolean;
+          reviewDeletedEnabled: boolean;
+          newRegistrationEnabled: boolean;
+          registrationApprovedEnabled: boolean;
+          registrationRejectedEnabled: boolean;
+        }
+      | null;
     pushSubscriptions?: Array<{ endpoint: string; p256dh: string; auth: string }>;
   }>,
   capturedArtistFindManyArgs: null as Record<string, unknown> | null,
@@ -65,7 +77,8 @@ vi.mock("@/lib/resend-email", () => ({
   sendResendEmail: vi.fn(),
 }));
 
-import { notifyAdminRegistrationEvent } from "../notifications";
+import { sendResendEmail } from "../resend-email";
+import { notifyAdminProfilePhotoReport, notifyAdminRegistrationEvent } from "../notifications";
 
 describe("notifyAdminRegistrationEvent", () => {
   beforeEach(() => {
@@ -141,5 +154,70 @@ describe("notifyAdminRegistrationEvent", () => {
     });
 
     expect(mockState.capturedNotificationCreateManyArgs).toBeNull();
+  });
+
+  it("emails admins when a profile photo is reported and email notifications are enabled", async () => {
+    process.env.RESEND_API_KEY = "re_test_key";
+    process.env.RESEND_FROM_EMAIL = "noreply@example.com";
+    mockState.admins = [
+      {
+        id: "admin-1",
+        email: "admin1@example.com",
+        fullName: "Admin One",
+        isAdmin: true,
+        isSuspended: false,
+        notificationPreference: null,
+        pushSubscriptions: [],
+      },
+      {
+        id: "admin-2",
+        email: "admin2@example.com",
+        fullName: "Admin Two",
+        isAdmin: true,
+        isSuspended: false,
+        notificationPreference: {
+          inAppEnabled: true,
+          emailEnabled: false,
+          webPushEnabled: false,
+          reviewAddedEnabled: true,
+          reviewUpdatedEnabled: true,
+          reviewDeletedEnabled: true,
+          newRegistrationEnabled: true,
+          registrationApprovedEnabled: true,
+          registrationRejectedEnabled: true,
+        },
+        pushSubscriptions: [],
+      },
+    ];
+
+    await notifyAdminProfilePhotoReport({
+      artistId: "artist-1",
+      artistName: "Reported Artist",
+      reporterId: "reporter-1",
+      reporterName: "Reporter Name",
+      baseUrl: "https://portal.example.com",
+    });
+
+    expect(mockState.capturedNotificationCreateManyArgs?.data).toEqual([
+      expect.objectContaining({
+        artistId: "admin-1",
+        type: "profile_photo_report",
+        isRead: false,
+      }),
+      expect.objectContaining({
+        artistId: "admin-2",
+        type: "profile_photo_report",
+        isRead: false,
+      }),
+    ]);
+    expect(sendResendEmail).toHaveBeenCalledTimes(1);
+    expect(sendResendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        apiKey: "re_test_key",
+        from: "noreply@example.com",
+        to: "admin1@example.com",
+        subject: "Profile photo reported · Portal",
+      }),
+    );
   });
 });

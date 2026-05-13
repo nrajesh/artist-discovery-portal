@@ -11,7 +11,10 @@ import { buildEncryptedArtistPiiPayload, decryptRegistrationStoredContact } from
 import { issueMagicLink } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { notifyAdminRegistrationEvent } from "@/lib/notifications";
-import { deleteManagedProfilePhotoBestEffort } from "@/lib/profile-photo-storage";
+import {
+  deleteManagedFileByUrlBestEffort,
+  deleteManagedProfilePhotoBestEffort,
+} from "@/lib/profile-photo-storage";
 import { resolveSpecialityForApproval } from "@/lib/speciality-resolve";
 
 export async function generateRegistrationArtistSlug(fullName: string): Promise<string> {
@@ -265,6 +268,7 @@ export async function rejectPendingRegistrationRouteStyle(options: {
   const now = new Date();
 
   const profilePhotoObjectKey = registration.profilePhotoObjectKey;
+  const backgroundImageUrl = registration.backgroundImageUrl;
 
   await db.registrationRequest.update({
     where: { id: registrationId },
@@ -281,6 +285,7 @@ export async function rejectPendingRegistrationRouteStyle(options: {
   });
 
   await deleteManagedProfilePhotoBestEffort(profilePhotoObjectKey);
+  await deleteManagedFileByUrlBestEffort(backgroundImageUrl);
 
   const reviewer = reviewerId
     ? await db.artist.findUnique({

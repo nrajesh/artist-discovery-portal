@@ -15,6 +15,7 @@ Add or update PNGs here when UX changes ship, then reference them from the root 
 | `about-analytics-section.png` | Section 10 PostHog / privacy summary | `/about` - scroll to analytics |
 | `profile-notifications.png` | Email vs push toggles | `/profile/notifications` (signed-in artist) |
 | `privacy-analytics.png` | Analytics disclosure + opt-in / opt-out | `/privacy` |
+| `admin-reported-photos-queue.png` | Bulk moderation queue with report counts and clear / suspend actions | `/admin/reported-photos` |
 | `admin-collab-detail.png` | Thread + moderation affordances | `/admin/collabs/[id]` |
 
 ## Conventions

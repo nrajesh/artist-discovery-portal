@@ -10,18 +10,6 @@ import {
   sanitizeContactNumberInput,
 } from "@/lib/registration-input-normalize";
 
-/** Profile photos are managed uploads now; legacy remote URL submissions are rejected. */
-const deprecatedProfilePhotoUrl = z.preprocess(
-  (val: unknown) => {
-    if (val === undefined || val === null) return undefined;
-    if (typeof val !== "string") return undefined;
-    const t = val.trim();
-    if (t === "") return undefined;
-    return t;
-  },
-  z.undefined({ error: "Upload a profile photo instead of linking to a remote image." }),
-);
-
 /** Empty / missing -> undefined. When set, must be a valid HTTPS image URL. */
 const optionalHttpsPhotoUrl = z.preprocess(
   (val: unknown) => {
@@ -64,7 +52,7 @@ export const registrationServerSchema = z
       },
       z.union([z.literal(""), z.enum(["whatsapp", "mobile"])]),
     ),
-    profilePhotoUrl: deprecatedProfilePhotoUrl,
+    profilePhotoUrl: optionalHttpsPhotoUrl,
     backgroundImageUrl: optionalHttpsPhotoUrl,
     specialities: z
       .array(z.string().min(2).max(80))

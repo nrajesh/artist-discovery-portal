@@ -15,7 +15,7 @@ Artist Discovery Portal is a mobile-first Progressive Web App (PWA) for musician
 | Structured artist search | Artist |
 | Create & participate in Collabs (group chat) | Artist |
 | Leave feedback after collaborations | Artist |
-| Approve/reject registrations (with review notes), suspend artists with audit context, moderate collabs and threads | Admin |
+| Approve/reject registrations (with review notes), suspend artists with audit context, moderate collabs and threads, triage reported profile photos in bulk | Admin |
 
 ### Key Design Goals
 
@@ -86,7 +86,7 @@ graph TD
 | Auth | **Custom magic-link** (JWT + Resend) | No passwords; email-only per requirements |
 | File Storage | **Cloudflare R2** | S3-compatible object storage, zero egress, same Cloudflare account/edge as Workers; accessed via `@aws-sdk/client-s3` with R2 endpoint |
 | Email | **Resend** | Transactional email (login links, notifications) |
-| Push Notifications | **Web Push (VAPID)** | PWA push for Collab invites, feedback notifications |
+| Push Notifications | **Web Push (VAPID)** | PWA push for Collab invites, feedback notifications, and admin moderation alerts when enabled |
 | Rich Text | **Tiptap** | ProseMirror-based, Unicode-safe, extensible |
 | Maps | **D3.js + GeoJSON** | Configurable map rendering, no external map API dependency |
 | i18n | **next-intl** | File-based translation JSON, locale switching, date/number formatting |
@@ -162,6 +162,7 @@ app/
 │       └── [id]/page.tsx         # Collab chat
 └── (admin)/                      # Admin-protected
     ├── dashboard/page.tsx
+    ├── reported-photos/page.tsx  # Bulk moderation queue for reported profile photos
     ├── registrations/
     │   ├── page.tsx              # Pending list
     │   └── [id]/page.tsx         # Review request
@@ -194,6 +195,17 @@ graph TD
 **Public surfacing of `SpecialityTheme`:** directory grid (`/artists`), public profile hero (`/artists/[slug]`), home featured-artist card initial fallback, `ArtistMiniCard` (map side panel + previews). **`ArtistsProvinceMap`** loads configurable GeoJSON, colours provinces by artist count, and shows a side panel: artist mini-cards when the province has listings; when the count is **zero**, body copy explains the gap and the footer calls **Join the portal** (registration) instead of browsing an empty filtered directory.
 
 **Home marketing data:** `lib/cache/home-marketing.ts` exposes `getCachedHomeMarketingData()` (aggregated Prisma queries for the public home page) and `revalidateHomeMarketing()` (wraps `revalidatePath("/")`) after mutations that affect homepage aggregates. `unstable_cache` is omitted for **OpenNext on Cloudflare Workers** compatibility, where tagged data cache is not always available and can 500 the home route.
+
+### Reported Profile Photo Moderation Flow
+
+- Signed-in Artists can report a public profile photo from `/artists/[slug]`.
+- The report flow writes a durable `ProfilePhotoReport` row and then notifies active admins via `notifyAdminProfilePhotoReport()`.
+- Admins review open reports at `/admin/reported-photos`, which is backed by aggregated report counts and artist metadata.
+- Bulk moderation supports three paths:
+  - resolve reports only
+  - clear profile photos and resolve reports
+  - suspend artists, clear profile photos, and resolve reports
+- A feature flag, `admin-profile-photo-report-sorting`, unlocks count-based triage for repeat offenders.
 
 ### Structured Artist Search Service Interface
 
@@ -434,6 +446,8 @@ erDiagram
     ARTIST ||--o{ FEEDBACK : receives
     COLLAB ||--o{ FEEDBACK : generates
     ARTIST ||--o{ NOTIFICATION : receives
+    ARTIST ||--o{ PROFILE_PHOTO_REPORT : files
+    ARTIST ||--o{ PROFILE_PHOTO_REPORT : receives
     ARTIST ||--o{ MAGIC_LINK_TOKEN : has
     ARTIST ||--o{ SESSION : has
     REGISTRATION_REQUEST ||--o{ REGISTRATION_SPECIALITY : has
@@ -470,6 +484,9 @@ model Artist {
   givenFeedback     Feedback[]          @relation("Reviewer")
   receivedFeedback  Feedback[]          @relation("Reviewee")
   notifications     Notification[]
+  profilePhotoReportsFiled    ProfilePhotoReport[] @relation("ProfilePhotoReportReporter")
+  profilePhotoReportsReceived ProfilePhotoReport[] @relation("ProfilePhotoReportArtist")
+  profilePhotoReportsResolved ProfilePhotoReport[] @relation("ProfilePhotoReportResolver")
   magicLinkTokens   MagicLinkToken[]
   sessions          Session[]
   dailyFeatures     DailyFeatured[]
@@ -498,6 +515,18 @@ model Feedback {
   comment     String?   // optional (nullable)
   submittedAt DateTime  @default(now())
   editedAt    DateTime?
+}
+
+model ProfilePhotoReport {
+  id         String    @id @default(uuid())
+  artistId   String
+  reporterId String
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+  resolvedBy String?
+  artist     Artist    @relation("ProfilePhotoReportArtist", fields: [artistId], references: [id], onDelete: Cascade)
+  reporter   Artist    @relation("ProfilePhotoReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  resolver   Artist?   @relation("ProfilePhotoReportResolver", fields: [resolvedBy], references: [id], onDelete: SetNull)
 }
 
 model Collab {
@@ -860,4 +889,3 @@ Focus areas:
 - Service Worker registered and caching app shell
 - `font-display: swap` applied to all Indic web fonts
 - All deployment-specific values read from config/env (no hard-coded strings)
-
