@@ -255,7 +255,7 @@ export default async function HomePage({
             locationPoints={locationPoints}
             areaLabelSingular="location"
             areaLabelPlural="locations"
-            enableSpecialityFilter={isLoggedIn}
+            enableSpecialityFilter
           />
         </div>
       </section>
