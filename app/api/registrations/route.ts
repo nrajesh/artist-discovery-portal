@@ -290,13 +290,19 @@ export async function POST(request: NextRequest) {
     });
     registrationCreated = true;
 
-    await notifyAdminRegistrationEvent({
-      event: "new_registration",
-      registrationId,
-      applicantName: validated.fullName,
-      applicantEmail: validated.email,
-      baseUrl: request.nextUrl.origin,
-    });
+    try {
+      await notifyAdminRegistrationEvent({
+        event: "new_registration",
+        registrationId,
+        applicantName: validated.fullName,
+        applicantEmail: validated.email,
+        baseUrl: request.nextUrl.origin,
+      });
+    } catch (err) {
+      logSafeError("[api/registrations] Registration saved but admin notification failed", err, {
+        registrationId,
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch (err) {
