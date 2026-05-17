@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { MermaidDiagram } from "@/components/mermaid-diagram";
+import { DynamicMermaid } from "@/components/dynamic-mermaid";
 import { PortalSectionHeading } from "@/components/portal-section-heading";
 
 export default function ConnectionsV1AboutPage() {
@@ -48,7 +48,7 @@ export default function ConnectionsV1AboutPage() {
             flag and also soft-fail when the Prisma delegate or database table is unavailable. That
             keeps unrelated artist and admin pages stable during rollout.
           </p>
-          <MermaidDiagram
+          <DynamicMermaid
             chart={`flowchart TD
   A["Profile page"] --> B["canUseArtistConnections(viewer)"]
   A --> C["canUseArtistConnections(target)"]
@@ -66,7 +66,7 @@ export default function ConnectionsV1AboutPage() {
           <PortalSectionHeading variant="title" className="mb-3">
             Relationship lifecycle
           </PortalSectionHeading>
-          <MermaidDiagram
+          <DynamicMermaid
             chart={`stateDiagram-v2
   [*] --> NONE
   NONE --> PENDING_OUTGOING: requester sends request
@@ -84,7 +84,7 @@ export default function ConnectionsV1AboutPage() {
           <PortalSectionHeading variant="title" className="mb-3">
             Data design
           </PortalSectionHeading>
-          <MermaidDiagram
+          <DynamicMermaid
             chart={`erDiagram
   Artist ||--o{ ArtistConnection : requester
   Artist ||--o{ ArtistConnection : recipient
