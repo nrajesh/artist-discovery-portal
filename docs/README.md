@@ -14,6 +14,8 @@ Full requirements, design (architecture, ERD, correctness properties, moderation
 
 After `npm run dev`, open **`/about`** for a maintainer-facing tour: USPs, illustrative colour cards, Unicode samples, plain-language sign-in steps, PostHog / privacy summary, admin notes, and links into the live app.
 
+For the current feature-flagged connections module, open **`/about/connections-v1`** for the live implementation notes, state diagrams, and V1 admin/artist flow summary.
+
 ## Recent admin additions
 
 - `/admin/reported-profiles` - moderation queue for open profile reports

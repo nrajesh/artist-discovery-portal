@@ -34,22 +34,25 @@ jobs:
           else echo "DATABASE_URL_UNPOOLED=postgresql://ci:ci@127.0.0.1:5432/ci?sslmode=require" >> "$GITHUB_ENV"
           fi
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: npm
+          cache: pnpm
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Generate Prisma client
-        run: npx prisma generate
+        run: pnpm prisma generate
 
       - name: Lint
-        run: npm run lint
+        run: pnpm run lint
 
       - name: Unit tests
-        run: npm test
+        run: pnpm test
 
       - name: Production build
-        run: npm run build
+        run: pnpm run build

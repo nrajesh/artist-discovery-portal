@@ -8,6 +8,7 @@ import { getThemeFromArtistSpecialities } from "@/lib/speciality-theme";
 import { getArtistBySlug } from "@/lib/queries/artists";
 import {
   canUseArtistConnections,
+  canArtistReceiveConnectionRequests,
   getConnectionStatusForArtists,
   listApprovedMentionTargets,
 } from "@/lib/artist-connections";
@@ -111,6 +112,9 @@ export default async function ArtistProfilePage({ params, searchParams }: PagePr
   const targetConnectionsEnabled = await canUseArtistConnections({ distinctId: artist.id });
   const isOwnProfile = currentArtistId === artist.id;
   const artistConnectionsEnabled = viewerConnectionsEnabled && targetConnectionsEnabled;
+  const targetAcceptsRequests = artistConnectionsEnabled
+    ? await canArtistReceiveConnectionRequests(artist.id)
+    : true;
   const connectionStatus =
     artistConnectionsEnabled && currentArtistId
       ? await getConnectionStatusForArtists(currentArtistId, artist.id)
@@ -282,6 +286,20 @@ export default async function ArtistProfilePage({ params, searchParams }: PagePr
             )}
             {artistConnectionsEnabled &&
               !isOwnProfile &&
+              !targetAcceptsRequests &&
+              (connectionStatus === "NONE" || connectionStatus === "REJECTED") && (
+                <button
+                  type="button"
+                  disabled
+                  className="min-h-[42px] min-w-[140px] rounded-xl border border-stone-200 bg-stone-100 px-4 py-2 text-sm font-semibold text-stone-500 opacity-80"
+                  title="This artist is not accepting connection requests right now."
+                >
+                  Connect
+                </button>
+              )}
+            {artistConnectionsEnabled &&
+              !isOwnProfile &&
+              targetAcceptsRequests &&
               (connectionStatus === "NONE" || connectionStatus === "REJECTED") && (
                 <form action={requestConnectionAction}>
                   <input type="hidden" name="recipientId" value={artist.id} />
@@ -599,7 +617,7 @@ export default async function ArtistProfilePage({ params, searchParams }: PagePr
 
         {/* External links - feed-style cards (web + mobile) */}
         {artist.links.length > 0 && (
-          <SectionCard title="Connect">
+          <SectionCard title="Online presence">
             {isLoggedIn ? (
               <ArtistExternalLinksFeed links={artist.links} />
             ) : (

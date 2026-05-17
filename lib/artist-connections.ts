@@ -1,6 +1,7 @@
 import { getDb } from "@/lib/db";
 import type { MentionableArtist } from "@/lib/artist-mentions";
 import { isArtistConnectionsEnabledServer } from "@/lib/feature-flags-server";
+import { notifyArtistConnectionApproved, notifyArtistConnectionRequest } from "@/lib/notifications";
 
 type DbClient = ReturnType<typeof getDb>;
 type ArtistConnectionDelegate = DbClient["artistConnection"];
@@ -26,6 +27,7 @@ export type ArtistConnectionCenterView = {
   outgoing: ArtistConnectionSummary[];
   approved: ArtistConnectionSummary[];
   mentionTargets: MentionableArtist[];
+  requestsAllowed: boolean;
 };
 
 type ArtistConnectionRow = {
@@ -77,10 +79,12 @@ function summarize(row: ArtistConnectionRow, artistId: string): ArtistConnection
 
 function getArtistConnectionDelegate(): ArtistConnectionDelegate | null {
   return (
-    getDb() as DbClient & {
-      artistConnection?: ArtistConnectionDelegate;
-    }
-  ).artistConnection ?? null;
+    (
+      getDb() as DbClient & {
+        artistConnection?: ArtistConnectionDelegate;
+      }
+    ).artistConnection ?? null
+  );
 }
 
 function isConnectionStorageUnavailable(error: unknown): boolean {
@@ -91,8 +95,23 @@ function isConnectionStorageUnavailable(error: unknown): boolean {
   return message.includes("ArtistConnection") || message.includes("artistConnection");
 }
 
+function isConnectionPreferenceUnavailable(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const code = "code" in error ? String(error.code) : "";
+  if (code === "P2021" || code === "P2022") return true;
+  const message = "message" in error ? String(error.message) : "";
+  return (
+    message.includes("connectionRequestsAllowed") ||
+    message.includes("notificationPreference.findUnique") ||
+    message.includes("Unknown field") ||
+    message.includes("PrismaClientValidationError")
+  );
+}
+
 function connectionSetupError(): Error {
-  return new Error("Artist connections are not ready. Generate Prisma Client and apply the latest migration.");
+  return new Error(
+    "Artist connections are not ready. Generate Prisma Client and apply the latest migration.",
+  );
 }
 
 export async function isArtistConnectionsStorageReady(): Promise<boolean> {
@@ -110,9 +129,11 @@ export async function isArtistConnectionsStorageReady(): Promise<boolean> {
   }
 }
 
-export async function canUseArtistConnections(options: {
-  distinctId?: string;
-} = {}): Promise<boolean> {
+export async function canUseArtistConnections(
+  options: {
+    distinctId?: string;
+  } = {},
+): Promise<boolean> {
   const enabled = await isArtistConnectionsEnabledServer({
     distinctId: options.distinctId,
   });
@@ -201,7 +222,7 @@ export async function getArtistConnectionCenterView(
 ): Promise<ArtistConnectionCenterView> {
   const artistConnection = getArtistConnectionDelegate();
   if (!artistConnection) {
-    return { incoming: [], outgoing: [], approved: [], mentionTargets: [] };
+    return { incoming: [], outgoing: [], approved: [], mentionTargets: [], requestsAllowed: true };
   }
 
   let rows: ArtistConnectionRow[];
@@ -234,7 +255,13 @@ export async function getArtistConnectionCenterView(
     })) as ArtistConnectionRow[];
   } catch (error) {
     if (isConnectionStorageUnavailable(error)) {
-      return { incoming: [], outgoing: [], approved: [], mentionTargets: [] };
+      return {
+        incoming: [],
+        outgoing: [],
+        approved: [],
+        mentionTargets: [],
+        requestsAllowed: true,
+      };
     }
     throw error;
   }
@@ -255,7 +282,21 @@ export async function getArtistConnectionCenterView(
     outgoing,
     approved,
     mentionTargets: approved.map((row) => row.otherArtist),
+    requestsAllowed: await canArtistReceiveConnectionRequests(artistId),
   };
+}
+
+export async function canArtistReceiveConnectionRequests(artistId: string): Promise<boolean> {
+  try {
+    const pref = await getDb().notificationPreference.findUnique({
+      where: { artistId },
+      select: { connectionRequestsAllowed: true },
+    });
+    return pref?.connectionRequestsAllowed ?? true;
+  } catch (error) {
+    if (isConnectionPreferenceUnavailable(error)) return true;
+    throw error;
+  }
 }
 
 export async function createConnectionRequest(requesterId: string, recipientId: string) {
@@ -287,6 +328,11 @@ export async function createConnectionRequest(requesterId: string, recipientId: 
     throw new Error("Artist connections are not available for one or both artists.");
   }
 
+  const recipientAllowsRequests = await canArtistReceiveConnectionRequests(recipientId);
+  if (!recipientAllowsRequests) {
+    throw new Error("This artist is not accepting connection requests right now.");
+  }
+
   const existing = await findConnectionBetween(requesterId, recipientId);
   if (existing?.status === "APPROVED") return existing;
   if (existing?.status === "PENDING") return existing;
@@ -314,17 +360,11 @@ export async function createConnectionRequest(requesterId: string, recipientId: 
     throw error;
   }
 
-  await db.notification.create({
-    data: {
-      artistId: recipientId,
-      type: "connection_request",
-      payload: {
-        text: `${requester.fullName} wants to connect with you.`,
-        href: "/connections",
-        requesterId,
-        requesterSlug: requester.slug,
-      },
-    },
+  await notifyArtistConnectionRequest({
+    requesterId,
+    requesterName: requester.fullName,
+    requesterSlug: requester.slug,
+    recipientId,
   });
 
   return connection;
@@ -335,7 +375,6 @@ export async function updateConnectionRequest(
   connectionId: string,
   status: "APPROVED" | "REJECTED",
 ) {
-  const db = getDb();
   const artistConnection = getArtistConnectionDelegate();
   if (!artistConnection) throw connectionSetupError();
 
@@ -367,16 +406,10 @@ export async function updateConnectionRequest(
   }
 
   if (status === "APPROVED") {
-    await db.notification.create({
-      data: {
-        artistId: connection.requesterId,
-        type: "connection_approved",
-        payload: {
-          text: `${connection.recipient.fullName} approved your connection request.`,
-          href: "/connections",
-          recipientId: connection.recipientId,
-        },
-      },
+    await notifyArtistConnectionApproved({
+      requesterId: connection.requesterId,
+      recipientId: connection.recipientId,
+      recipientName: connection.recipient.fullName,
     });
   }
 

@@ -3,6 +3,8 @@ import { listSpecialitiesForAdmin } from "@/lib/queries/admin-specialities";
 import { AddSpecialityForm } from "./add-speciality-form";
 import { AdminSpecialitiesGrid } from "./admin-specialities-grid";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminSpecialitiesPage() {
   const specialities = await listSpecialitiesForAdmin();
 

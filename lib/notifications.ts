@@ -14,11 +14,15 @@ export type AdminRegistrationNotificationEvent =
   | "new_registration"
   | "registration_approved"
   | "registration_rejected";
+export type ArtistConnectionNotificationEvent = "connection_request" | "connection_approved";
 
 type NotificationPreferenceSnapshot = {
   inAppEnabled: boolean;
   emailEnabled: boolean;
   webPushEnabled: boolean;
+  connectionRequestsAllowed: boolean;
+  connectionRequestEnabled: boolean;
+  connectionApprovedEnabled: boolean;
   reviewAddedEnabled: boolean;
   reviewUpdatedEnabled: boolean;
   reviewDeletedEnabled: boolean;
@@ -81,6 +85,9 @@ function defaultNotificationPreferences(): NotificationPreferenceSnapshot {
     inAppEnabled: true,
     emailEnabled: true,
     webPushEnabled: false,
+    connectionRequestsAllowed: true,
+    connectionRequestEnabled: true,
+    connectionApprovedEnabled: true,
     reviewAddedEnabled: true,
     reviewUpdatedEnabled: true,
     reviewDeletedEnabled: true,
@@ -152,6 +159,9 @@ export async function notifyReviewEvent(input: {
         inAppEnabled: true,
         emailEnabled: true,
         webPushEnabled: true,
+        connectionRequestsAllowed: true,
+        connectionRequestEnabled: true,
+        connectionApprovedEnabled: true,
         reviewAddedEnabled: true,
         reviewUpdatedEnabled: true,
         reviewDeletedEnabled: true,
@@ -269,6 +279,43 @@ function buildProfilePhotoReportMessage(input: {
   };
 }
 
+function connectionEventEnabled(
+  pref: Pick<
+    NotificationPreferenceSnapshot,
+    | "inAppEnabled"
+    | "emailEnabled"
+    | "webPushEnabled"
+    | "connectionRequestEnabled"
+    | "connectionApprovedEnabled"
+  >,
+  event: ArtistConnectionNotificationEvent,
+): boolean {
+  const eventEnabled =
+    event === "connection_request" ? pref.connectionRequestEnabled : pref.connectionApprovedEnabled;
+  return eventEnabled && (pref.inAppEnabled || pref.emailEnabled || pref.webPushEnabled);
+}
+
+function buildArtistConnectionMessage(input: {
+  event: ArtistConnectionNotificationEvent;
+  actorName: string;
+}): { title: string; text: string; emailSubject: string; href: string } {
+  if (input.event === "connection_request") {
+    return {
+      title: "Connection request",
+      text: `${input.actorName} wants to connect with you.`,
+      emailSubject: "New connection request",
+      href: "/connections",
+    };
+  }
+
+  return {
+    title: "Connection approved",
+    text: `${input.actorName} approved your connection request.`,
+    emailSubject: "Connection request approved",
+    href: "/connections",
+  };
+}
+
 export async function notifyAdminRegistrationEvent(input: {
   event: AdminRegistrationNotificationEvent;
   registrationId: string;
@@ -297,6 +344,9 @@ export async function notifyAdminRegistrationEvent(input: {
           inAppEnabled: true,
           emailEnabled: true,
           webPushEnabled: true,
+          connectionRequestsAllowed: true,
+          connectionRequestEnabled: true,
+          connectionApprovedEnabled: true,
           reviewAddedEnabled: true,
           reviewUpdatedEnabled: true,
           reviewDeletedEnabled: true,
@@ -394,6 +444,145 @@ export async function notifyAdminRegistrationEvent(input: {
   );
 }
 
+async function getArtistNotificationTarget(artistId: string) {
+  return getDb().artist.findUnique({
+    where: { id: artistId },
+    select: {
+      id: true,
+      email: true,
+      emailCipher: true,
+      contactCipher: true,
+      contactNumber: true,
+      fullName: true,
+      notificationPreference: {
+        select: {
+          inAppEnabled: true,
+          emailEnabled: true,
+          webPushEnabled: true,
+          connectionRequestsAllowed: true,
+          connectionRequestEnabled: true,
+          connectionApprovedEnabled: true,
+          reviewAddedEnabled: true,
+          reviewUpdatedEnabled: true,
+          reviewDeletedEnabled: true,
+          newRegistrationEnabled: true,
+          registrationApprovedEnabled: true,
+          registrationRejectedEnabled: true,
+        },
+      },
+      pushSubscriptions: {
+        select: {
+          endpoint: true,
+          p256dh: true,
+          auth: true,
+        },
+      },
+    },
+  });
+}
+
+async function notifyArtistConnectionEvent(input: {
+  event: ArtistConnectionNotificationEvent;
+  artistId: string;
+  actorId: string;
+  actorName: string;
+  actorSlug?: string;
+  baseUrl?: string;
+  emailOnly?: boolean;
+}) {
+  const artist = await getArtistNotificationTarget(input.artistId);
+  if (!artist) return;
+
+  const pref = artist.notificationPreference ?? defaultNotificationPreferences();
+  if (!connectionEventEnabled(pref, input.event)) return;
+
+  const rendered = buildArtistConnectionMessage(input);
+  const appUrl = (input.baseUrl?.trim() || normalizeAppUrl()).replace(/\/+$/, "");
+  const fullHref = appUrl ? `${appUrl}${rendered.href}` : rendered.href;
+  const resendApiKey = process.env.RESEND_API_KEY;
+  const fromEmail = process.env.RESEND_FROM_EMAIL ?? "noreply@artist-discovery.example";
+
+  if (!input.emailOnly && pref.inAppEnabled) {
+    await getDb().notification.create({
+      data: {
+        artistId: artist.id,
+        type: input.event,
+        payload: {
+          text: rendered.text,
+          href: rendered.href,
+          actorId: input.actorId,
+          ...(input.actorSlug ? { actorSlug: input.actorSlug } : {}),
+        },
+      },
+    });
+  }
+
+  if (pref.emailEnabled && resendApiKey) {
+    const inbox = decryptArtistStoredContact(artist).email;
+    if (inbox) {
+      const content = {
+        eyebrow: `Hi ${artist.fullName},`,
+        title: rendered.emailSubject,
+        paragraphs: [rendered.text],
+        primaryCta: { href: fullHref, label: "Open connections" },
+      };
+      await sendResendEmail({
+        apiKey: resendApiKey,
+        from: fromEmail,
+        to: inbox,
+        subject: `${rendered.emailSubject} · ${getPortalNameForEmail()}`,
+        html: transactionalEmailHtml(content),
+        text: transactionalEmailPlainText(content),
+      });
+    }
+  }
+
+  if (!input.emailOnly && pref.webPushEnabled) {
+    await sendPushNotifications({
+      subscriptions: artist.pushSubscriptions,
+      title: rendered.title,
+      body: rendered.text,
+      url: rendered.href,
+    });
+  }
+}
+
+export async function notifyArtistConnectionRequest(input: {
+  requesterId: string;
+  requesterName: string;
+  requesterSlug: string;
+  recipientId: string;
+  baseUrl?: string;
+  emailOnly?: boolean;
+}): Promise<void> {
+  await notifyArtistConnectionEvent({
+    event: "connection_request",
+    artistId: input.recipientId,
+    actorId: input.requesterId,
+    actorName: input.requesterName,
+    actorSlug: input.requesterSlug,
+    baseUrl: input.baseUrl,
+    emailOnly: input.emailOnly,
+  });
+}
+
+export async function notifyArtistConnectionApproved(input: {
+  requesterId: string;
+  recipientId: string;
+  recipientName: string;
+  baseUrl?: string;
+  emailOnly?: boolean;
+}): Promise<void> {
+  await notifyArtistConnectionEvent({
+    event: "connection_approved",
+    artistId: input.requesterId,
+    actorId: input.recipientId,
+    actorName: input.recipientName,
+    baseUrl: input.baseUrl,
+    emailOnly: input.emailOnly,
+  });
+}
+
 export async function notifyAdminProfilePhotoReport(input: {
   artistId: string;
   artistName: string;
@@ -419,6 +608,9 @@ export async function notifyAdminProfilePhotoReport(input: {
           inAppEnabled: true,
           emailEnabled: true,
           webPushEnabled: true,
+          connectionRequestsAllowed: true,
+          connectionRequestEnabled: true,
+          connectionApprovedEnabled: true,
           reviewAddedEnabled: true,
           reviewUpdatedEnabled: true,
           reviewDeletedEnabled: true,
