@@ -43,6 +43,17 @@ export default async function ConnectionsPage() {
               Approved connections can mention each other with their @tag in profile bios and collab
               messages.
             </p>
+            <p className="mt-2 text-xs text-stone-500">
+              Incoming requests are currently{" "}
+              <span className="font-semibold text-stone-700">
+                {view.requestsAllowed ? "enabled" : "paused"}
+              </span>
+              . Manage this in{" "}
+              <Link href="/profile/notifications" className="text-amber-700 hover:text-amber-900">
+                notification preferences
+              </Link>
+              .
+            </p>
           </div>
           <Link
             href="/search"

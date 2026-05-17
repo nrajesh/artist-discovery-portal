@@ -227,11 +227,13 @@ Since magic-link email requires Resend to be configured, use these shortcuts for
 | `/profile/notifications`   | Email and push notification preferences (auth required)                                                                                      |
 | `/privacy`                 | Privacy policy, PostHog disclosure, opt-in / opt-out                                                                                         |
 | `/admin/dashboard`         | Admin home (admin role required)                                                                                                             |
+| `/admin/connections`       | Read-only moderation view for connection requests, approvals, rejections, and paused incoming request settings                               |
 | `/admin/registrations`     | Review pending registrations (filters, status toasts, review comments)                                                                       |
 | `/admin/artists`           | Manage all artists (edit profiles, suspension with notes)                                                                                    |
 | `/admin/reported-profiles` | Review reported profiles in bulk; resolve reports, clear images, or suspend repeat offenders                                                 |
 | `/admin/specialities`      | Manage speciality colour palette                                                                                                             |
 | `/about`                   | Maintainer showcase - USPs, speciality **colour examples** (2 and 3 instruments), Unicode samples, PostHog / privacy, tech stack, live demos |
+| `/about/connections-v1`    | Live implementation notes and design diagrams for the feature-flagged Artist Connections V1 rollout                                          |
 
 ---
 
@@ -261,13 +263,13 @@ app/
 │   ├── artists/       # Directory + [slug] profile
 │   ├── register/      # Registration form
 │   ├── auth/          # Login + verify (GET landing + POST consume)
-│   └── about/         # Maintainer showcase
+│   └── about/         # Maintainer showcase + implementation notes
 ├── (artist)/          # Auth-protected artist routes
 │   ├── dashboard/
 │   ├── profile/       # edit, availability, notifications
 │   ├── search/
 ├── (admin)/           # Admin-protected routes
-│   └── admin/         # dashboard, registrations, artists, reported-profiles, specialities
+│   └── admin/         # dashboard, connections, registrations, artists, reported-profiles, specialities
 └── api/               # Route handlers
 
 lib/
@@ -363,7 +365,7 @@ Full requirements, design, and implementation plan are in `.kiro/specs/artist-di
 
 PostHog analytics, proxy behaviour, Session Replay, and privacy contracts: **`.kiro/specs/posthog-analytics/`** (plus **`.kiro/steering/posthog-admin-guide.md`** for operators).
 
-Shorter entry points: [`docs/README.md`](docs/README.md) and in-app **`/about`**.
+Shorter entry points: [`docs/README.md`](docs/README.md), in-app **`/about`**, and the live feature note page **[`/about/connections-v1`](/about/connections-v1)** for the current connections rollout.
 
 ---
 

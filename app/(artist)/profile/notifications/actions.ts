@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { verifySession } from "@/lib/session-jwt";
 import { getDb } from "@/lib/db";
 import { isArtistCollabsRatingsEnabledServer } from "@/lib/feature-flags-server";
+import { canUseArtistConnections } from "@/lib/artist-connections";
 
 function checked(formData: FormData, name: string): boolean {
   return formData.get(name) === "on";
@@ -15,9 +16,12 @@ export async function updateNotificationPreferencesAction(formData: FormData): P
   const session = token ? await verifySession(token) : null;
   if (!session) throw new Error("UNAUTHENTICATED");
 
-  const collabsRatingsEnabled = await isArtistCollabsRatingsEnabledServer({
-    distinctId: session.artistId,
-  });
+  const [collabsRatingsEnabled, artistConnectionsEnabled] = await Promise.all([
+    isArtistCollabsRatingsEnabledServer({
+      distinctId: session.artistId,
+    }),
+    canUseArtistConnections({ distinctId: session.artistId }),
+  ]);
 
   const existing = await getDb().notificationPreference.findUnique({
     where: { artistId: session.artistId },
@@ -25,6 +29,9 @@ export async function updateNotificationPreferencesAction(formData: FormData): P
       reviewAddedEnabled: true,
       reviewUpdatedEnabled: true,
       reviewDeletedEnabled: true,
+      connectionRequestsAllowed: true,
+      connectionRequestEnabled: true,
+      connectionApprovedEnabled: true,
     },
   });
 
@@ -45,6 +52,15 @@ export async function updateNotificationPreferencesAction(formData: FormData): P
       inAppEnabled: checked(formData, "inAppEnabled"),
       emailEnabled: checked(formData, "emailEnabled"),
       webPushEnabled: checked(formData, "webPushEnabled"),
+      connectionRequestsAllowed: artistConnectionsEnabled
+        ? checked(formData, "connectionRequestsAllowed")
+        : (existing?.connectionRequestsAllowed ?? true),
+      connectionRequestEnabled: artistConnectionsEnabled
+        ? checked(formData, "connectionRequestEnabled")
+        : (existing?.connectionRequestEnabled ?? true),
+      connectionApprovedEnabled: artistConnectionsEnabled
+        ? checked(formData, "connectionApprovedEnabled")
+        : (existing?.connectionApprovedEnabled ?? true),
       reviewAddedEnabled,
       reviewUpdatedEnabled,
       reviewDeletedEnabled,
@@ -56,6 +72,15 @@ export async function updateNotificationPreferencesAction(formData: FormData): P
       inAppEnabled: checked(formData, "inAppEnabled"),
       emailEnabled: checked(formData, "emailEnabled"),
       webPushEnabled: checked(formData, "webPushEnabled"),
+      connectionRequestsAllowed: artistConnectionsEnabled
+        ? checked(formData, "connectionRequestsAllowed")
+        : (existing?.connectionRequestsAllowed ?? true),
+      connectionRequestEnabled: artistConnectionsEnabled
+        ? checked(formData, "connectionRequestEnabled")
+        : (existing?.connectionRequestEnabled ?? true),
+      connectionApprovedEnabled: artistConnectionsEnabled
+        ? checked(formData, "connectionApprovedEnabled")
+        : (existing?.connectionApprovedEnabled ?? true),
       reviewAddedEnabled,
       reviewUpdatedEnabled,
       reviewDeletedEnabled,

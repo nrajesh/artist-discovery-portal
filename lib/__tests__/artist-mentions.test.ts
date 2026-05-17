@@ -15,7 +15,7 @@ describe("linkApprovedMentionsInHtml", () => {
     ]);
 
     expect(out).toContain('href="/artists/lakshmi-narayanan"');
-    expect(out).toContain("@lakshmi-narayanan</a>");
+    expect(out).toContain("Lakshmi Narayanan</a>");
   });
 
   it("leaves unapproved @tags as plain text", () => {

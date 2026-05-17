@@ -20,8 +20,29 @@ const mockState = vi.hoisted(() => ({
     } | null;
     pushSubscriptions?: Array<{ endpoint: string; p256dh: string; auth: string }>;
   }>,
+  artistsById: {} as Record<
+    string,
+    {
+      id: string;
+      email: string | null;
+      fullName: string;
+      notificationPreference?: {
+        inAppEnabled: boolean;
+        emailEnabled: boolean;
+        webPushEnabled: boolean;
+        reviewAddedEnabled: boolean;
+        reviewUpdatedEnabled: boolean;
+        reviewDeletedEnabled: boolean;
+        newRegistrationEnabled: boolean;
+        registrationApprovedEnabled: boolean;
+        registrationRejectedEnabled: boolean;
+      } | null;
+      pushSubscriptions?: Array<{ endpoint: string; p256dh: string; auth: string }>;
+    }
+  >,
   capturedArtistFindManyArgs: null as Record<string, unknown> | null,
   capturedNotificationCreateManyArgs: null as { data: Array<Record<string, unknown>> } | null,
+  capturedNotificationCreateArgs: [] as Array<Record<string, unknown>>,
 }));
 
 vi.mock("web-push", () => ({
@@ -47,11 +68,19 @@ vi.mock("../db", () => {
           return true;
         });
       }),
+      findUnique: vi.fn(async (args: Record<string, unknown>) => {
+        const where = (args.where ?? {}) as { id?: string };
+        return where.id ? (mockState.artistsById[where.id] ?? null) : null;
+      }),
     },
     notification: {
       createMany: vi.fn(async (args: { data: Array<Record<string, unknown>> }) => {
         mockState.capturedNotificationCreateManyArgs = args;
         return { count: args.data.length };
+      }),
+      create: vi.fn(async (args: { data: Record<string, unknown> }) => {
+        mockState.capturedNotificationCreateArgs.push(args.data);
+        return args.data;
       }),
     },
   };
@@ -76,13 +105,21 @@ vi.mock("@/lib/resend-email", () => ({
 }));
 
 import { sendResendEmail } from "../resend-email";
-import { notifyAdminProfilePhotoReport, notifyAdminRegistrationEvent } from "../notifications";
+import {
+  notifyAdminProfilePhotoReport,
+  notifyAdminRegistrationEvent,
+  notifyArtistConnectionApproved,
+  notifyArtistConnectionRequest,
+} from "../notifications";
 
 describe("notifyAdminRegistrationEvent", () => {
   beforeEach(() => {
     mockState.admins = [];
+    mockState.artistsById = {};
     mockState.capturedArtistFindManyArgs = null;
     mockState.capturedNotificationCreateManyArgs = null;
+    mockState.capturedNotificationCreateArgs = [];
+    vi.mocked(sendResendEmail).mockClear();
     delete process.env.RESEND_API_KEY;
     delete process.env.RESEND_FROM_EMAIL;
   });
@@ -215,6 +252,84 @@ describe("notifyAdminRegistrationEvent", () => {
         from: "noreply@example.com",
         to: "admin1@example.com",
         subject: "Profile reported · Portal",
+      }),
+    );
+  });
+
+  it("emails and creates an in-app notification for connection requests", async () => {
+    process.env.RESEND_API_KEY = "re_test_key";
+    process.env.RESEND_FROM_EMAIL = "noreply@example.com";
+    mockState.artistsById = {
+      recipient: {
+        id: "recipient",
+        email: "recipient@example.com",
+        fullName: "Recipient Artist",
+        notificationPreference: null,
+        pushSubscriptions: [],
+      },
+    };
+
+    await notifyArtistConnectionRequest({
+      requesterId: "requester",
+      requesterName: "Requester Artist",
+      requesterSlug: "requester-artist",
+      recipientId: "recipient",
+      baseUrl: "https://portal.example.com",
+    });
+
+    expect(mockState.capturedNotificationCreateArgs).toEqual([
+      expect.objectContaining({
+        artistId: "recipient",
+        type: "connection_request",
+        payload: expect.objectContaining({
+          href: "/connections",
+          actorId: "requester",
+          actorSlug: "requester-artist",
+        }),
+      }),
+    ]);
+    expect(sendResendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "recipient@example.com",
+        subject: "New connection request · Portal",
+      }),
+    );
+  });
+
+  it("emails the requester when a connection is approved", async () => {
+    process.env.RESEND_API_KEY = "re_test_key";
+    process.env.RESEND_FROM_EMAIL = "noreply@example.com";
+    mockState.artistsById = {
+      requester: {
+        id: "requester",
+        email: "requester@example.com",
+        fullName: "Requester Artist",
+        notificationPreference: null,
+        pushSubscriptions: [],
+      },
+    };
+
+    await notifyArtistConnectionApproved({
+      requesterId: "requester",
+      recipientId: "recipient",
+      recipientName: "Recipient Artist",
+      baseUrl: "https://portal.example.com",
+    });
+
+    expect(mockState.capturedNotificationCreateArgs).toEqual([
+      expect.objectContaining({
+        artistId: "requester",
+        type: "connection_approved",
+        payload: expect.objectContaining({
+          href: "/connections",
+          actorId: "recipient",
+        }),
+      }),
+    ]);
+    expect(sendResendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "requester@example.com",
+        subject: "Connection request approved · Portal",
       }),
     );
   });

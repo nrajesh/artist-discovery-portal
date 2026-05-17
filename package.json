@@ -20,6 +20,7 @@
     "db:backfill-pii": "tsx scripts/backfill-artist-pii.ts",
     "db:backfill-profile-photos": "tsx scripts/backfill-profile-photos-to-r2.ts",
     "db:normalize-artist-ids": "tsx scripts/normalize-artist-ids-and-cleanup.ts",
+    "db:send-pending-connection-emails": "tsx scripts/send-pending-connection-emails.ts",
     "db:set-admin": "tsx scripts/set-artist-admin.ts",
     "db:dedupe-speciality-colors": "tsx scripts/dedupe-speciality-color-pairs.ts",
     "posthog:merge-artist-identities": "tsx scripts/merge-posthog-artist-identities.ts"

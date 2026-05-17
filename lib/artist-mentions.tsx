@@ -20,6 +20,14 @@ function mentionTitle(target: MentionableArtist): string {
   return `Mention ${target.fullName}`;
 }
 
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 function linkClassName(extra?: string): string {
   return [
     "font-semibold text-amber-700 underline decoration-amber-300 underline-offset-2 hover:text-amber-900",
@@ -37,7 +45,7 @@ function linkApprovedMentionsInTextSegment(
     const target = targetsBySlug.get(rawSlug.toLowerCase());
     if (!target) return match;
     const href = `/artists/${encodeURIComponent(target.slug)}`;
-    return `${prefix}<a href="${href}" class="${linkClassName()}" title="${mentionTitle(target)}">@${target.slug}</a>`;
+    return `${prefix}<a href="${href}" class="${linkClassName()}" title="${mentionTitle(target)}">${escapeHtml(target.fullName)}</a>`;
   });
 }
 
@@ -97,7 +105,7 @@ export function MentionedText({
         className={linkClassName()}
         title={mentionTitle(target)}
       >
-        @{target.slug}
+        {target.fullName}
       </Link>,
     );
     lastIndex = match.index + fullMatch.length;

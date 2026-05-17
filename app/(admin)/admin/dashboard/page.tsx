@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { AdminDashboardTracker } from "@/components/admin-dashboard-tracker";
 import { PostHogIdentify } from "@/components/posthog-identify";
 import { getDb } from "@/lib/db";
+import { isArtistConnectionsStorageReady } from "@/lib/artist-connections";
 import { verifySession } from "@/lib/session-jwt";
 import { isArtistCollabsRatingsEnabledServer } from "@/lib/feature-flags-server";
 import { SiteBrandMark } from "@/components/site-brand-mark";
@@ -31,9 +32,12 @@ export default async function AdminDashboardPage({
     }
   }
 
-  const collabsRatingsEnabled = await isArtistCollabsRatingsEnabledServer({
-    distinctId: session.artistId,
-  });
+  const [collabsRatingsEnabled, artistConnectionsStorageReady] = await Promise.all([
+    isArtistCollabsRatingsEnabledServer({
+      distinctId: session.artistId,
+    }),
+    isArtistConnectionsStorageReady(),
+  ]);
 
   const gridClass = collabsRatingsEnabled
     ? "grid grid-cols-1 gap-5 sm:grid-cols-2"
@@ -103,6 +107,22 @@ export default async function AdminDashboardPage({
               </p>
             </div>
           </Link>
+
+          {artistConnectionsStorageReady && (
+            <Link href="/admin/connections" className={cardClass}>
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-50 to-teal-100/90 text-2xl shadow-inner ring-1 ring-emerald-200/30">
+                🤝
+              </div>
+              <div>
+                <h2 className="font-semibold text-stone-800 transition-colors group-hover:text-amber-900">
+                  Connections
+                </h2>
+                <p className="mt-1 text-sm leading-relaxed text-stone-500">
+                  Review pending, approved, and paused connection relationships
+                </p>
+              </div>
+            </Link>
+          )}
 
           {collabsRatingsEnabled && (
             <Link href="/admin/collabs" className={cardClass}>
